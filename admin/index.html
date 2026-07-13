@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - JACK NUTRITION</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="authPage" class="auth-page">
+        <div class="auth-container">
+            <h1>JACK NUTRITION</h1>
+            <h2>Админ-панель</h2>
+            <form id="loginForm">
+                <input type="email" id="loginEmail" placeholder="Email" required>
+                <input type="password" id="loginPassword" placeholder="Пароль" required>
+                <button type="submit" class="btn btn-primary btn-block">Войти</button>
+            </form>
+            <button id="forgotPassword" class="btn btn-secondary btn-block">Забыли пароль?</button>
+            <div id="loginError" class="error hidden"></div>
+        </div>
+    </div>
+
+    <div id="adminPage" class="admin-page hidden">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>JACK NUTRITION</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <button class="nav-item active" data-page="products">Товары</button>
+                <button class="nav-item" data-page="categories">Категории</button>
+                <button class="nav-item" data-page="brands">Бренды</button>
+                <button class="nav-item" data-page="analytics">Статистика</button>
+                <button class="nav-item" data-page="settings">Настройки</button>
+                <button class="nav-item" data-page="import">Импорт</button>
+                <button class="nav-item" data-page="export">Экспорт</button>
+                <button class="nav-item" data-page="backup">Резерв</button>
+            </nav>
+            <div class="sidebar-footer">
+                <button id="logoutBtn" class="btn btn-secondary btn-block">Выйти</button>
+            </div>
+        </aside>
+
+        <main class="admin-main">
+            <header class="admin-header">
+                <h1 id="pageTitle">Товары</h1>
+                <div class="admin-header-actions">
+                    <button id="monitorIndicator" class="monitor-indicator" title="Статус Edge Function">
+                        <span class="indicator-dot"></span>
+                        <span class="indicator-text">Проверка...</span>
+                    </button>
+                </div>
+            </header>
+
+            <div id="productsPage" class="page active">
+                <div class="page-header">
+                    <div class="search-box">
+                        <input type="text" id="productSearch" placeholder="Поиск товаров...">
+                    </div>
+                    <button id="addProductBtn" class="btn btn-primary">+ Добавить товар</button>
+                </div>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Фото</th>
+                                <th>Название</th>
+                                <th>Категория</th>
+                                <th>Бренд</th>
+                                <th>Цена</th>
+                                <th>Остаток</th>
+                                <th>Статус</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody id="productsTable"></tbody>
+                    </table>
+                </div>
+                <div class="pagination" id="productsPagination"></div>
+            </div>
+
+            <div id="categoriesPage" class="page">
+                <div class="page-header">
+                    <button id="addCategoryBtn" class="btn btn-primary">+ Добавить категорию</button>
+                </div>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Название</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody id="categoriesTable"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="brandsPage" class="page">
+                <div class="page-header">
+                    <button id="addBrandBtn" class="btn btn-primary">+ Добавить бренд</button>
+                </div>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Название</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody id="brandsTable"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="analyticsPage" class="page">
+                <div class="analytics-filters">
+                    <select id="analyticsPeriod">
+                        <option value="day">День</option>
+                        <option value="week">Неделя</option>
+                        <option value="month" selected>Месяц</option>
+                        <option value="quarter">Квартал</option>
+                        <option value="year">Год</option>
+                        <option value="all">Все время</option>
+                    </select>
+                </div>
+                
+                <div class="stats-cards">
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalRevenue">0 ₽</div>
+                        <div class="stat-label">Общая выручка</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalOrders">0</div>
+                        <div class="stat-label">Заказов</div>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <canvas id="salesChart"></canvas>
+                </div>
+
+                <h3>Топ-10 товаров</h3>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Товар</th>
+                                <th>Продано шт.</th>
+                                <th>Выручка</th>
+                            </tr>
+                        </thead>
+                        <tbody id="topProductsTable"></tbody>
+                    </table>
+                </div>
+
+                <h3>Заказы</h3>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Номер</th>
+                                <th>Товары</th>
+                                <th>Сумма</th>
+                                <th>Дата</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ordersTable"></tbody>
+                    </table>
+                </div>
+                <div class="pagination" id="ordersPagination"></div>
+            </div>
+
+            <div id="settingsPage" class="page">
+                <form id="settingsForm" class="settings-form">
+                    <div class="form-group">
+                        <label>WhatsApp номер</label>
+                        <input type="text" id="whatsappNumber" placeholder="79991234567">
+                    </div>
+                    <div class="form-group">
+                        <label>Название магазина</label>
+                        <input type="text" id="storeName" value="JACK NUTRITION">
+                    </div>
+                    <div class="form-group">
+                        <label>Логотип (текст)</label>
+                        <input type="text" id="logoText" value="JACK NUTRITION">
+                    </div>
+                    <div class="form-group">
+                        <label>Часовой пояс</label>
+                        <select id="timezone">
+                            <option value="Europe/Moscow" selected>Europe/Moscow (UTC+3)</option>
+                            <option value="Europe/Kiev">Europe/Kiev (UTC+2)</option>
+                            <option value="Europe/Kaliningrad">Europe/Kaliningrad (UTC+2)</option>
+                            <option value="Asia/Yekaterinburg">Asia/Yekaterinburg (UTC+5)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="orderTimeLimitEnabled" checked>
+                            Ограничение времени оформления заказа
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>Начало рабочего дня</label>
+                        <input type="time" id="orderStartHour" value="09:00">
+                    </div>
+                    <div class="form-group">
+                        <label>Конец рабочего дня</label>
+                        <input type="time" id="orderEndHour" value="20:00">
+                    </div>
+                    <div class="form-group">
+                        <label>Шаблон текста ошибки (спецкод)</label>
+                        <input type="text" id="orderErrorCode" value="[!CHECK!]">
+                    </div>
+                    <div class="form-group">
+                        <label>Валюта</label>
+                        <select id="currency">
+                            <option value="₽">Рубли (₽)</option>
+                            <option value="$">Доллары ($)</option>
+                            <option value="€">Евро (€)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Шаблон текста заказа (опционально)</label>
+                        <textarea id="orderTemplate" rows="5" placeholder="Дополнительный текст к заказу..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </form>
+
+                <div class="settings-section">
+                    <h3>Смена пароля</h3>
+                    <form id="changePasswordForm">
+                        <div class="form-group">
+                            <label>Текущий пароль</label>
+                            <input type="password" id="currentPassword" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Новый пароль</label>
+                            <input type="password" id="newPassword" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Подтвердите пароль</label>
+                            <input type="password" id="confirmPassword" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Изменить пароль</button>
+                    </form>
+                </div>
+            </div>
+
+            <div id="importPage" class="page">
+                <div class="import-export-box">
+                    <h3>Импорт из Excel</h3>
+                    <p>Поддерживаемые форматы: .xlsx, .xls</p>
+                    <p>При совпадении артикула — обновление. Пустые поля не затирают существующие.</p>
+                    <input type="file" id="importFile" accept=".xlsx,.xls" class="hidden">
+                    <button id="importFileBtn" class="btn btn-secondary">Выбрать файл</button>
+                    <button id="importBtn" class="btn btn-primary" disabled>Импортировать</button>
+                    <div id="importStatus" class="status-message"></div>
+                </div>
+            </div>
+
+            <div id="exportPage" class="page">
+                <div class="import-export-box">
+                    <h3>Экспорт в Excel</h3>
+                    <p>Выгрузка всего каталога в .xlsx</p>
+                    <button id="exportBtn" class="btn btn-primary">Скачать каталог</button>
+                </div>
+            </div>
+
+            <div id="backupPage" class="page">
+                <div class="import-export-box">
+                    <h3>Резервное копирование</h3>
+                    <p>Скачать дамп базы данных (JSON)</p>
+                    <button id="backupBtn" class="btn btn-primary">Скачать дамп БД</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="productModal" class="modal hidden">
+        <div class="modal-content">
+            <button class="modal-close">&times;</button>
+            <h2 id="modalTitle">Добавить товар</h2>
+            <form id="productForm">
+                <div class="form-group">
+                    <label>Название *</label>
+                    <input type="text" id="prodName" required>
+                </div>
+                <div class="form-group">
+                    <label>Краткое описание</label>
+                    <input type="text" id="prodDescription">
+                </div>
+                <div class="form-group">
+                    <label>Полное описание</label>
+                    <textarea id="prodFullDescription" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Состав</label>
+                    <textarea id="prodComposition" rows="2"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Дозировка</label>
+                    <input type="text" id="prodDosage">
+                </div>
+                <div class="form-group">
+                    <label>Способ применения</label>
+                    <textarea id="prodUsage" rows="2"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Противопоказания</label>
+                    <textarea id="prodContraindications" rows="2"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Категория</label>
+                        <select id="prodCategory"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Бренд</label>
+                        <select id="prodBrand"></select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Цена *</label>
+                        <input type="number" id="prodPrice" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Старая цена</label>
+                        <input type="number" id="prodOldPrice">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Остаток</label>
+                        <input type="number" id="prodStock" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Объём</label>
+                        <input type="text" id="prodVolume" placeholder="30 капсул">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Артикул</label>
+                        <input type="text" id="prodSku">
+                    </div>
+                    <div class="form-group">
+                        <label>Штрих-код</label>
+                        <input type="text" id="prodBarcode">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Срок годности</label>
+                        <input type="text" id="prodShelfLife">
+                    </div>
+                    <div class="form-group">
+                        <label>Видимость</label>
+                        <select id="prodIsVisible">
+                            <option value="true">Показывать</option>
+                            <option value="false">Скрыть</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Бейджи</label>
+                    <div class="checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="prodIsHit"> Хит
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="prodIsNew"> Новинка
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="prodIsDiscount"> Скидка
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Фото (до 4)</label>
+                    <input type="file" id="prodImages" accept="image/*" multiple>
+                    <div id="imagePreview" class="image-preview"></div>
+                </div>
+                <div class="form-group">
+                    <label>Ссылки (до 4)</label>
+                    <div id="linksContainer"></div>
+                    <button type="button" id="addLinkBtn" class="btn btn-secondary">+ Добавить ссылку</button>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                    <button type="button" id="cancelProduct" class="btn btn-secondary">Отмена</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
