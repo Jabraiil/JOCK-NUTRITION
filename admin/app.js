@@ -766,7 +766,7 @@ async function startMonitor() {
 
 async function checkMonitor() {
     try {
-        const response = await fetch(CONFIG.orderFunctionUrl.replace('/create-order', '/health'), {
+        const response = await fetch(CONFIG.orderFunctionUrl + '/health', {
             method: 'GET'
         })
         

@@ -14,6 +14,16 @@ serve(async (req) => {
     return new Response("ok", { headers: corsHeaders })
   }
 
+  const url = new URL(req.url)
+  const path = url.pathname.replace("/create-order", "")
+
+  if (req.method === "GET" && path === "/health") {
+    return new Response(
+      JSON.stringify({ status: "ok", timestamp: new Date().toISOString() }),
+      { headers: { "Content-Type": "application/json", ...corsHeaders } }
+    )
+  }
+
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
