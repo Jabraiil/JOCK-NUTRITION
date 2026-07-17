@@ -3,9 +3,8 @@
 // ============================================
 
 const CONFIG = {
-    // TODO: замените YOUR_ANON_KEY на реальный anon key из настроек Supabase
     supabaseUrl: 'https://hpphfeojjejculvdundj.supabase.co',
-    supabaseAnonKey: 'YOUR_ANON_KEY',
+    supabaseAnonKey: 'sb_publishable_1EGpjPEw9gU2W5OKL-gFIQ_x4Gvger1',
     adminApiUrl: 'https://hpphfeojjejculvdundj.supabase.co/functions/v1/admin-api',
     orderFunctionUrl: 'https://hpphfeojjejculvdundj.supabase.co/functions/v1/create-order'
 }
