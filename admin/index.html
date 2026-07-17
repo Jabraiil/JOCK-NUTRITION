@@ -395,6 +395,23 @@
         </div>
     </div>
 
+    <div id="nameModal" class="modal hidden">
+        <div class="modal-content">
+            <button class="modal-close" id="nameModalClose">&times;</button>
+            <h2 id="nameModalTitle">Название</h2>
+            <form id="nameModalForm">
+                <div class="form-group">
+                    <label id="nameModalLabel">Название</label>
+                    <input type="text" id="nameModalInput" required>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                    <button type="button" id="nameModalCancel" class="btn btn-secondary">Отмена</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="app.js"></script>

@@ -74,6 +74,18 @@ function setupEventListeners() {
 
     // Modal
     document.querySelector('.modal-close').addEventListener('click', closeProductModal)
+    document.getElementById('nameModalClose').addEventListener('click', closeNameModal)
+    document.getElementById('nameModalCancel').addEventListener('click', closeNameModal)
+    document.getElementById('nameModalForm').addEventListener('submit', async (e) => {
+        e.preventDefault()
+        const value = document.getElementById('nameModalInput').value.trim()
+        if (nameModalResolve) {
+            nameModalResolve(value)
+            nameModalResolve = null
+        }
+        document.getElementById('nameModal').classList.add('hidden')
+        document.getElementById('nameModalInput').value = ''
+    })
 }
 
 function showAuthPage() {
@@ -455,35 +467,71 @@ async function loadCategories() {
     `).join('')
 }
 
-function openCategoryModal(categoryId = null) {
-    const name = categoryId ? prompt('Новое название категории:') : prompt('Название категории:')
+let nameModalResolve = null
+
+function openNameModal(title, label, value = '') {
+    return new Promise((resolve) => {
+        nameModalResolve = resolve
+        document.getElementById('nameModalTitle').textContent = title
+        document.getElementById('nameModalLabel').textContent = label
+        const input = document.getElementById('nameModalInput')
+        input.value = value
+        document.getElementById('nameModal').classList.remove('hidden')
+        setTimeout(() => input.focus(), 50)
+    })
+}
+
+function closeNameModal() {
+    document.getElementById('nameModal').classList.remove('hidden')
+    document.getElementById('nameModal').classList.add('hidden')
+    document.getElementById('nameModalInput').value = ''
+    if (nameModalResolve) {
+        nameModalResolve(null)
+        nameModalResolve = null
+    }
+}
+
+async function openCategoryModal(categoryId = null) {
+    const name = await openNameModal(
+        categoryId ? 'Редактировать категорию' : 'Новая категория',
+        'Название категории'
+    )
     if (!name) return
-    
-    const url = categoryId 
+
+    const url = categoryId
         ? `${CONFIG.adminApiUrl}/categories/${categoryId}`
         : `${CONFIG.adminApiUrl}/categories`
-    
+
     const method = categoryId ? 'PUT' : 'POST'
-    
-    fetch(url, {
+
+    const response = await fetch(url, {
         method,
         headers: {
             'Authorization': `Bearer ${localStorage.getItem('admin-token')}`,
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({ name })
-    }).then(() => loadCategories())
+    })
+
+    if (response.ok) {
+        loadCategories()
+    } else {
+        const result = await response.json().catch(() => ({}))
+        alert(result.error || 'Ошибка сохранения категории')
+    }
 }
 
 async function deleteCategory(id) {
     if (!confirm('Удалить категорию?')) return
-    
-    await fetch(`${CONFIG.adminApiUrl}/categories/${id}`, {
+
+    const response = await fetch(`${CONFIG.adminApiUrl}/categories/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
     })
-    
-    loadCategories()
+
+    if (response.ok) {
+        loadCategories()
+    }
 }
 
 function editCategory(id) {
@@ -498,9 +546,9 @@ async function loadBrands() {
     const response = await fetch(`${CONFIG.adminApiUrl}/brands`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
     })
-    
+
     const data = await response.json()
-    
+
     document.getElementById('brandsTable').innerHTML = data.map(brand => `
         <tr>
             <td>${brand.name}</td>
@@ -512,35 +560,47 @@ async function loadBrands() {
     `).join('')
 }
 
-function openBrandModal(brandId = null) {
-    const name = brandId ? prompt('Новое название бренда:') : prompt('Название бренда:')
+async function openBrandModal(brandId = null) {
+    const name = await openNameModal(
+        brandId ? 'Редактировать бренд' : 'Новый бренд',
+        'Название бренда'
+    )
     if (!name) return
-    
-    const url = brandId 
+
+    const url = brandId
         ? `${CONFIG.adminApiUrl}/brands/${brandId}`
         : `${CONFIG.adminApiUrl}/brands`
-    
+
     const method = brandId ? 'PUT' : 'POST'
-    
-    fetch(url, {
+
+    const response = await fetch(url, {
         method,
         headers: {
             'Authorization': `Bearer ${localStorage.getItem('admin-token')}`,
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({ name })
-    }).then(() => loadBrands())
+    })
+
+    if (response.ok) {
+        loadBrands()
+    } else {
+        const result = await response.json().catch(() => ({}))
+        alert(result.error || 'Ошибка сохранения бренда')
+    }
 }
 
 async function deleteBrand(id) {
     if (!confirm('Удалить бренд?')) return
-    
-    await fetch(`${CONFIG.adminApiUrl}/brands/${id}`, {
+
+    const response = await fetch(`${CONFIG.adminApiUrl}/brands/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
     })
-    
-    loadBrands()
+
+    if (response.ok) {
+        loadBrands()
+    }
 }
 
 function editBrand(id) {
