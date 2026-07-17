@@ -3,11 +3,11 @@
 // ============================================
 
 const CONFIG = {
-    // Замените на реальные значения из вашего Supabase проекта
-    supabaseUrl: 'https://YOUR_PROJECT_ID.supabase.co',
+    // TODO: замените YOUR_ANON_KEY на реальный anon key из настроек Supabase
+    supabaseUrl: 'https://hpphfeojjejculvdundj.supabase.co',
     supabaseAnonKey: 'YOUR_ANON_KEY',
-    adminApiUrl: 'https://YOUR_PROJECT_ID.supabase.co/functions/v1/admin-api',
-    orderFunctionUrl: 'https://YOUR_PROJECT_ID.supabase.co/functions/v1/create-order'
+    adminApiUrl: 'https://hpphfeojjejculvdundj.supabase.co/functions/v1/admin-api',
+    orderFunctionUrl: 'https://hpphfeojjejculvdundj.supabase.co/functions/v1/create-order'
 }
 
 let supabase = null
