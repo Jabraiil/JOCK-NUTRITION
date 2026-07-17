@@ -1,8 +1,9 @@
 const CONFIG = {
-    supabaseUrl: 'https://your-project.supabase.co',
-    supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhwcGhmZW9qamVqY3VsdmR1bmRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM5NjIzODYsImV4cCI6MjA5OTUzODM4Nn0.MpUgiKs55DZLCY2cbP7WOJB7uw-_RKmgVs6gf6783Sc',
-    orderFunctionUrl: 'https://your-project.supabase.co/functions/v1/create-order',
-    adminApiUrl: 'https://your-project.supabase.co/functions/v1/admin-api'
+    // Замените на реальные значения из вашего Supabase проекта
+    supabaseUrl: 'https://YOUR_PROJECT_ID.supabase.co',
+    supabaseAnonKey: 'YOUR_ANON_KEY',
+    orderFunctionUrl: 'https://YOUR_PROJECT_ID.supabase.co/functions/v1/create-order',
+    adminApiUrl: 'https://YOUR_PROJECT_ID.supabase.co/functions/v1/admin-api'
 }
 
 let allProducts = []
