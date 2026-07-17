@@ -252,7 +252,7 @@ function renderProducts(products) {
                 </div>
             </div>
         `
-    `.join('')
+    }).join('')
 
     // Add event listeners
     document.querySelectorAll('.product-card').forEach(card => {
@@ -298,7 +298,7 @@ function openProductModal(productId) {
 
     const modalBody = document.getElementById('modalBody')
     modalBody.innerHTML = `
-        ${imageUrl ? `<img src="${imageUrl}" alt="${product.name}">` : ''}
+        ${imageUrl ? '<img src="' + imageUrl + '" alt="' + product.name + '">' : ''}
         <div class="modal-brand">${product.brands?.name || ''}</div>
         <h2>${product.name}</h2>
         <div class="modal-volume">${product.volume || ''}</div>
@@ -309,7 +309,7 @@ function openProductModal(productId) {
         </div>
         <div class="modal-price">
             ${product.price} ₽
-            ${product.old_price ? `<span class="product-old-price">${product.old_price} ₽</span>` : ''}
+            ${product.old_price ? '<span class="product-old-price">' + product.old_price + ' ₽</span>' : ''}
         </div>
         
         ${product.full_description ? `
@@ -573,7 +573,7 @@ async function toggleBarcodeScanner() {
             video.srcObject = stream
             barcodeStream = stream
             
-            const detector = new (window as any).BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'qr_code'] })
+            const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'qr_code'] })
             barcodeDetector = detector
             
             scanner.classList.remove('hidden')
