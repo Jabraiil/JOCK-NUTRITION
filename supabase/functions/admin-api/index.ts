@@ -77,11 +77,12 @@ serve(async (req) => {
     // PUT /settings
     if (req.method === "PUT" && path === "/settings") {
       const body = await req.json()
-      
+
       for (const [key, value] of Object.entries(body)) {
+        const normalized = value === '' || value === null || value === undefined ? null : String(value)
         await supabase
           .from("settings")
-          .upsert({ key, value: String(value) }, { onConflict: "key" })
+          .upsert({ key, value: normalized }, { onConflict: "key" })
       }
 
       return new Response(
@@ -152,27 +153,38 @@ serve(async (req) => {
       const body = await req.json()
       const { images, links, ...productData } = body
 
+      const normalized = {
+        ...productData,
+        category_id: productData.category_id || null,
+        brand_id: productData.brand_id || null,
+        sku: productData.sku || null,
+        barcode: productData.barcode || null
+      }
+
       const { data: product, error } = await supabase
         .from("products")
-        .insert(productData)
+        .insert(normalized)
         .select()
         .single()
 
-      if (error) throw error
+      if (error) {
+        return new Response(
+          JSON.stringify({ error: error.message }),
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        )
+      }
 
-      // Insert images
-      if (images && images.length > 0) {
+      if (Array.isArray(images) && images.length > 0) {
         const imagesToInsert = images.map((img, idx) => ({
           product_id: product.id,
           url: img.url,
-          is_main: idx === 0,
+          is_main: Boolean(img.is_main) && idx === 0,
           sort_order: idx
         }))
         await supabase.from("product_images").insert(imagesToInsert)
       }
 
-      // Insert links
-      if (links && links.length > 0) {
+      if (Array.isArray(links) && links.length > 0) {
         const linksToInsert = links.map((link, idx) => ({
           product_id: product.id,
           url: link.url,
@@ -194,31 +206,42 @@ serve(async (req) => {
       const body = await req.json()
       const { images, links, ...productData } = body
 
+      const normalized = {
+        ...productData,
+        category_id: productData.category_id || null,
+        brand_id: productData.brand_id || null,
+        sku: productData.sku || null,
+        barcode: productData.barcode || null
+      }
+
       const { data: product, error } = await supabase
         .from("products")
-        .update(productData)
+        .update(normalized)
         .eq("id", productId)
         .select()
         .single()
 
-      if (error) throw error
+      if (error) {
+        return new Response(
+          JSON.stringify({ error: error.message }),
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        )
+      }
 
-      // Update images
-      if (images !== undefined) {
+      if (Array.isArray(images)) {
         await supabase.from("product_images").delete().eq("product_id", productId)
         if (images.length > 0) {
           const imagesToInsert = images.map((img, idx) => ({
             product_id: productId,
             url: img.url,
-            is_main: idx === 0,
+            is_main: Boolean(img.is_main) && idx === 0,
             sort_order: idx
           }))
           await supabase.from("product_images").insert(imagesToInsert)
         }
       }
 
-      // Update links
-      if (links !== undefined) {
+      if (Array.isArray(links)) {
         await supabase.from("product_links").delete().eq("product_id", productId)
         if (links.length > 0) {
           const linksToInsert = links.map((link, idx) => ({

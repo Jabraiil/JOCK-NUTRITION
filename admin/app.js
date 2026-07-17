@@ -230,25 +230,59 @@ async function loadProducts() {
     `).join('')
 }
 
-function openProductModal(productId = null) {
+async function openProductModal(productId = null) {
     editingProductId = productId
     document.getElementById('modalTitle').textContent = productId ? 'Редактировать товар' : 'Добавить товар'
-    
-    // Reset form
+
     document.getElementById('productForm').reset()
     productImages = []
     productLinks = []
     document.getElementById('imagePreview').innerHTML = ''
     document.getElementById('linksContainer').innerHTML = ''
-    
+
+    await loadFormOptions()
+
     if (productId) {
-        // Load product data
-        // For demo, we'll use the existing data from products array
+        const response = await fetch(`${CONFIG.adminApiUrl}/products?limit=1&page=1&search=${productId}`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
+        })
+        const { data } = await response.json()
+        const product = data?.find(p => p.id === productId)
+
+        if (product) {
+            document.getElementById('prodName').value = product.name || ''
+            document.getElementById('prodDescription').value = product.description || ''
+            document.getElementById('prodFullDescription').value = product.full_description || ''
+            document.getElementById('prodComposition').value = product.composition || ''
+            document.getElementById('prodDosage').value = product.dosage || ''
+            document.getElementById('prodUsage').value = product.usage || ''
+            document.getElementById('prodContraindications').value = product.contraindications || ''
+            document.getElementById('prodCategory').value = product.category_id || ''
+            document.getElementById('prodBrand').value = product.brand_id || ''
+            document.getElementById('prodPrice').value = product.price ?? ''
+            document.getElementById('prodOldPrice').value = product.old_price ?? ''
+            document.getElementById('prodStock').value = product.stock ?? ''
+            document.getElementById('prodVolume').value = product.volume || ''
+            document.getElementById('prodSku').value = product.sku || ''
+            document.getElementById('prodBarcode').value = product.barcode || ''
+            document.getElementById('prodIsHit').checked = Boolean(product.is_hit)
+            document.getElementById('prodIsNew').checked = Boolean(product.is_new)
+            document.getElementById('prodIsDiscount').checked = Boolean(product.is_discount)
+            document.getElementById('prodShelfLife').value = product.shelf_life || ''
+            document.getElementById('prodIsVisible').value = String(product.is_visible)
+
+            productImages = Array.isArray(product.images) ? product.images.map(img => ({ ...img })) : []
+            productLinks = Array.isArray(product.links) ? product.links.map(link => ({ ...link })) : []
+
+            const preview = document.getElementById('imagePreview')
+            preview.innerHTML = productImages.map(img => `<img src="${img.url}" alt="">`).join('')
+
+            const linksContainer = document.getElementById('linksContainer')
+            linksContainer.innerHTML = ''
+            productLinks.forEach(link => addLinkField(link.url))
+        }
     }
-    
-    // Load categories and brands
-    loadFormOptions()
-    
+
     document.getElementById('productModal').classList.remove('hidden')
 }
 
@@ -281,39 +315,46 @@ async function loadFormOptions() {
 
 async function handleProductSubmit(e) {
     e.preventDefault()
-    
+    const errorEl = document.getElementById('loginError')
+    errorEl.classList.add('hidden')
+
     const productData = {
-        name: document.getElementById('prodName').value,
-        description: document.getElementById('prodDescription').value,
-        full_description: document.getElementById('prodFullDescription').value,
-        composition: document.getElementById('prodComposition').value,
-        dosage: document.getElementById('prodDosage').value,
-        usage: document.getElementById('prodUsage').value,
-        contraindications: document.getElementById('prodContraindications').value,
+        name: document.getElementById('prodName').value.trim(),
+        description: document.getElementById('prodDescription').value.trim(),
+        full_description: document.getElementById('prodFullDescription').value.trim(),
+        composition: document.getElementById('prodComposition').value.trim(),
+        dosage: document.getElementById('prodDosage').value.trim(),
+        usage: document.getElementById('prodUsage').value.trim(),
+        contraindications: document.getElementById('prodContraindications').value.trim(),
         category_id: document.getElementById('prodCategory').value || null,
         brand_id: document.getElementById('prodBrand').value || null,
-        price: parseInt(document.getElementById('prodPrice').value),
-        old_price: document.getElementById('prodOldPrice').value ? parseInt(document.getElementById('prodOldPrice').value) : null,
-        stock: parseInt(document.getElementById('prodStock').value),
-        volume: document.getElementById('prodVolume').value,
-        sku: document.getElementById('prodSku').value,
-        barcode: document.getElementById('prodBarcode').value,
+        price: parseInt(document.getElementById('prodPrice').value, 10),
+        old_price: document.getElementById('prodOldPrice').value ? parseInt(document.getElementById('prodOldPrice').value, 10) : null,
+        stock: parseInt(document.getElementById('prodStock').value, 10),
+        volume: document.getElementById('prodVolume').value.trim(),
+        sku: document.getElementById('prodSku').value.trim() || null,
+        barcode: document.getElementById('prodBarcode').value.trim() || null,
         is_hit: document.getElementById('prodIsHit').checked,
         is_new: document.getElementById('prodIsNew').checked,
         is_discount: document.getElementById('prodIsDiscount').checked,
-        shelf_life: document.getElementById('prodShelfLife').value,
+        shelf_life: document.getElementById('prodShelfLife').value.trim(),
         is_visible: document.getElementById('prodIsVisible').value === 'true'
     }
-    
-    // Handle images
+
+    if (!productData.name || isNaN(productData.price) || isNaN(productData.stock)) {
+        errorEl.textContent = 'Заполните обязательные поля: название, цена, остаток'
+        errorEl.classList.remove('hidden')
+        return
+    }
+
     const imageInput = document.getElementById('prodImages')
     if (imageInput.files.length > 0) {
-        // Upload images to Supabase Storage
         for (const file of imageInput.files) {
             const formData = new FormData()
             formData.append('file', file)
-            
-            const uploadRes = await fetch(`${CONFIG.supabaseUrl}/storage/v1/object/product-images/${Date.now()}-${file.name}`, {
+
+            const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}-${file.name}`
+            const uploadRes = await fetch(`${CONFIG.supabaseUrl}/storage/v1/object/product-images/${fileName}`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('admin-token')}`,
@@ -321,33 +362,29 @@ async function handleProductSubmit(e) {
                 },
                 body: formData
             })
-            
+
             if (uploadRes.ok) {
-                const imageUrl = `${CONFIG.supabaseUrl}/storage/v1/object/public/product-images/${Date.now()}-${file.name}`
-                productImages.push({ url: imageUrl })
+                const imageUrl = `${CONFIG.supabaseUrl}/storage/v1/object/public/product-images/${fileName}`
+                productImages.push({ url: imageUrl, is_main: productImages.length === 0 })
+            } else {
+                const text = await uploadRes.text()
+                throw new Error(`Ошибка загрузки изображения: ${uploadRes.status} ${text}`)
             }
         }
     }
-    
-    // Handle links
+
     const linkInputs = document.querySelectorAll('.link-item input')
-    productLinks = Array.from(linkInputs).map(input => ({
-        url: input.value,
-        title: ''
-    })).filter(l => l.url)
-    
+    productLinks = Array.from(linkInputs).map(input => input.value.trim()).filter(Boolean).map(url => ({ url, title: '' }))
+
     const body = {
         ...productData,
-        images: productImages,
-        links: productLinks
+        ...(productImages.length ? { images: productImages } : {}),
+        ...(productLinks.length ? { links: productLinks } : {})
     }
-    
-    const url = editingProductId 
-        ? `${CONFIG.adminApiUrl}/products/${editingProductId}`
-        : `${CONFIG.adminApiUrl}/products`
-    
+
+    const url = editingProductId ? `${CONFIG.adminApiUrl}/products/${editingProductId}` : `${CONFIG.adminApiUrl}/products`
     const method = editingProductId ? 'PUT' : 'POST'
-    
+
     const response = await fetch(url, {
         method,
         headers: {
@@ -356,21 +393,28 @@ async function handleProductSubmit(e) {
         },
         body: JSON.stringify(body)
     })
-    
+
+    const result = response.ok ? await response.json() : await response.json().catch(() => ({}))
+
     if (response.ok) {
         closeProductModal()
         loadProducts()
     } else {
-        alert('Ошибка сохранения товара')
+        errorEl.textContent = result.error || 'Ошибка сохранения товара'
+        errorEl.classList.remove('hidden')
     }
 }
 
-function addLinkField() {
+function addLinkField(value = '') {
     const container = document.getElementById('linksContainer')
     const div = document.createElement('div')
     div.className = 'link-item'
-    div.innerHTML = `<input type="url" placeholder="https://..." required>`
+    div.innerHTML = `<input type="url" placeholder="https://..." value="${value}" required><button type="button" class="btn btn-sm btn-danger remove-link">×</button>`
     container.appendChild(div)
+
+    div.querySelector('.remove-link').addEventListener('click', () => {
+        div.remove()
+    })
 }
 
 async function deleteProduct(id) {
