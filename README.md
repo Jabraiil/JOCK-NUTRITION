@@ -5,15 +5,14 @@
 ## Структура проекта
 
 ```
-├── frontend/          # Публичная часть сайта
+├── index.html          # Главная страница витрины
+├── styles.css          # Стили витрины
+├── app.js              # Логика витрины
+├── admin/              # Админ-панель
 │   ├── index.html
 │   ├── styles.css
 │   └── app.js
-├── admin/             # Админ-панель
-│   ├── index.html
-│   ├── styles.css
-│   └── app.js
-├── supabase/          # Supabase конфигурация
+├── supabase/           # Supabase конфигурация
 │   ├── migrations/
 │   │   └── 001_initial_schema.sql
 │   └── functions/
@@ -21,6 +20,8 @@
 │       │   └── index.ts
 │       └── admin-api/
 │           └── index.ts
+├── DEPLOYMENT.md       # Инструкция по деплою
+├── PROJECT_CONTEXT.md  # Технический документ проекта
 └── README.md
 ```
 

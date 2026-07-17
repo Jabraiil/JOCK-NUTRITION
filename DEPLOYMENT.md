@@ -67,7 +67,7 @@ supabase functions deploy admin-api --no-verify-jwt
 ## Этап 3: Настройка фронтенда
 
 ### 3.1 Обновление конфигурации
-Откройте `frontend/app.js` и обновите:
+Откройте `app.js` и обновите:
 
 ```javascript
 const CONFIG = {
@@ -87,7 +87,7 @@ const CONFIG = {
 python -m http.server 8080
 
 # Node.js
-npx serve frontend
+npx serve .
 ```
 
 Откройте `http://localhost:8080` в браузере.
