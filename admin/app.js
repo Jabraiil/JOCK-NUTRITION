@@ -96,8 +96,6 @@ async function handleLogin(e) {
     errorEl.classList.add('hidden')
     
     try {
-        // For demo purposes, using Supabase Auth
-        // In production, use proper Supabase client
         const response = await fetch(`${CONFIG.supabaseUrl}/auth/v1/token?grant_type=password`, {
             method: 'POST',
             headers: {
