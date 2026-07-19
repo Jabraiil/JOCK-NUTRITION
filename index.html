@@ -18,18 +18,14 @@
                             <path d="m21 21-4.35-4.35"></path>
                         </svg>
                     </button>
-                    <button id="barcodeToggle" class="icon-btn" aria-label="Сканер">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M3 5v4"></path>
-                            <path d="M7 5v4"></path>
-                            <path d="M11 5v4"></path>
-                            <path d="M15 5v4"></path>
-                            <path d="M19 5v4"></path>
-                            <path d="M3 15v4"></path>
-                            <path d="M7 15v4"></path>
-                            <path d="M11 15v4"></path>
-                            <path d="M15 15v4"></path>
-                            <path d="M19 15v4"></path>
+                    <button id="barcodeToggle" class="icon-btn" aria-label="Сканировать штрих-код" title="Сканировать штрих-код">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                            <path d="M3 5v14"></path>
+                            <path d="M7 5v14"></path>
+                            <path d="M11 5v14"></path>
+                            <path d="M15 5v14"></path>
+                            <path d="M19 5v14"></path>
+                            <path d="M21 5v14"></path>
                         </svg>
                     </button>
                     <button id="filterToggle" class="icon-btn" aria-label="Фильтры">
@@ -64,16 +60,16 @@
             </div>
 
             <div id="barcodeScanner" class="barcode-scanner hidden">
-                <div class="scanner-container">
+                <button id="closeScannerX" class="scanner-close" aria-label="Закрыть сканер">&times;</button>
+                <div class="scanner-stage">
                     <video id="scannerVideo" playsinline></video>
                     <div class="scanner-overlay">
                         <div class="scanner-frame"></div>
                     </div>
-                    <div class="scanner-manual">
-                        <input type="text" id="manualBarcode" placeholder="Введите штрих-код" inputmode="numeric">
-                        <button id="manualBarcodeBtn" class="btn btn-primary">Найти</button>
-                    </div>
-                    <button id="closeScanner" class="btn btn-secondary">Закрыть</button>
+                </div>
+                <div class="scanner-manual">
+                    <input type="text" id="manualBarcode" placeholder="Или введите штрих-код" inputmode="numeric">
+                    <button id="manualBarcodeBtn" class="btn btn-primary">Найти</button>
                 </div>
             </div>
 

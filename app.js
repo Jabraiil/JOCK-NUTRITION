@@ -36,7 +36,7 @@ function setupEventListeners() {
     document.getElementById('searchInput').addEventListener('input', debounce(handleSearch, 300))
     document.getElementById('searchClear').addEventListener('click', clearSearch)
     document.getElementById('barcodeToggle').addEventListener('click', toggleBarcodeScanner)
-    document.getElementById('closeScanner').addEventListener('click', closeBarcodeScanner)
+    document.getElementById('closeScannerX').addEventListener('click', closeBarcodeScanner)
     document.getElementById('manualBarcodeBtn').addEventListener('click', () => {
         const value = document.getElementById('manualBarcode').value.trim()
         if (value) searchByBarcode(value)
