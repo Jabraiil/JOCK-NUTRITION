@@ -707,41 +707,79 @@ async function detectBarcode() {
 
     const video = document.getElementById('scannerVideo')
     const scanner = document.getElementById('barcodeScanner')
+    const frame = document.querySelector('.scanner-frame')
 
-    // Offscreen canvas — сканируем уменьшенную копию кадра (легче для CPU)
+    // Offscreen canvas — сканируем ТОЛЬКО область внутри рамки (легче для CPU, точнее)
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d', { willReadFrequently: true })
-    const SCAN_WIDTH = 640
+    const SCAN_MAX = 480
 
     let busy = false
-    let stopped = false
+
+    // Переводит прямоугольник рамки (в CSS-пикселях экрана) в координаты
+    // исходного кадра видео с учётом object-fit: cover.
+    function getScanCrop() {
+        const vRect = video.getBoundingClientRect()
+        const fRect = frame.getBoundingClientRect()
+        const vw = video.videoWidth
+        const vh = video.videoHeight
+        if (!vw || !vh) return null
+
+        // visible-часть видео (cover) в CSS-пикселях
+        const scale = Math.max(vRect.width / vw, vRect.height / vh)
+        const dispW = vw * scale
+        const dispH = vh * scale
+        const offX = (vRect.width - dispW) / 2
+        const offY = (vRect.height - dispH) / 2
+
+        // рамка относительно video-элемента
+        const fx = (fRect.left - vRect.left - offX) / scale
+        const fy = (fRect.top - vRect.top - offY) / scale
+        const fw = fRect.width / scale
+        const fh = fRect.height / scale
+
+        // небольшой padding вокруг рамки
+        const pad = Math.min(fw, fh) * 0.08
+        const x = Math.max(0, Math.floor(fx - pad))
+        const y = Math.max(0, Math.floor(fy - pad))
+        const w = Math.min(vw - x, Math.ceil(fw + pad * 2))
+        const h = Math.min(vh - y, Math.ceil(fh + pad * 2))
+        return { x, y, w, h }
+    }
 
     async function loop() {
-        if (stopped || !barcodeStream) return
+        if (!barcodeStream) return
 
         if (video.readyState >= 2 && video.videoWidth > 0 && !busy) {
             busy = true
             try {
-                const scale = SCAN_WIDTH / video.videoWidth
-                canvas.width = SCAN_WIDTH
-                canvas.height = Math.round(video.videoHeight * scale)
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+                const crop = getScanCrop()
+                if (crop && crop.w > 0 && crop.h > 0) {
+                    const scale = SCAN_MAX / crop.w
+                    canvas.width = SCAN_MAX
+                    canvas.height = Math.max(1, Math.round(crop.h * scale))
+                    ctx.drawImage(
+                        video,
+                        crop.x, crop.y, crop.w, crop.h,
+                        0, 0, canvas.width, canvas.height
+                    )
 
-                const barcodes = await barcodeDetector.detect(canvas)
-                if (barcodes.length > 0) {
-                    const barcode = barcodes[0].rawValue
+                    const barcodes = await barcodeDetector.detect(canvas)
+                    if (barcodes.length > 0) {
+                        const barcode = barcodes[0].rawValue
 
-                    if (navigator.vibrate) navigator.vibrate(200)
+                        if (navigator.vibrate) navigator.vibrate(200)
 
-                    const found = await searchByBarcode(barcode)
+                        const found = await searchByBarcode(barcode)
 
-                    if (found) {
-                        closeBarcodeScanner()
-                    } else {
-                        scanner.classList.add('not-found')
-                        setTimeout(() => closeBarcodeScanner(), 900)
+                        if (found) {
+                            closeBarcodeScanner()
+                        } else {
+                            scanner.classList.add('not-found')
+                            setTimeout(() => closeBarcodeScanner(), 900)
+                        }
+                        return
                     }
-                    return
                 }
             } catch (error) {
                 console.error('Barcode detection error:', error)
@@ -750,8 +788,8 @@ async function detectBarcode() {
             }
         }
 
-        // Throttle: следующая попытка через ~180мс (не на каждом кадре)
-        setTimeout(loop, 180)
+        // Throttle: следующая попытка через ~150мс (не на каждом кадре)
+        setTimeout(loop, 150)
     }
 
     loop()
