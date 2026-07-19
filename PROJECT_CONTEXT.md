@@ -805,7 +805,7 @@ const CONFIG = {
 ## 12. Текущие задачи / следующее
 
 > **СЕССИЯ 2026-07-19 — ДЕПЛОЙ (команда `/new session`).**
-> Инцидент Supabase закрыт (status.supabase.com: All Systems Operational). Пользователь разрешил деплой (промт.txt запрещал пуш/подключение без запроса). Выполнено: деплой обеих Edge Functions через CLI (2.110.0-beta.32, проект уже авторизован/линкован), пуш статики на GitHub Pages.
+> Инцидент Supabase закрыт (status.supabase.com: All Systems Operational). В сессии 2026-07-19 пользователь дал **постоянное разрешение** пушить в GitHub и подключаться/деплоить в Supabase без дополнительных вопросов (старое ограничение из промт.txt снято). Выполнено: деплой обеих Edge Functions через CLI (2.110.0-beta.32, проект уже авторизован/линкован), пуш статики на GitHub Pages.
 
 ### ЧТО ВЫПОЛНЕНО И ЗАДЕПЛОЕНО
 1. **Supabase CLI логин/деплой** — `supabase functions deploy admin-api --project-ref hpphfeojjejculvdundj --no-verify-jwt` (SUCCESS). `create-order` тоже пере-задеплоен с актуальным кодом. Health: `create-order/health` → `ok` (публично), `admin-api/health` → 401 без JWT (ожидаемо, требует авторизацию).
