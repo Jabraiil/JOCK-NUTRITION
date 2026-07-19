@@ -1,15 +1,26 @@
+/* ============================================================
+   JACK NUTRITION — Admin styles
+   Design language is aligned with the storefront (styles.css):
+   iOS-style, mobile-first, clamp() typography, green accent.
+   Only the admin markup classes are styled here.
+   ============================================================ */
+
 :root {
+    /* Light theme (iOS system colors) — match storefront */
     --bg: #F2F2F7;
     --bg-elevated: #FFFFFF;
     --bg-secondary: #FFFFFF;
     --text: #1C1C1E;
     --text-secondary: #8E8E93;
     --border: #E5E5EA;
-    --primary: #2563eb;
-    --primary-hover: #1d4ed8;
-    --success: #10b981;
-    --error: #ef4444;
-    --warning: #f59e0b;
+    --primary: #34C759;
+    --primary-hover: #30B350;
+    --accent: #FF9500;
+    --success: #34C759;
+    --error: #FF3B30;
+    --warning: #FF9500;
+    --shadow: rgba(0, 0, 0, 0.08);
+
     --sidebar-width: 250px;
     --header-height: 56px;
     --touch: 44px;
@@ -17,6 +28,7 @@
     --radius-md: 14px;
     --radius-lg: 20px;
     --container-max: 1200px;
+
     --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
             "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
 }
@@ -28,6 +40,9 @@
     --text: #FFFFFF;
     --text-secondary: #AEAEB2;
     --border: #38383A;
+    --primary: #30D158;
+    --primary-hover: #34C759;
+    --shadow: rgba(0, 0, 0, 0.5);
 }
 
 * {
@@ -37,30 +52,52 @@
     -webkit-tap-highlight-color: transparent;
 }
 
+html {
+    scroll-behavior: smooth;
+}
+
 body {
     font-family: var(--font);
     background: var(--bg);
     color: var(--text);
     line-height: 1.5;
+    min-height: 100vh;
     font-size: clamp(0.95rem, 0.9rem + 0.2vw, 1.05rem);
     -webkit-font-smoothing: antialiased;
+    padding-bottom: env(safe-area-inset-bottom);
 }
 
-/* Auth Page */
+.hidden {
+    display: none !important;
+}
+
+/* ---------- Shared keyframes (match storefront) ---------- */
+@keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slide-up {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+}
+
+/* ---------- Auth Page ---------- */
 .auth-page {
     min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--bg-secondary);
+    background: var(--bg);
     padding: 20px;
 }
 
 .auth-container {
     background: var(--bg-elevated);
-    padding: 40px;
+    padding: 40px clamp(20px, 6vw, 40px);
+    border: 1px solid var(--border);
     border-radius: var(--radius-lg);
-    box-shadow: 0 4px 20px var(--shadow);
+    box-shadow: 0 8px 24px var(--shadow);
     width: 100%;
     max-width: 400px;
 }
@@ -68,7 +105,9 @@ body {
 .auth-container h1 {
     text-align: center;
     margin-bottom: 8px;
-    font-size: 1.5rem;
+    font-size: clamp(1.3rem, 5vw, 1.6rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
 }
 
 .auth-container h2 {
@@ -92,7 +131,12 @@ body {
     font-family: var(--font);
 }
 
-/* Admin Page */
+.auth-container input:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+/* ---------- Admin Page ---------- */
 .admin-page {
     display: flex;
     min-height: 100vh;
@@ -100,7 +144,7 @@ body {
 
 .sidebar {
     width: var(--sidebar-width);
-    background: var(--bg-secondary);
+    background: var(--bg-elevated);
     border-right: 1px solid var(--border);
     display: flex;
     flex-direction: column;
@@ -118,6 +162,8 @@ body {
 
 .sidebar-header h2 {
     font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
 }
 
 .sidebar-nav {
@@ -135,10 +181,13 @@ body {
     color: var(--text);
     text-align: left;
     cursor: pointer;
-    border-radius: 8px;
+    border-radius: var(--radius-sm);
     font-size: 0.95rem;
-    transition: background 0.2s;
+    font-family: var(--font);
+    transition: background 0.2s, transform 0.1s;
 }
+
+.nav-item:active { transform: scale(0.97); }
 
 .nav-item:hover {
     background: var(--border);
@@ -146,7 +195,7 @@ body {
 
 .nav-item.active {
     background: var(--primary);
-    color: white;
+    color: #fff;
 }
 
 .sidebar-footer {
@@ -157,7 +206,7 @@ body {
 .admin-main {
     flex: 1;
     margin-left: var(--sidebar-width);
-    padding: 24px;
+    padding: 24px clamp(16px, 4vw, 32px);
     min-height: 100vh;
 }
 
@@ -174,6 +223,12 @@ body {
     gap: 12px;
 }
 
+.admin-header h1 {
+    font-size: clamp(1.3rem, 4vw, 1.75rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
 .hamburger-btn {
     display: none;
     background: none;
@@ -187,7 +242,7 @@ body {
 }
 
 .hamburger-btn:hover {
-    background: var(--bg-secondary);
+    background: var(--border);
 }
 
 .sidebar-overlay {
@@ -202,19 +257,17 @@ body {
     display: block;
 }
 
-.admin-header h1 {
-    font-size: clamp(1.3rem, 4vw, 1.75rem);
-}
-
 .monitor-indicator {
     display: flex;
     align-items: center;
     gap: 8px;
     padding: 8px 16px;
-    background: var(--bg-secondary);
+    background: var(--bg-elevated);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius-sm);
     cursor: default;
+    color: var(--text);
+    font-size: 0.9rem;
 }
 
 .indicator-dot {
@@ -254,13 +307,19 @@ body {
     height: var(--touch);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    background: var(--bg);
+    background: var(--bg-elevated);
     color: var(--text);
     font-size: 0.95rem;
     min-width: 250px;
+    font-family: var(--font);
 }
 
-/* Table */
+.search-box input:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+/* ---------- Table ---------- */
 .table-container {
     background: var(--bg-elevated);
     border: 1px solid var(--border);
@@ -283,13 +342,17 @@ body {
 .data-table th {
     background: var(--bg);
     font-weight: 600;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.04em;
     color: var(--text-secondary);
 }
 
-.data-table tr:hover {
+.data-table tr:last-child td {
+    border-bottom: none;
+}
+
+.data-table tr:hover td {
     background: var(--bg);
 }
 
@@ -297,7 +360,8 @@ body {
     width: 40px;
     height: 40px;
     object-fit: cover;
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
+    background: var(--bg);
 }
 
 .btn-sm {
@@ -308,11 +372,11 @@ body {
 
 .btn-danger {
     background: var(--error);
-    color: white;
+    color: #fff;
 }
 
 .btn-danger:hover {
-    background: #dc2626;
+    background: #E0352B;
 }
 
 .pagination {
@@ -327,17 +391,22 @@ body {
     min-height: 40px;
     padding: 0 16px;
     border: 1px solid var(--border);
-    background: var(--bg);
+    background: var(--bg-elevated);
     color: var(--text);
     border-radius: var(--radius-sm);
     cursor: pointer;
     font-family: var(--font);
     font-size: 0.95rem;
+    transition: background 0.2s;
+}
+
+.pagination button:hover {
+    background: var(--border);
 }
 
 .pagination button.active {
     background: var(--primary);
-    color: white;
+    color: #fff;
     border-color: var(--primary);
 }
 
@@ -346,7 +415,7 @@ body {
     cursor: not-allowed;
 }
 
-/* Stats */
+/* ---------- Stats ---------- */
 .stats-cards {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -381,7 +450,7 @@ body {
     margin-bottom: 24px;
 }
 
-/* Settings */
+/* ---------- Settings / Forms ---------- */
 .settings-form {
     max-width: 600px;
 }
@@ -405,10 +474,17 @@ body {
     min-height: var(--touch);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    background: var(--bg);
+    background: var(--bg-elevated);
     color: var(--text);
     font-size: 0.95rem;
     font-family: var(--font);
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--primary);
 }
 
 .form-group textarea {
@@ -433,10 +509,12 @@ body {
     align-items: center;
     gap: 8px;
     cursor: pointer;
+    font-weight: 400 !important;
 }
 
 .checkbox-label input[type="checkbox"] {
     width: auto;
+    min-height: auto;
 }
 
 .settings-section {
@@ -450,7 +528,7 @@ body {
     margin-bottom: 16px;
 }
 
-/* Import/Export */
+/* ---------- Import / Export / Backup ---------- */
 .import-export-box {
     background: var(--bg-elevated);
     border: 1px solid var(--border);
@@ -470,21 +548,21 @@ body {
 
 .status-message {
     margin-top: 16px;
-    padding: 12px;
-    border-radius: 8px;
+    padding: 12px 16px;
+    border-radius: var(--radius-sm);
 }
 
 .status-message.success {
-    background: rgba(16, 185, 129, 0.1);
+    background: rgba(52, 199, 89, 0.1);
     color: var(--success);
 }
 
 .status-message.error {
-    background: rgba(239, 68, 68, 0.1);
+    background: rgba(255, 59, 48, 0.1);
     color: var(--error);
 }
 
-/* Modal */
+/* ---------- Modal (bottom sheet on mobile, popup on desktop) ---------- */
 .modal {
     position: fixed;
     inset: 0;
@@ -495,17 +573,7 @@ body {
     justify-content: center;
     padding: 0;
     overflow-y: auto;
-    animation: admin-fade 0.2s ease;
-}
-
-@keyframes admin-fade {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-@keyframes admin-slide-up {
-    from { transform: translateY(100%); }
-    to { transform: translateY(0); }
+    animation: fade-in 0.2s ease;
 }
 
 .modal-content {
@@ -517,7 +585,7 @@ body {
     overflow-y: auto;
     position: relative;
     padding: 24px clamp(16px, 5vw, 28px) calc(28px + env(safe-area-inset-bottom));
-    animation: admin-slide-up 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+    animation: slide-up 0.3s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 @media (min-width: 768px) {
@@ -527,7 +595,7 @@ body {
     }
     .modal-content {
         border-radius: var(--radius-lg);
-        animation: admin-fade 0.2s ease;
+        animation: fade-in 0.2s ease;
     }
 }
 
@@ -571,6 +639,7 @@ body {
     height: 80px;
     object-fit: cover;
     border-radius: var(--radius-sm);
+    background: var(--bg);
 }
 
 .link-item {
@@ -628,13 +697,13 @@ body {
     overflow: hidden;
 }
 
-/* Buttons */
+/* ---------- Buttons (match storefront) ---------- */
 .btn {
     min-height: var(--touch);
     padding: 0 20px;
     border: none;
     border-radius: var(--radius-sm);
-    font-size: 0.95rem;
+    font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
     transition: background 0.2s, transform 0.1s;
@@ -649,7 +718,7 @@ body {
 
 .btn-primary {
     background: var(--primary);
-    color: white;
+    color: #fff;
 }
 
 .btn-primary:hover {
@@ -657,7 +726,7 @@ body {
 }
 
 .btn-primary:disabled {
-    opacity: 0.6;
+    background: var(--text-secondary);
     cursor: not-allowed;
 }
 
@@ -676,18 +745,14 @@ body {
 }
 
 .error {
-    padding: 12px;
-    background: rgba(239, 68, 68, 0.1);
+    padding: 16px;
+    background: rgba(255, 59, 48, 0.1);
     color: var(--error);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     margin-top: 12px;
 }
 
-.hidden {
-    display: none !important;
-}
-
-/* Mobile */
+/* ---------- Mobile ---------- */
 @media (max-width: 768px) {
     .hamburger-btn {
         display: flex;
@@ -700,15 +765,15 @@ body {
         transform: translateX(-100%);
         transition: transform 0.3s;
     }
-    
+
     .sidebar.open {
         transform: translateX(0);
     }
-    
+
     .admin-main {
         margin-left: 0;
     }
-    
+
     .form-row {
         grid-template-columns: 1fr;
     }
@@ -725,6 +790,11 @@ body {
     font-family: var(--font);
     font-size: 1rem;
     max-height: 220px;
+}
+
+#prodRelated:focus {
+    outline: none;
+    border-color: var(--primary);
 }
 
 .hint {
