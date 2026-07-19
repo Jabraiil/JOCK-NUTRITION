@@ -1,7 +1,7 @@
 /* ============================================================
    JACK NUTRITION — Admin styles
    Design language is aligned with the storefront (styles.css):
-   iOS-style, mobile-first, clamp() typography, green accent.
+   iOS-style, mobile-first, clamp() typography, blue accent (#007AFF).
    Only the admin markup classes are styled here.
    ============================================================ */
 
@@ -13,8 +13,8 @@
     --text: #1C1C1E;
     --text-secondary: #8E8E93;
     --border: #E5E5EA;
-    --primary: #34C759;
-    --primary-hover: #30B350;
+    --primary: #007AFF;
+    --primary-hover: #0A6AE0;
     --accent: #FF9500;
     --success: #34C759;
     --error: #FF3B30;
@@ -40,8 +40,8 @@
     --text: #FFFFFF;
     --text-secondary: #AEAEB2;
     --border: #38383A;
-    --primary: #30D158;
-    --primary-hover: #34C759;
+    --primary: #0A84FF;
+    --primary-hover: #409CFF;
     --shadow: rgba(0, 0, 0, 0.5);
 }
 
@@ -255,6 +255,35 @@ body {
 
 .sidebar-overlay.open {
     display: block;
+}
+
+.admin-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.icon-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text);
+    cursor: pointer;
+    width: var(--touch);
+    height: var(--touch);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    transition: background 0.2s, transform 0.1s;
+}
+
+.icon-btn:active {
+    transform: scale(0.92);
+}
+
+.icon-btn:hover {
+    background: var(--border);
 }
 
 .monitor-indicator {
@@ -772,10 +801,45 @@ body {
 
     .admin-main {
         margin-left: 0;
+        padding: 16px 12px;
     }
 
     .form-row {
         grid-template-columns: 1fr;
+    }
+
+    /* Шапка на узких экранах: прячем текст мониторинга, оставляем точку */
+    .monitor-indicator .indicator-text {
+        display: none;
+    }
+
+    .admin-header {
+        margin-bottom: 16px;
+    }
+
+    .admin-header h1 {
+        font-size: 1.2rem;
+    }
+}
+
+/* Очень узкие экраны (iPhone SE и меньше) */
+@media (max-width: 374px) {
+    .admin-main {
+        padding: 12px 8px;
+    }
+
+    .page-header {
+        gap: 8px;
+    }
+
+    .search-box input {
+        min-width: 0;
+        width: 100%;
+    }
+
+    .page-header {
+        flex-direction: column;
+        align-items: stretch;
     }
 }
 

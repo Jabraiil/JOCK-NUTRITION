@@ -27,6 +27,8 @@ const ORDERS_PER_PAGE = 50
 function init() {
     const token = localStorage.getItem('admin-token')
     
+    applyTheme()
+
     if (token) {
         showAdminPage()
         loadPageData(currentPage)
@@ -38,7 +40,30 @@ function init() {
     startMonitor()
 }
 
+function applyTheme() {
+    const darkMode = localStorage.getItem('jack-theme') === 'dark'
+    if (darkMode) {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        const t = document.getElementById('themeToggle')
+        if (t) t.textContent = '☀️'
+    } else {
+        document.documentElement.removeAttribute('data-theme')
+        const t = document.getElementById('themeToggle')
+        if (t) t.textContent = '🌙'
+    }
+}
+
+function toggleTheme() {
+    const darkMode = localStorage.getItem('jack-theme') === 'dark'
+    localStorage.setItem('jack-theme', darkMode ? 'light' : 'dark')
+    applyTheme()
+}
+
 function setupEventListeners() {
+    // Theme
+    const themeToggle = document.getElementById('themeToggle')
+    if (themeToggle) themeToggle.addEventListener('click', toggleTheme)
+
     // Login
     document.getElementById('loginForm').addEventListener('submit', handleLogin)
     document.getElementById('forgotPassword').addEventListener('click', handleForgotPassword)

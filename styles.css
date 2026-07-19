@@ -12,8 +12,8 @@
     --text: #1C1C1E;
     --text-secondary: #8E8E93;
     --border: #E5E5EA;
-    --primary: #34C759;
-    --primary-hover: #30B350;
+    --primary: #007AFF;
+    --primary-hover: #0A6AE0;
     --accent: #FF9500;
     --success: #34C759;
     --error: #FF3B30;
@@ -38,8 +38,8 @@
     --text: #FFFFFF;
     --text-secondary: #AEAEB2;
     --border: #38383A;
-    --primary: #30D158;
-    --primary-hover: #34C759;
+    --primary: #0A84FF;
+    --primary-hover: #409CFF;
     --shadow: rgba(0, 0, 0, 0.5);
 }
 
