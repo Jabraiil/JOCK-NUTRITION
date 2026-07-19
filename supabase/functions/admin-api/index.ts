@@ -122,7 +122,7 @@ serve(async (req) => {
 
       if (error) throw error
 
-      // Get images and links for each product
+      // Get images, links and related products for each product
       const productIds = data?.map(p => p.id) || []
       const { data: images } = await supabase
         .from("product_images")
@@ -136,10 +136,17 @@ serve(async (req) => {
         .in("product_id", productIds)
         .order("sort_order")
 
+      const { data: related } = await supabase
+        .from("product_related")
+        .select("product_id, related_id")
+        .in("product_id", productIds)
+        .order("sort_order")
+
       const productsWithRelations = data?.map(product => ({
         ...product,
         images: images?.filter(img => img.product_id === product.id) || [],
-        links: links?.filter(link => link.product_id === product.id) || []
+        links: links?.filter(link => link.product_id === product.id) || [],
+        related: related?.filter(rel => rel.product_id === product.id).map(rel => rel.related_id) || []
       })) || []
 
       return new Response(
@@ -151,7 +158,7 @@ serve(async (req) => {
     // POST /products
     if (req.method === "POST" && path === "/products") {
       const body = await req.json()
-      const { images, links, ...productData } = body
+      const { images, links, related, ...productData } = body
 
       const normalized = {
         ...productData,
@@ -194,6 +201,8 @@ serve(async (req) => {
         await supabase.from("product_links").insert(linksToInsert)
       }
 
+      await saveRelated(product.id, related)
+
       return new Response(
         JSON.stringify(product),
         { headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -204,7 +213,7 @@ serve(async (req) => {
     if (req.method === "PUT" && path.match(/^\/products\/[^/]+$/)) {
       const productId = path.split("/")[2]
       const body = await req.json()
-      const { images, links, ...productData } = body
+      const { images, links, related, ...productData } = body
 
       const normalized = {
         ...productData,
@@ -253,6 +262,8 @@ serve(async (req) => {
           await supabase.from("product_links").insert(linksToInsert)
         }
       }
+
+      await saveRelated(productId, related)
 
       return new Response(
         JSON.stringify(product),
@@ -701,6 +712,23 @@ serve(async (req) => {
       )
     }
 
+    // GET /backup-sql (SQL dump instead of JSON)
+    if (req.method === "GET" && path === "/backup-sql") {
+      const { data, error } = await supabase.rpc("generate_sql_dump")
+
+      if (error) throw error
+
+      return new Response(
+        data as string,
+        {
+          headers: {
+            "Content-Type": "application/sql",
+            "Content-Disposition": `attachment; filename=jack-nutrition-backup-${new Date().toISOString().split("T")[0]}.sql`
+          }
+        }
+      )
+    }
+
     // Health check
     if (req.method === "GET" && path === "/health") {
       return new Response(
@@ -722,3 +750,25 @@ serve(async (req) => {
     )
   }
 })
+
+// ============================================
+// Helpers
+// ============================================
+
+// Сохраняет явные связанные товары (полная замена).
+async function saveRelated(productId: string, related: any) {
+  if (!Array.isArray(related)) return
+
+  await supabase.from("product_related").delete().eq("product_id", productId)
+
+  const unique = [...new Set(related.filter(Boolean))]
+  if (unique.length === 0) return
+
+  const rows = unique.map((relatedId: string, idx: number) => ({
+    product_id: productId,
+    related_id: relatedId,
+    sort_order: idx
+  }))
+
+  await supabase.from("product_related").insert(rows)
+}

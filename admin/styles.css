@@ -1,37 +1,49 @@
 :root {
-    --bg: #ffffff;
-    --bg-secondary: #f8f9fa;
-    --text: #1a1a1a;
-    --text-secondary: #6c757d;
-    --border: #dee2e6;
+    --bg: #F2F2F7;
+    --bg-elevated: #FFFFFF;
+    --bg-secondary: #FFFFFF;
+    --text: #1C1C1E;
+    --text-secondary: #8E8E93;
+    --border: #E5E5EA;
     --primary: #2563eb;
     --primary-hover: #1d4ed8;
     --success: #10b981;
     --error: #ef4444;
     --warning: #f59e0b;
     --sidebar-width: 250px;
-    --header-height: 60px;
+    --header-height: 56px;
+    --touch: 44px;
+    --radius-sm: 10px;
+    --radius-md: 14px;
+    --radius-lg: 20px;
+    --container-max: 1200px;
+    --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+            "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
 }
 
 [data-theme="dark"] {
-    --bg: #0f0f0f;
-    --bg-secondary: #1a1a1a;
-    --text: #ffffff;
-    --text-secondary: #a0a0a0;
-    --border: #2a2a2a;
+    --bg: #000000;
+    --bg-elevated: #1C1C1E;
+    --bg-secondary: #1C1C1E;
+    --text: #FFFFFF;
+    --text-secondary: #AEAEB2;
+    --border: #38383A;
 }
 
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: var(--font);
     background: var(--bg);
     color: var(--text);
-    line-height: 1.6;
+    line-height: 1.5;
+    font-size: clamp(0.95rem, 0.9rem + 0.2vw, 1.05rem);
+    -webkit-font-smoothing: antialiased;
 }
 
 /* Auth Page */
@@ -45,9 +57,9 @@ body {
 }
 
 .auth-container {
-    background: var(--bg);
+    background: var(--bg-elevated);
     padding: 40px;
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     box-shadow: 0 4px 20px var(--shadow);
     width: 100%;
     max-width: 400px;
@@ -69,13 +81,15 @@ body {
 
 .auth-container input {
     width: 100%;
-    padding: 12px 16px;
+    height: var(--touch);
+    padding: 0 16px;
     margin-bottom: 12px;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius-sm);
     background: var(--bg);
     color: var(--text);
     font-size: 1rem;
+    font-family: var(--font);
 }
 
 /* Admin Page */
@@ -154,8 +168,42 @@ body {
     margin-bottom: 24px;
 }
 
+.admin-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.hamburger-btn {
+    display: none;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--text);
+    cursor: pointer;
+    width: var(--touch);
+    height: var(--touch);
+    border-radius: var(--radius-sm);
+}
+
+.hamburger-btn:hover {
+    background: var(--bg-secondary);
+}
+
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 99;
+}
+
+.sidebar-overlay.open {
+    display: block;
+}
+
 .admin-header h1 {
-    font-size: 1.75rem;
+    font-size: clamp(1.3rem, 4vw, 1.75rem);
 }
 
 .monitor-indicator {
@@ -202,9 +250,10 @@ body {
 }
 
 .search-box input {
-    padding: 10px 16px;
+    padding: 0 16px;
+    height: var(--touch);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius-sm);
     background: var(--bg);
     color: var(--text);
     font-size: 0.95rem;
@@ -213,9 +262,9 @@ body {
 
 /* Table */
 .table-container {
-    background: var(--bg-secondary);
+    background: var(--bg-elevated);
     border: 1px solid var(--border);
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     overflow-x: auto;
 }
 
@@ -252,7 +301,8 @@ body {
 }
 
 .btn-sm {
-    padding: 6px 12px;
+    min-height: 36px;
+    padding: 0 12px;
     font-size: 0.85rem;
 }
 
@@ -268,17 +318,21 @@ body {
 .pagination {
     display: flex;
     justify-content: center;
+    flex-wrap: wrap;
     gap: 8px;
     margin-top: 20px;
 }
 
 .pagination button {
-    padding: 8px 16px;
+    min-height: 40px;
+    padding: 0 16px;
     border: 1px solid var(--border);
     background: var(--bg);
     color: var(--text);
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     cursor: pointer;
+    font-family: var(--font);
+    font-size: 0.95rem;
 }
 
 .pagination button.active {
@@ -301,14 +355,14 @@ body {
 }
 
 .stat-card {
-    background: var(--bg-secondary);
+    background: var(--bg-elevated);
     border: 1px solid var(--border);
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     padding: 20px;
 }
 
 .stat-value {
-    font-size: 1.75rem;
+    font-size: clamp(1.4rem, 4vw, 1.75rem);
     font-weight: 700;
     color: var(--primary);
 }
@@ -320,9 +374,9 @@ body {
 }
 
 .chart-container {
-    background: var(--bg-secondary);
+    background: var(--bg-elevated);
     border: 1px solid var(--border);
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     padding: 20px;
     margin-bottom: 24px;
 }
@@ -347,15 +401,18 @@ body {
 .form-group select,
 .form-group textarea {
     width: 100%;
-    padding: 10px 14px;
+    padding: 0 14px;
+    min-height: var(--touch);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius-sm);
     background: var(--bg);
     color: var(--text);
     font-size: 0.95rem;
+    font-family: var(--font);
 }
 
 .form-group textarea {
+    padding: 12px 14px;
     resize: vertical;
 }
 
@@ -395,9 +452,9 @@ body {
 
 /* Import/Export */
 .import-export-box {
-    background: var(--bg-secondary);
+    background: var(--bg-elevated);
     border: 1px solid var(--border);
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     padding: 24px;
     max-width: 600px;
 }
@@ -430,49 +487,70 @@ body {
 /* Modal */
 .modal {
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.7);
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
     z-index: 1000;
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     justify-content: center;
-    padding: 20px;
+    padding: 0;
     overflow-y: auto;
+    animation: admin-fade 0.2s ease;
+}
+
+@keyframes admin-fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes admin-slide-up {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
 }
 
 .modal-content {
-    background: var(--bg);
-    border-radius: 16px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     max-width: 800px;
     width: 100%;
-    max-height: 90vh;
+    max-height: 92vh;
     overflow-y: auto;
     position: relative;
-    padding: 24px;
+    padding: 24px clamp(16px, 5vw, 28px) calc(28px + env(safe-area-inset-bottom));
+    animation: admin-slide-up 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@media (min-width: 768px) {
+    .modal {
+        align-items: center;
+        padding: 20px;
+    }
+    .modal-content {
+        border-radius: var(--radius-lg);
+        animation: admin-fade 0.2s ease;
+    }
 }
 
 .modal-close {
     position: absolute;
-    top: 16px;
-    right: 16px;
-    background: none;
-    border: none;
-    font-size: 1.5rem;
-    color: var(--text);
+    top: 14px;
+    right: 14px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    font-size: 1.4rem;
+    color: var(--text-secondary);
     cursor: pointer;
-    width: 36px;
-    height: 36px;
+    width: var(--touch);
+    height: var(--touch);
     display: flex;
     align-items: center;
     justify-content: center;
     border-radius: 50%;
+    z-index: 2;
 }
 
 .modal-close:hover {
-    background: var(--bg-secondary);
+    background: var(--border);
 }
 
 .form-actions {
@@ -492,7 +570,7 @@ body {
     width: 80px;
     height: 80px;
     object-fit: cover;
-    border-radius: 8px;
+    border-radius: var(--radius-sm);
 }
 
 .link-item {
@@ -505,20 +583,69 @@ body {
     flex: 1;
 }
 
+.remove-link {
+    flex-shrink: 0;
+}
+
+.related-products-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.related-product-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    cursor: pointer;
+    background: var(--bg);
+    padding: 0;
+    text-align: left;
+    font-family: var(--font);
+    color: var(--text);
+    transition: border-color 0.15s;
+}
+
+.related-product-card.selected {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px var(--primary);
+}
+
+.related-product-card img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+}
+
+.related-product-card .related-name {
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 6px 8px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
 /* Buttons */
 .btn {
-    padding: 10px 20px;
+    min-height: var(--touch);
+    padding: 0 20px;
     border: none;
-    border-radius: 8px;
+    border-radius: var(--radius-sm);
     font-size: 0.95rem;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: background 0.2s, transform 0.1s;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
+    font-family: var(--font);
 }
+
+.btn:active { transform: scale(0.97); }
 
 .btn-primary {
     background: var(--primary);
@@ -562,8 +689,14 @@ body {
 
 /* Mobile */
 @media (max-width: 768px) {
+    .hamburger-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
     .sidebar {
-        width: 100%;
+        width: 260px;
         transform: translateX(-100%);
         transition: transform 0.3s;
     }
@@ -579,4 +712,25 @@ body {
     .form-row {
         grid-template-columns: 1fr;
     }
+}
+
+#prodRelated {
+    width: 100%;
+    min-height: 120px;
+    padding: 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-elevated);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 1rem;
+    max-height: 220px;
+}
+
+.hint {
+    display: block;
+    margin-top: 6px;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    line-height: 1.4;
 }

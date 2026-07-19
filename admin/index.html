@@ -22,6 +22,7 @@
     </div>
 
     <div id="adminPage" class="admin-page hidden">
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
         <aside class="sidebar">
             <div class="sidebar-header">
                 <h2>JACK NUTRITION</h2>
@@ -43,7 +44,10 @@
 
         <main class="admin-main">
             <header class="admin-header">
-                <h1 id="pageTitle">Товары</h1>
+                <div class="admin-header-left">
+                    <button id="hamburgerBtn" class="hamburger-btn" aria-label="Меню">☰</button>
+                    <h1 id="pageTitle">Товары</h1>
+                </div>
                 <div class="admin-header-actions">
                     <button id="monitorIndicator" class="monitor-indicator" title="Статус Edge Function">
                         <span class="indicator-dot"></span>
@@ -271,7 +275,9 @@
                 <div class="import-export-box">
                     <h3>Резервное копирование</h3>
                     <p>Скачать дамп базы данных (JSON)</p>
-                    <button id="backupBtn" class="btn btn-primary">Скачать дамп БД</button>
+                    <button id="backupBtn" class="btn btn-primary">Скачать дамп БД (JSON)</button>
+                    <p style="margin-top:12px;">Скачать SQL-дамп (восстанавливаемый .sql)</p>
+                    <button id="backupSqlBtn" class="btn btn-secondary">Скачать дамп БД (SQL)</button>
                 </div>
             </div>
         </main>
@@ -375,6 +381,9 @@
                         <label class="checkbox-label">
                             <input type="checkbox" id="prodIsDiscount"> Скидка
                         </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="prodIsRelated"> Связанные товары
+                        </label>
                     </div>
                 </div>
                 <div class="form-group">
@@ -386,6 +395,11 @@
                     <label>Ссылки (до 4)</label>
                     <div id="linksContainer"></div>
                     <button type="button" id="addLinkBtn" class="btn btn-secondary">+ Добавить ссылку</button>
+                </div>
+                <div class="form-group">
+                    <label>Связанные товары (явный список)</label>
+                    <select id="prodRelated" multiple size="5"></select>
+                    <small class="hint">Ctrl/Cmd + клик — выбор нескольких. Если пусто и включён чекбокс «Связанные товары» — подставятся похожие по категории/бренду.</small>
                 </div>
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary">Сохранить</button>

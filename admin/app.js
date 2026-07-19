@@ -14,8 +14,15 @@ let currentPage = 'products'
 let editingProductId = null
 let productImages = []
 let productLinks = []
+let allProductsList = []
 let monitorInterval = null
 let salesChart = null
+let productsPage = 1
+let productsTotal = 0
+const PRODUCTS_PER_PAGE = 20
+let ordersPage = 1
+let ordersTotal = 0
+const ORDERS_PER_PAGE = 50
 
 function init() {
     const token = localStorage.getItem('admin-token')
@@ -37,17 +44,30 @@ function setupEventListeners() {
     document.getElementById('forgotPassword').addEventListener('click', handleForgotPassword)
     document.getElementById('logoutBtn').addEventListener('click', handleLogout)
 
+    // Mobile hamburger
+    const sidebar = document.querySelector('.sidebar')
+    const sidebarOverlay = document.getElementById('sidebarOverlay')
+    const toggleSidebar = (open) => {
+        sidebar.classList.toggle('open', open)
+        sidebarOverlay.classList.toggle('open', open)
+    }
+    document.getElementById('hamburgerBtn').addEventListener('click', () => {
+        toggleSidebar(!sidebar.classList.contains('open'))
+    })
+    sidebarOverlay.addEventListener('click', () => toggleSidebar(false))
+
     // Navigation
     document.querySelectorAll('.nav-item').forEach(item => {
         item.addEventListener('click', () => {
             const page = item.dataset.page
             switchPage(page)
+            toggleSidebar(false)
         })
     })
 
     // Products
     document.getElementById('addProductBtn').addEventListener('click', () => openProductModal())
-    document.getElementById('productSearch').addEventListener('input', debounce(() => loadProducts(), 300))
+    document.getElementById('productSearch').addEventListener('input', debounce(() => { productsPage = 1; loadProducts() }, 300))
     document.getElementById('cancelProduct').addEventListener('click', closeProductModal)
     document.getElementById('productForm').addEventListener('submit', handleProductSubmit)
     document.getElementById('addLinkBtn').addEventListener('click', addLinkField)
@@ -59,7 +79,7 @@ function setupEventListeners() {
     document.getElementById('addBrandBtn').addEventListener('click', openBrandModal)
 
     // Analytics
-    document.getElementById('analyticsPeriod').addEventListener('change', () => loadAnalytics())
+    document.getElementById('analyticsPeriod').addEventListener('change', () => { ordersPage = 1; loadAnalytics() })
 
     // Settings
     document.getElementById('settingsForm').addEventListener('submit', handleSettingsSave)
@@ -71,6 +91,7 @@ function setupEventListeners() {
     document.getElementById('importBtn').addEventListener('click', handleImport)
     document.getElementById('exportBtn').addEventListener('click', handleExport)
     document.getElementById('backupBtn').addEventListener('click', handleBackup)
+    document.getElementById('backupSqlBtn').addEventListener('click', handleBackupSql)
 
     // Modal
     document.querySelector('.modal-close').addEventListener('click', closeProductModal)
@@ -213,7 +234,7 @@ async function loadPageData(page) {
 
 async function loadProducts() {
     const search = document.getElementById('productSearch').value || ''
-    const params = new URLSearchParams({ limit: '20', page: '1' })
+    const params = new URLSearchParams({ limit: String(PRODUCTS_PER_PAGE), page: String(productsPage) })
     if (search) params.set('search', search)
     
     const response = await fetch(`${CONFIG.adminApiUrl}/products?${params}`, {
@@ -221,6 +242,7 @@ async function loadProducts() {
     })
     
     const { data, total } = await response.json()
+    productsTotal = total || 0
     
     const tbody = document.getElementById('productsTable')
     tbody.innerHTML = data.map(product => `
@@ -234,10 +256,37 @@ async function loadProducts() {
             <td>${product.is_visible ? '✅' : '❌'}</td>
             <td>
                 <button class="btn btn-sm btn-secondary" onclick="editProduct('${product.id}')">✏️</button>
+                <button class="btn btn-sm btn-primary" onclick="duplicateProduct('${product.id}')">⧉</button>
                 <button class="btn btn-sm btn-danger" onclick="deleteProduct('${product.id}')">🗑️</button>
             </td>
         </tr>
     `).join('')
+    
+    renderProductsPagination()
+}
+
+function renderProductsPagination() {
+    const container = document.getElementById('productsPagination')
+    const totalPages = Math.max(1, Math.ceil(productsTotal / PRODUCTS_PER_PAGE))
+    
+    if (totalPages <= 1) {
+        container.innerHTML = ''
+        return
+    }
+    
+    let html = `<button ${productsPage === 1 ? 'disabled' : ''} onclick="changeProductsPage(${productsPage - 1})">←</button>`
+    
+    for (let p = 1; p <= totalPages; p++) {
+        html += `<button class="${p === productsPage ? 'active' : ''}" onclick="changeProductsPage(${p})">${p}</button>`
+    }
+    
+    html += `<button ${productsPage === totalPages ? 'disabled' : ''} onclick="changeProductsPage(${productsPage + 1})">→</button>`
+    container.innerHTML = html
+}
+
+function changeProductsPage(page) {
+    productsPage = page
+    loadProducts()
 }
 
 async function openProductModal(productId = null) {
@@ -278,6 +327,7 @@ async function openProductModal(productId = null) {
             document.getElementById('prodIsHit').checked = Boolean(product.is_hit)
             document.getElementById('prodIsNew').checked = Boolean(product.is_new)
             document.getElementById('prodIsDiscount').checked = Boolean(product.is_discount)
+            document.getElementById('prodIsRelated').checked = Boolean(product.is_related_enabled)
             document.getElementById('prodShelfLife').value = product.shelf_life || ''
             document.getElementById('prodIsVisible').value = String(product.is_visible)
 
@@ -290,6 +340,12 @@ async function openProductModal(productId = null) {
             const linksContainer = document.getElementById('linksContainer')
             linksContainer.innerHTML = ''
             productLinks.forEach(link => addLinkField(link.url))
+
+            const relatedIds = Array.isArray(product.related) ? product.related : []
+            const relatedSelect = document.getElementById('prodRelated')
+            Array.from(relatedSelect.options).forEach(opt => {
+                opt.selected = relatedIds.includes(opt.value)
+            })
         }
     }
 
@@ -321,6 +377,16 @@ async function loadFormOptions() {
     document.getElementById('prodBrand').innerHTML = 
         '<option value="">Не выбран</option>' +
         brands.map(b => `<option value="${b.id}">${b.name}</option>`).join('')
+
+    // Load all products for related select
+    const allRes = await fetch(`${CONFIG.adminApiUrl}/products?limit=1000&page=1`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
+    })
+    const allData = await allRes.json()
+    allProductsList = allData.data || []
+    document.getElementById('prodRelated').innerHTML = allProductsList
+        .map(p => `<option value="${p.id}">${p.name}</option>`)
+        .join('')
 }
 
 async function handleProductSubmit(e) {
@@ -347,14 +413,45 @@ async function handleProductSubmit(e) {
         is_hit: document.getElementById('prodIsHit').checked,
         is_new: document.getElementById('prodIsNew').checked,
         is_discount: document.getElementById('prodIsDiscount').checked,
+        is_related_enabled: document.getElementById('prodIsRelated').checked,
         shelf_life: document.getElementById('prodShelfLife').value.trim(),
         is_visible: document.getElementById('prodIsVisible').value === 'true'
     }
 
-    if (!productData.name || isNaN(productData.price) || isNaN(productData.stock)) {
-        errorEl.textContent = 'Заполните обязательные поля: название, цена, остаток'
+    if (!productData.name) {
+        errorEl.textContent = 'Введите название товара'
         errorEl.classList.remove('hidden')
         return
+    }
+
+    if (isNaN(productData.price) || productData.price < 0) {
+        errorEl.textContent = 'Цена должна быть числом ≥ 0'
+        errorEl.classList.remove('hidden')
+        return
+    }
+
+    if (isNaN(productData.stock) || productData.stock < 0) {
+        errorEl.textContent = 'Остаток должен быть числом ≥ 0'
+        errorEl.classList.remove('hidden')
+        return
+    }
+
+    if (productData.old_price !== null && (isNaN(productData.old_price) || productData.old_price < 0)) {
+        errorEl.textContent = 'Старая цена должна быть числом ≥ 0'
+        errorEl.classList.remove('hidden')
+        return
+    }
+
+    const linkInputs = Array.from(document.querySelectorAll('.link-item input'))
+    const urls = linkInputs.map(input => input.value.trim()).filter(Boolean)
+    for (const url of urls) {
+        try {
+            new URL(url)
+        } catch {
+            errorEl.textContent = 'Некорректная ссылка: ' + url
+            errorEl.classList.remove('hidden')
+            return
+        }
     }
 
     const imageInput = document.getElementById('prodImages')
@@ -383,13 +480,16 @@ async function handleProductSubmit(e) {
         }
     }
 
-    const linkInputs = document.querySelectorAll('.link-item input')
-    productLinks = Array.from(linkInputs).map(input => input.value.trim()).filter(Boolean).map(url => ({ url, title: '' }))
+    productLinks = urls.slice(0, 4).map(url => ({ url, title: '' }))
+
+    const relatedSelect = document.getElementById('prodRelated')
+    const related = Array.from(relatedSelect.selectedOptions).map(opt => opt.value)
 
     const body = {
         ...productData,
         ...(productImages.length ? { images: productImages } : {}),
-        ...(productLinks.length ? { links: productLinks } : {})
+        ...(productLinks.length ? { links: productLinks } : {}),
+        ...(related.length ? { related } : {})
     }
 
     const url = editingProductId ? `${CONFIG.adminApiUrl}/products/${editingProductId}` : `${CONFIG.adminApiUrl}/products`
@@ -445,6 +545,59 @@ function editProduct(id) {
     openProductModal(id)
 }
 
+async function duplicateProduct(id) {
+    editingProductId = null
+    document.getElementById('modalTitle').textContent = 'Дублировать товар'
+    document.getElementById('productForm').reset()
+    productImages = []
+    productLinks = []
+    document.getElementById('imagePreview').innerHTML = ''
+    document.getElementById('linksContainer').innerHTML = ''
+
+    await loadFormOptions()
+
+    const response = await fetch(`${CONFIG.adminApiUrl}/products?limit=1&page=1&search=${id}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
+    })
+    const { data } = await response.json()
+    const product = data?.find(p => p.id === id)
+
+    if (product) {
+        document.getElementById('prodName').value = product.name + ' (копия)'
+        document.getElementById('prodDescription').value = product.description || ''
+        document.getElementById('prodFullDescription').value = product.full_description || ''
+        document.getElementById('prodComposition').value = product.composition || ''
+        document.getElementById('prodDosage').value = product.dosage || ''
+        document.getElementById('prodUsage').value = product.usage || ''
+        document.getElementById('prodContraindications').value = product.contraindications || ''
+        document.getElementById('prodCategory').value = product.category_id || ''
+        document.getElementById('prodBrand').value = product.brand_id || ''
+        document.getElementById('prodPrice').value = product.price ?? ''
+        document.getElementById('prodOldPrice').value = product.old_price ?? ''
+        document.getElementById('prodStock').value = product.stock ?? ''
+        document.getElementById('prodVolume').value = product.volume || ''
+        document.getElementById('prodSku').value = ''
+        document.getElementById('prodBarcode').value = ''
+        document.getElementById('prodIsHit').checked = Boolean(product.is_hit)
+        document.getElementById('prodIsNew').checked = Boolean(product.is_new)
+        document.getElementById('prodIsDiscount').checked = Boolean(product.is_discount)
+        document.getElementById('prodIsRelated').checked = Boolean(product.is_related_enabled)
+        document.getElementById('prodShelfLife').value = product.shelf_life || ''
+        document.getElementById('prodIsVisible').value = String(product.is_visible)
+
+        productImages = Array.isArray(product.images) ? product.images.map(img => ({ ...img })) : []
+        productLinks = Array.isArray(product.links) ? product.links.map(link => ({ ...link })) : []
+
+        document.getElementById('imagePreview').innerHTML = productImages.map(img => `<img src="${img.url}" alt="">`).join('')
+        productLinks.forEach(link => addLinkField(link.url))
+
+        // Связи при дублировании не копируем
+        Array.from(document.getElementById('prodRelated').options).forEach(opt => { opt.selected = false })
+    }
+
+    document.getElementById('productModal').classList.remove('hidden')
+}
+
 // ============================================
 // Categories
 // ============================================
@@ -482,7 +635,6 @@ function openNameModal(title, label, value = '') {
 }
 
 function closeNameModal() {
-    document.getElementById('nameModal').classList.remove('hidden')
     document.getElementById('nameModal').classList.add('hidden')
     document.getElementById('nameModalInput').value = ''
     if (nameModalResolve) {
@@ -636,11 +788,12 @@ async function loadAnalytics() {
     renderSalesChart(data.dailyStats)
     
     // Orders
-    const ordersRes = await fetch(`${CONFIG.adminApiUrl}/orders?period=${period}&limit=50`, {
+    const ordersRes = await fetch(`${CONFIG.adminApiUrl}/orders?period=${period}&page=${ordersPage}&limit=${ORDERS_PER_PAGE}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
     })
     
     const ordersData = await ordersRes.json()
+    ordersTotal = ordersData.total || 0
     
     document.getElementById('ordersTable').innerHTML = ordersData.data.map(order => `
         <tr>
@@ -650,6 +803,32 @@ async function loadAnalytics() {
             <td>${new Date(order.created_at).toLocaleString('ru-RU')}</td>
         </tr>
     `).join('')
+    
+    renderOrdersPagination()
+}
+
+function renderOrdersPagination() {
+    const container = document.getElementById('ordersPagination')
+    const totalPages = Math.max(1, Math.ceil(ordersTotal / ORDERS_PER_PAGE))
+    
+    if (totalPages <= 1) {
+        container.innerHTML = ''
+        return
+    }
+    
+    let html = `<button ${ordersPage === 1 ? 'disabled' : ''} onclick="changeOrdersPage(${ordersPage - 1})">←</button>`
+    
+    for (let p = 1; p <= totalPages; p++) {
+        html += `<button class="${p === ordersPage ? 'active' : ''}" onclick="changeOrdersPage(${p})">${p}</button>`
+    }
+    
+    html += `<button ${ordersPage === totalPages ? 'disabled' : ''} onclick="changeOrdersPage(${ordersPage + 1})">→</button>`
+    container.innerHTML = html
+}
+
+function changeOrdersPage(page) {
+    ordersPage = page
+    loadAnalytics()
 }
 
 function renderSalesChart(dailyStats) {
@@ -857,6 +1036,19 @@ async function handleBackup() {
     a.click()
 }
 
+async function handleBackupSql() {
+    const response = await fetch(`${CONFIG.adminApiUrl}/backup-sql`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
+    })
+
+    const blob = await response.blob()
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `jack-nutrition-backup-${new Date().toISOString().split('T')[0]}.sql`
+    a.click()
+}
+
 // ============================================
 // Monitoring
 // ============================================
@@ -919,5 +1111,21 @@ function debounce(func, wait) {
     }
 }
 
+// Service Worker (обход кеша GitHub Pages)
+function registerServiceWorker() {
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js')
+            .then(() => {
+                if (navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.addEventListener('controllerchange', () => location.reload())
+                }
+            })
+            .catch((error) => console.error('Service Worker registration failed:', error))
+    }
+}
+
 // Initialize
-document.addEventListener('DOMContentLoaded', init)
+document.addEventListener('DOMContentLoaded', () => {
+    init()
+    registerServiceWorker()
+})

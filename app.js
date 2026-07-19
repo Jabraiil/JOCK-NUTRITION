@@ -6,6 +6,7 @@ const CONFIG = {
 }
 
 let allProducts = []
+let relatedMap = []
 let cart = JSON.parse(localStorage.getItem('jack-cart') || '[]')
 let darkMode = localStorage.getItem('jack-theme') === 'dark'
 let barcodeStream = null
@@ -36,6 +37,16 @@ function setupEventListeners() {
     document.getElementById('searchClear').addEventListener('click', clearSearch)
     document.getElementById('barcodeToggle').addEventListener('click', toggleBarcodeScanner)
     document.getElementById('closeScanner').addEventListener('click', closeBarcodeScanner)
+    document.getElementById('manualBarcodeBtn').addEventListener('click', () => {
+        const value = document.getElementById('manualBarcode').value.trim()
+        if (value) searchByBarcode(value)
+    })
+    document.getElementById('manualBarcode').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            const value = e.target.value.trim()
+            if (value) searchByBarcode(value)
+        }
+    })
     document.getElementById('cartBtn').addEventListener('click', openCart)
     document.getElementById('checkoutBtn').addEventListener('click', checkout)
 
@@ -108,6 +119,21 @@ async function loadProducts() {
         if (!response.ok) throw new Error('Failed to load products')
 
         allProducts = await response.json()
+
+        // Load explicit related products
+        try {
+            const relatedRes = await fetch(`${CONFIG.supabaseUrl}/rest/v1/product_related?select=product_id,related_id`, {
+                headers: {
+                    'apikey': CONFIG.supabaseAnonKey,
+                    'Authorization': `Bearer ${CONFIG.supabaseAnonKey}`
+                }
+            })
+            if (relatedRes.ok) {
+                relatedMap = await relatedRes.json()
+            }
+        } catch (e) {
+            console.error('Error loading related products:', e)
+        }
         
         // Load categories and brands for filters
         await loadFilters()
@@ -352,7 +378,60 @@ function openProductModal(productId) {
                 <p>${product.shelf_life}</p>
             </div>
         ` : ''}
-        
+
+        ${product.product_links?.length ? `
+            <div class="modal-section">
+                <h3>Ссылки</h3>
+                <div class="modal-links">
+                    ${product.product_links.map(link => `
+                        <a href="${link.url}" target="_blank" rel="noopener noreferrer" class="modal-link">
+                            ${link.title || link.url}
+                        </a>
+                    `).join('')}
+                </div>
+            </div>
+        ` : ''}
+
+        ${(() => {
+            // Явные связи из product_related, иначе фолбэк по категории/бренду
+            const explicitIds = (relatedMap || [])
+                .filter(rel => rel.product_id === product.id)
+                .map(rel => rel.related_id)
+
+            let relatedIds = explicitIds
+            if (relatedIds.length === 0 && product.is_related_enabled) {
+                relatedIds = allProducts
+                    .filter(p => p.id !== product.id &&
+                        (p.category_id === product.category_id || p.brand_id === product.brand_id))
+                    .map(p => p.id)
+            }
+
+            const related = relatedIds
+                .map(id => allProducts.find(p => p.id === id))
+                .filter(Boolean)
+                .slice(0, 4)
+
+            if (!related.length) return ''
+            return `
+                <div class="modal-related">
+                    <h3>Связанные товары</h3>
+                    <div class="related-grid">
+                        ${related.map(r => {
+                            const rImg = r.product_images?.find(i => i.is_main) || r.product_images?.[0]
+                            const rUrl = rImg?.url || ''
+                            return `
+                                <button class="related-card" data-id="${r.id}">
+                                    ${rUrl ? `<img src="${rUrl}" alt="${r.name}" loading="lazy">` : ''}
+                                    <div class="related-name">${r.name}</div>
+                                    <div class="related-price">${r.price} ₽</div>
+                                </button>
+                            `
+                        }).join('')}
+                    </div>
+                </div>
+            `
+        })()}
+
         <button class="btn btn-primary btn-block add-to-cart-modal" data-id="${product.id}">
             В корзину
         </button>
@@ -361,6 +440,12 @@ function openProductModal(productId) {
     document.querySelector('.add-to-cart-modal').addEventListener('click', () => {
         addToCart(product.id, 1)
         closeModal()
+    })
+
+    modalBody.querySelectorAll('.related-card').forEach(card => {
+        card.addEventListener('click', () => {
+            openProductModal(card.dataset.id)
+        })
     })
 
     document.getElementById('productModal').classList.remove('hidden')
@@ -560,11 +645,11 @@ async function toggleBarcodeScanner() {
     const video = document.getElementById('scannerVideo')
     
     if (scanner.classList.contains('hidden')) {
+        scanner.classList.remove('hidden')
+        document.getElementById('manualBarcode').value = ''
+        document.getElementById('manualBarcode').focus()
         try {
-            if (!('BarcodeDetector' in window)) {
-                alert('Ваш браузер не поддерживает сканирование штрих-кодов. Используйте Chrome.')
-                return
-            }
+            if (!('BarcodeDetector' in window)) return
             
             const stream = await navigator.mediaDevices.getUserMedia({ 
                 video: { facingMode: 'environment' } 
@@ -575,12 +660,9 @@ async function toggleBarcodeScanner() {
             const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'qr_code'] })
             barcodeDetector = detector
             
-            scanner.classList.remove('hidden')
-            
             detectBarcode()
         } catch (error) {
-            alert('Ошибка доступа к камере')
-            console.error(error)
+            console.error('Camera unavailable, manual input only:', error)
         }
     } else {
         closeBarcodeScanner()
@@ -668,5 +750,21 @@ function debounce(func, wait) {
     }
 }
 
+// Service Worker (обход кеша GitHub Pages)
+function registerServiceWorker() {
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js')
+            .then(() => {
+                if (navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.addEventListener('controllerchange', () => location.reload())
+                }
+            })
+            .catch((error) => console.error('Service Worker registration failed:', error))
+    }
+}
+
 // Initialize
-document.addEventListener('DOMContentLoaded', init)
+document.addEventListener('DOMContentLoaded', () => {
+    init()
+    registerServiceWorker()
+})
