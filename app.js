@@ -39,6 +39,7 @@ function setupEventListeners() {
     document.getElementById('barcodeToggle').addEventListener('click', toggleBarcodeScanner)
     document.getElementById('closeScannerX').addEventListener('click', closeBarcodeScanner)
     document.getElementById('flashToggle').addEventListener('click', toggleFlash)
+    document.getElementById('zoomToggle').addEventListener('click', toggleZoom)
     document.getElementById('cartBtn').addEventListener('click', openCart)
     document.getElementById('checkoutBtn').addEventListener('click', checkout)
 
@@ -707,43 +708,53 @@ async function detectBarcode() {
     const video = document.getElementById('scannerVideo')
     const scanner = document.getElementById('barcodeScanner')
 
-    async function detect() {
-        if (!barcodeStream) return
+    // Offscreen canvas — сканируем уменьшенную копию кадра (легче для CPU)
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })
+    const SCAN_WIDTH = 640
 
-        // Пропускаем кадры, пока видео не готово
-        if (video.readyState < 2 || video.videoWidth === 0) {
-            requestAnimationFrame(detect)
-            return
-        }
+    let busy = false
+    let stopped = false
 
-        try {
-            const barcodes = await barcodeDetector.detect(video)
-            if (barcodes.length > 0) {
-                const barcode = barcodes[0].rawValue
+    async function loop() {
+        if (stopped || !barcodeStream) return
 
-                // Вибро-отклик при успешном считывании (всегда)
-                if (navigator.vibrate) navigator.vibrate(200)
+        if (video.readyState >= 2 && video.videoWidth > 0 && !busy) {
+            busy = true
+            try {
+                const scale = SCAN_WIDTH / video.videoWidth
+                canvas.width = SCAN_WIDTH
+                canvas.height = Math.round(video.videoHeight * scale)
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
 
-                const found = await searchByBarcode(barcode)
+                const barcodes = await barcodeDetector.detect(canvas)
+                if (barcodes.length > 0) {
+                    const barcode = barcodes[0].rawValue
 
-                if (found) {
-                    closeBarcodeScanner()
-                } else {
-                    // Лёгкий красный (iOS-стиль) — товар не найден
-                    scanner.classList.add('not-found')
-                    setTimeout(() => closeBarcodeScanner(), 900)
+                    if (navigator.vibrate) navigator.vibrate(200)
+
+                    const found = await searchByBarcode(barcode)
+
+                    if (found) {
+                        closeBarcodeScanner()
+                    } else {
+                        scanner.classList.add('not-found')
+                        setTimeout(() => closeBarcodeScanner(), 900)
+                    }
+                    return
                 }
-                return
+            } catch (error) {
+                console.error('Barcode detection error:', error)
+            } finally {
+                busy = false
             }
-        } catch (error) {
-            console.error('Barcode detection error:', error)
         }
 
-        // Последовательно: следующий кадр только после завершения detect
-        requestAnimationFrame(detect)
+        // Throttle: следующая попытка через ~180мс (не на каждом кадре)
+        setTimeout(loop, 180)
     }
 
-    detect()
+    loop()
 }
 
 async function toggleFlash() {
@@ -761,11 +772,31 @@ async function toggleFlash() {
     }
 }
 
+let scannerZoom = 1
+
+async function toggleZoom() {
+    if (!barcodeStream) return
+    const track = barcodeStream.getVideoTracks()[0]
+    if (!track) return
+    try {
+        scannerZoom = scannerZoom === 1 ? 2 : 1
+        await track.applyConstraints({ zoom: scannerZoom })
+        document.getElementById('zoomToggle').textContent = scannerZoom + '×'
+    } catch (error) {
+        console.error('Zoom not supported:', error)
+        scannerZoom = 1
+        document.getElementById('zoomToggle').textContent = '1×'
+    }
+}
+
 function closeBarcodeScanner() {
     if (barcodeStream) {
         barcodeStream.getTracks().forEach(track => track.stop())
         barcodeStream = null
     }
+    scannerZoom = 1
+    const zoomBtn = document.getElementById('zoomToggle')
+    if (zoomBtn) zoomBtn.textContent = '1×'
     const scanner = document.getElementById('barcodeScanner')
     scanner.classList.add('hidden')
     scanner.classList.remove('not-found')

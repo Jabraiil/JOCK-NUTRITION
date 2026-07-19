@@ -313,11 +313,19 @@ body {
     border-color: var(--error);
 }
 
-.scanner-flash {
+.scanner-tools {
     position: absolute;
     bottom: calc(28px + env(safe-area-inset-bottom));
     left: 50%;
     transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    z-index: 3;
+}
+
+.scanner-flash,
+.scanner-zoom {
     width: var(--touch);
     height: var(--touch);
     border-radius: 50%;
@@ -328,12 +336,20 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 3;
+    font-size: 1rem;
+    font-weight: 700;
+    font-family: var(--font);
     transition: background 0.2s, transform 0.1s;
 }
 
-.scanner-flash:active {
-    transform: translateX(-50%) scale(0.92);
+.scanner-flash:active,
+.scanner-zoom:active {
+    transform: scale(0.92);
+}
+
+.scanner-flash:hover,
+.scanner-zoom:hover {
+    background: rgba(255, 255, 255, 0.32);
 }
 
 .scanner-flash.active {
