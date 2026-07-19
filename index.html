@@ -32,6 +32,11 @@
                             <path d="M19 15v4"></path>
                         </svg>
                     </button>
+                    <button id="filterToggle" class="icon-btn" aria-label="Фильтры">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"></path>
+                        </svg>
+                    </button>
                     <button id="cartBtn" class="cart-btn">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="9" cy="21" r="1"></circle>
@@ -72,37 +77,46 @@
                 </div>
             </div>
 
-            <div class="filters">
-                <div class="filter-group">
-                    <label>Категория</label>
-                    <select id="categoryFilter">
-                        <option value="">Все</option>
-                    </select>
+            <div id="filterModal" class="modal hidden">
+                <div class="modal-content filter-modal-content">
+                    <button class="modal-close" id="filterModalClose">&times;</button>
+                    <h2>Фильтры</h2>
+                    <div class="filters">
+                        <div class="filter-group">
+                            <label>Категория</label>
+                            <select id="categoryFilter">
+                                <option value="">Все</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>Бренд</label>
+                            <select id="brandFilter">
+                                <option value="">Все</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>Цена от</label>
+                            <input type="number" id="priceFrom" placeholder="0">
+                        </div>
+                        <div class="filter-group">
+                            <label>Цена до</label>
+                            <input type="number" id="priceTo" placeholder="∞">
+                        </div>
+                        <div class="filter-group">
+                            <label>Сортировка</label>
+                            <select id="sortFilter">
+                                <option value="newest">По новизне</option>
+                                <option value="price-asc">Цена по возр.</option>
+                                <option value="price-desc">Цена по убыв.</option>
+                                <option value="name">По названию</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="filter-actions">
+                        <button id="resetFilters" class="btn btn-secondary">Сбросить</button>
+                        <button id="applyFilters" class="btn btn-primary">Применить</button>
+                    </div>
                 </div>
-                <div class="filter-group">
-                    <label>Бренд</label>
-                    <select id="brandFilter">
-                        <option value="">Все</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label>Цена от</label>
-                    <input type="number" id="priceFrom" placeholder="0">
-                </div>
-                <div class="filter-group">
-                    <label>Цена до</label>
-                    <input type="number" id="priceTo" placeholder="∞">
-                </div>
-                <div class="filter-group">
-                    <label>Сортировка</label>
-                    <select id="sortFilter">
-                        <option value="newest">По новизне</option>
-                        <option value="price-asc">Цена по возр.</option>
-                        <option value="price-desc">Цена по убыв.</option>
-                        <option value="name">По названию</option>
-                    </select>
-                </div>
-                <button id="resetFilters" class="btn btn-secondary">Сбросить</button>
             </div>
 
             <div id="catalog" class="catalog">

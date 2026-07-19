@@ -50,20 +50,39 @@ function setupEventListeners() {
     document.getElementById('cartBtn').addEventListener('click', openCart)
     document.getElementById('checkoutBtn').addEventListener('click', checkout)
 
+    // Filters (modal)
+    document.getElementById('filterToggle').addEventListener('click', openFilters)
+    document.getElementById('applyFilters').addEventListener('click', () => {
+        applyFilters()
+        closeFilters()
+    })
+    document.getElementById('resetFilters').addEventListener('click', resetFilters)
+    document.getElementById('filterModalClose').addEventListener('click', closeFilters)
+    document.getElementById('filterModal').addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) closeFilters()
+    })
+    // Live-применение при выборе внутри окна (для удобства)
     document.getElementById('categoryFilter').addEventListener('change', applyFilters)
     document.getElementById('brandFilter').addEventListener('change', applyFilters)
     document.getElementById('priceFrom').addEventListener('input', debounce(applyFilters, 500))
     document.getElementById('priceTo').addEventListener('input', debounce(applyFilters, 500))
     document.getElementById('sortFilter').addEventListener('change', applyFilters)
-    document.getElementById('resetFilters').addEventListener('click', resetFilters)
 
-    document.querySelector('.modal-close').addEventListener('click', closeModal)
+    document.querySelector('#productModal .modal-close').addEventListener('click', closeModal)
     document.getElementById('productModal').addEventListener('click', (e) => {
         if (e.target === e.currentTarget) closeModal()
     })
     document.getElementById('cartModal').addEventListener('click', (e) => {
         if (e.target === e.currentTarget) closeCart()
     })
+}
+
+function openFilters() {
+    document.getElementById('filterModal').classList.remove('hidden')
+}
+
+function closeFilters() {
+    document.getElementById('filterModal').classList.add('hidden')
 }
 
 function toggleTheme() {
