@@ -257,19 +257,19 @@ body {
     inset: 0;
     background: rgba(0, 0, 0, 0.55);
     -webkit-mask:
-        linear-gradient(#000, #000) center / var(--frame-size, 72%) var(--frame-size, 72%) no-repeat,
+        linear-gradient(#000, #000) center / var(--frame-w, 80%) var(--frame-h, 180px) no-repeat,
         linear-gradient(#000, #000);
     -webkit-mask-composite: xor;
             mask:
-        linear-gradient(#000, #000) center / var(--frame-size, 72%) var(--frame-size, 72%) no-repeat,
+        linear-gradient(#000, #000) center / var(--frame-w, 80%) var(--frame-h, 180px) no-repeat,
         linear-gradient(#000, #000);
     mask-composite: exclude;
 }
 
 .scanner-frame {
-    width: var(--frame-size, 72%);
-    max-width: 320px;
-    aspect-ratio: 1 / 1;
+    width: var(--frame-w, 80%);
+    max-width: 420px;
+    height: var(--frame-h, 180px);
     border: 3px solid var(--primary);
     border-radius: var(--radius-md);
     position: relative;
@@ -297,6 +297,33 @@ body {
     right: -4px;
     border-left: none;
     border-top: none;
+}
+
+.scanner-flash {
+    position: absolute;
+    bottom: calc(28px + env(safe-area-inset-bottom));
+    left: 50%;
+    transform: translateX(-50%);
+    width: var(--touch);
+    height: var(--touch);
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.18);
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 3;
+    transition: background 0.2s, transform 0.1s;
+}
+
+.scanner-flash:active {
+    transform: translateX(-50%) scale(0.92);
+}
+
+.scanner-flash.active {
+    background: var(--primary);
 }
 
 /* ---------- Filters (inside modal) ---------- */

@@ -11,6 +11,7 @@ let cart = JSON.parse(localStorage.getItem('jack-cart') || '[]')
 let darkMode = localStorage.getItem('jack-theme') === 'dark'
 let barcodeStream = null
 let barcodeDetector = null
+let scannerFlashOn = false
 
 function init() {
     applyTheme()
@@ -37,6 +38,7 @@ function setupEventListeners() {
     document.getElementById('searchClear').addEventListener('click', clearSearch)
     document.getElementById('barcodeToggle').addEventListener('click', toggleBarcodeScanner)
     document.getElementById('closeScannerX').addEventListener('click', closeBarcodeScanner)
+    document.getElementById('flashToggle').addEventListener('click', toggleFlash)
     document.getElementById('cartBtn').addEventListener('click', openCart)
     document.getElementById('checkoutBtn').addEventListener('click', checkout)
 
@@ -652,27 +654,44 @@ async function checkOrderTime() {
 async function toggleBarcodeScanner() {
     const scanner = document.getElementById('barcodeScanner')
     const video = document.getElementById('scannerVideo')
-    
+
     if (scanner.classList.contains('hidden')) {
         scanner.classList.remove('hidden')
+        scannerFlashOn = false
         try {
             if (!('BarcodeDetector' in window)) {
                 console.warn('BarcodeDetector не поддерживается этим браузером')
                 return
             }
-            
-            const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: 'environment' } 
+
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'environment', torch: false }
             })
             video.srcObject = stream
             barcodeStream = stream
-            
-            // Гарантируем воспроизведение потока (решает чёрный экран)
+
+            // Ждём метаданные и реальные кадры, иначе detect получает пустой кадр
+            await new Promise((resolve) => {
+                if (video.readyState >= 1 && video.videoWidth > 0) return resolve()
+                video.onloadedmetadata = () => resolve()
+                setTimeout(resolve, 1500)
+            })
+
             try { await video.play() } catch (e) { console.error('video.play error:', e) }
-            
+
+            // Ждём первый реальный кадр
+            await new Promise((resolve) => {
+                if (video.videoWidth > 0) return resolve()
+                const check = () => {
+                    if (video.videoWidth > 0) resolve()
+                    else requestAnimationFrame(check)
+                }
+                check()
+            })
+
             const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'qr_code'] })
             barcodeDetector = detector
-            
+
             detectBarcode()
         } catch (error) {
             console.error('Camera unavailable:', error)
@@ -684,12 +703,18 @@ async function toggleBarcodeScanner() {
 
 async function detectBarcode() {
     if (!barcodeStream) return
-    
+
     const video = document.getElementById('scannerVideo')
-    
+
     async function detect() {
         if (!barcodeStream) return
-        
+
+        // Пропускаем кадры, пока видео не готово
+        if (video.readyState < 2 || video.videoWidth === 0) {
+            requestAnimationFrame(detect)
+            return
+        }
+
         try {
             const barcodes = await barcodeDetector.detect(video)
             if (barcodes.length > 0) {
@@ -701,11 +726,26 @@ async function detectBarcode() {
         } catch (error) {
             console.error('Barcode detection error:', error)
         }
-        
+
         requestAnimationFrame(detect)
     }
-    
+
     detect()
+}
+
+async function toggleFlash() {
+    if (!barcodeStream) return
+    const track = barcodeStream.getVideoTracks()[0]
+    if (!track) return
+    try {
+        scannerFlashOn = !scannerFlashOn
+        await track.applyConstraints({ torch: scannerFlashOn })
+        document.getElementById('flashToggle').classList.toggle('active', scannerFlashOn)
+    } catch (error) {
+        console.error('Torch not supported:', error)
+        scannerFlashOn = false
+        document.getElementById('flashToggle').classList.remove('active')
+    }
 }
 
 function closeBarcodeScanner() {
