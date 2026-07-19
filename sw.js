@@ -4,7 +4,7 @@
 // обновляет статику при изменении CACHE_VERSION.
 // ============================================
 
-const CACHE_VERSION = 'jack-nutrition-v8-2026-07-19'
+const CACHE_VERSION = 'jack-nutrition-v9-2026-07-19'
 const ASSETS = [
     '/',
     '/index.html',

@@ -705,6 +705,7 @@ async function detectBarcode() {
     if (!barcodeStream) return
 
     const video = document.getElementById('scannerVideo')
+    const scanner = document.getElementById('barcodeScanner')
 
     async function detect() {
         if (!barcodeStream) return
@@ -719,14 +720,26 @@ async function detectBarcode() {
             const barcodes = await barcodeDetector.detect(video)
             if (barcodes.length > 0) {
                 const barcode = barcodes[0].rawValue
-                searchByBarcode(barcode)
-                closeBarcodeScanner()
+
+                // Вибро-отклик при успешном считывании (всегда)
+                if (navigator.vibrate) navigator.vibrate(200)
+
+                const found = await searchByBarcode(barcode)
+
+                if (found) {
+                    closeBarcodeScanner()
+                } else {
+                    // Лёгкий красный (iOS-стиль) — товар не найден
+                    scanner.classList.add('not-found')
+                    setTimeout(() => closeBarcodeScanner(), 900)
+                }
                 return
             }
         } catch (error) {
             console.error('Barcode detection error:', error)
         }
 
+        // Последовательно: следующий кадр только после завершения detect
         requestAnimationFrame(detect)
     }
 
@@ -753,11 +766,12 @@ function closeBarcodeScanner() {
         barcodeStream.getTracks().forEach(track => track.stop())
         barcodeStream = null
     }
-    document.getElementById('barcodeScanner').classList.add('hidden')
+    const scanner = document.getElementById('barcodeScanner')
+    scanner.classList.add('hidden')
+    scanner.classList.remove('not-found')
 }
 
 async function searchByBarcode(barcode) {
-    showLoading(true)
     try {
         const response = await fetch(`${CONFIG.supabaseUrl}/rest/v1/products?barcode=eq.${barcode}&select=*`, {
             headers: {
@@ -765,19 +779,17 @@ async function searchByBarcode(barcode) {
                 'Authorization': `Bearer ${CONFIG.supabaseAnonKey}`
             }
         })
-        
+
         const products = await response.json()
-        
+
         if (products.length > 0) {
             openProductModal(products[0].id)
-        } else {
-            alert('Товар не найден')
+            return true
         }
+        return false
     } catch (error) {
-        alert('Ошибка поиска по штрих-коду')
-        console.error(error)
-    } finally {
-        showLoading(false)
+        console.error('Ошибка поиска по штрих-коду:', error)
+        return false
     }
 }
 

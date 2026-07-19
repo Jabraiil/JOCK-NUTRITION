@@ -299,6 +299,20 @@ body {
     border-top: none;
 }
 
+/* Товар не найден — лёгкий красный (iOS-стиль) вокруг рамки */
+.barcode-scanner.not-found .scanner-overlay::before {
+    background: rgba(255, 59, 48, 0.45);
+}
+
+.barcode-scanner.not-found .scanner-frame {
+    border-color: var(--error);
+}
+
+.barcode-scanner.not-found .scanner-frame::before,
+.barcode-scanner.not-found .scanner-frame::after {
+    border-color: var(--error);
+}
+
 .scanner-flash {
     position: absolute;
     bottom: calc(28px + env(safe-area-inset-bottom));
