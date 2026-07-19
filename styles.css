@@ -200,17 +200,13 @@ body {
     inset: 0;
     background: #000;
     z-index: 1000;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
     overflow: hidden;
 }
 
 .scanner-close {
     position: absolute;
-    top: calc(12px + env(safe-area-inset-top));
-    right: 12px;
+    top: calc(14px + env(safe-area-inset-top));
+    right: 14px;
     width: var(--touch);
     height: var(--touch);
     border-radius: 50%;
@@ -232,19 +228,12 @@ body {
 }
 
 .scanner-close:hover {
-    background: rgba(255, 255, 255, 0.3);
-}
-
-.scanner-stage {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    background: rgba(255, 255, 255, 0.32);
 }
 
 #scannerVideo {
+    position: absolute;
+    inset: 0;
     width: 100%;
     height: 100%;
     object-fit: cover;
@@ -258,16 +247,33 @@ body {
     align-items: center;
     justify-content: center;
     pointer-events: none;
-    background: rgba(0, 0, 0, 0.35);
+    z-index: 2;
+}
+
+/* Затемнение ТОЛЬКО вокруг рамки. Внутри рамки — пусто, видна камера. */
+.scanner-overlay::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    -webkit-mask:
+        linear-gradient(#000, #000) center / var(--frame-size, 72%) var(--frame-size, 72%) no-repeat,
+        linear-gradient(#000, #000);
+    -webkit-mask-composite: xor;
+            mask:
+        linear-gradient(#000, #000) center / var(--frame-size, 72%) var(--frame-size, 72%) no-repeat,
+        linear-gradient(#000, #000);
+    mask-composite: exclude;
 }
 
 .scanner-frame {
-    width: min(72%, 320px);
-    height: min(72%, 320px);
+    width: var(--frame-size, 72%);
+    max-width: 320px;
+    aspect-ratio: 1 / 1;
     border: 3px solid var(--primary);
     border-radius: var(--radius-md);
     position: relative;
-    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
+    background: transparent;
 }
 
 .scanner-frame::before,
@@ -291,32 +297,6 @@ body {
     right: -4px;
     border-left: none;
     border-top: none;
-}
-
-.scanner-manual {
-    position: absolute;
-    bottom: calc(20px + env(safe-area-inset-bottom));
-    left: 16px;
-    right: 16px;
-    display: flex;
-    gap: 8px;
-    z-index: 2;
-}
-
-.scanner-manual input {
-    flex: 1;
-    height: var(--touch);
-    padding: 0 12px;
-    border-radius: var(--radius-md);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    background: rgba(28, 28, 30, 0.85);
-    color: #fff;
-    font-size: 1rem;
-    font-family: var(--font);
-}
-
-.scanner-manual input::placeholder {
-    color: rgba(255, 255, 255, 0.5);
 }
 
 /* ---------- Filters (inside modal) ---------- */

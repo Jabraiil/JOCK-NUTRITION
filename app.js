@@ -37,16 +37,6 @@ function setupEventListeners() {
     document.getElementById('searchClear').addEventListener('click', clearSearch)
     document.getElementById('barcodeToggle').addEventListener('click', toggleBarcodeScanner)
     document.getElementById('closeScannerX').addEventListener('click', closeBarcodeScanner)
-    document.getElementById('manualBarcodeBtn').addEventListener('click', () => {
-        const value = document.getElementById('manualBarcode').value.trim()
-        if (value) searchByBarcode(value)
-    })
-    document.getElementById('manualBarcode').addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            const value = e.target.value.trim()
-            if (value) searchByBarcode(value)
-        }
-    })
     document.getElementById('cartBtn').addEventListener('click', openCart)
     document.getElementById('checkoutBtn').addEventListener('click', checkout)
 
@@ -665,10 +655,11 @@ async function toggleBarcodeScanner() {
     
     if (scanner.classList.contains('hidden')) {
         scanner.classList.remove('hidden')
-        document.getElementById('manualBarcode').value = ''
-        document.getElementById('manualBarcode').focus()
         try {
-            if (!('BarcodeDetector' in window)) return
+            if (!('BarcodeDetector' in window)) {
+                console.warn('BarcodeDetector не поддерживается этим браузером')
+                return
+            }
             
             const stream = await navigator.mediaDevices.getUserMedia({ 
                 video: { facingMode: 'environment' } 
@@ -676,12 +667,15 @@ async function toggleBarcodeScanner() {
             video.srcObject = stream
             barcodeStream = stream
             
+            // Гарантируем воспроизведение потока (решает чёрный экран)
+            try { await video.play() } catch (e) { console.error('video.play error:', e) }
+            
             const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'qr_code'] })
             barcodeDetector = detector
             
             detectBarcode()
         } catch (error) {
-            console.error('Camera unavailable, manual input only:', error)
+            console.error('Camera unavailable:', error)
         }
     } else {
         closeBarcodeScanner()

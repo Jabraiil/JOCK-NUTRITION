@@ -61,15 +61,9 @@
 
             <div id="barcodeScanner" class="barcode-scanner hidden">
                 <button id="closeScannerX" class="scanner-close" aria-label="Закрыть сканер">&times;</button>
-                <div class="scanner-stage">
-                    <video id="scannerVideo" playsinline></video>
-                    <div class="scanner-overlay">
-                        <div class="scanner-frame"></div>
-                    </div>
-                </div>
-                <div class="scanner-manual">
-                    <input type="text" id="manualBarcode" placeholder="Или введите штрих-код" inputmode="numeric">
-                    <button id="manualBarcodeBtn" class="btn btn-primary">Найти</button>
+                <video id="scannerVideo" playsinline muted autoplay></video>
+                <div class="scanner-overlay">
+                    <div class="scanner-frame"></div>
                 </div>
             </div>
 
