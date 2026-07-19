@@ -44,12 +44,8 @@ function applyTheme() {
     const darkMode = localStorage.getItem('jack-theme') === 'dark'
     if (darkMode) {
         document.documentElement.setAttribute('data-theme', 'dark')
-        const t = document.getElementById('themeToggle')
-        if (t) t.textContent = '☀️'
     } else {
         document.documentElement.removeAttribute('data-theme')
-        const t = document.getElementById('themeToggle')
-        if (t) t.textContent = '🌙'
     }
 }
 
