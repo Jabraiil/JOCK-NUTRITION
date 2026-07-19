@@ -12,6 +12,9 @@ let darkMode = localStorage.getItem('jack-theme') === 'dark'
 let barcodeStream = null
 let barcodeDetector = null
 let scannerFlashOn = false
+let scannerMode = 'camera'
+let lastVideoTime = -1
+const SCAN_THROTTLE = 400
 
 function init() {
     applyTheme()
@@ -40,6 +43,11 @@ function setupEventListeners() {
     document.getElementById('closeScannerX').addEventListener('click', closeBarcodeScanner)
     document.getElementById('flashToggle').addEventListener('click', toggleFlash)
     document.getElementById('zoomToggle').addEventListener('click', toggleZoom)
+    document.getElementById('scannerModeToggle').addEventListener('click', toggleScannerMode)
+    document.getElementById('manualBarcodeInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') handleManualBarcode()
+    })
+    document.getElementById('manualBarcodeSubmit').addEventListener('click', handleManualBarcode)
     document.getElementById('cartBtn').addEventListener('click', openCart)
     document.getElementById('checkoutBtn').addEventListener('click', checkout)
 
@@ -659,9 +667,20 @@ async function toggleBarcodeScanner() {
     if (scanner.classList.contains('hidden')) {
         scanner.classList.remove('hidden')
         scannerFlashOn = false
+        scannerMode = 'camera'
+        lastVideoTime = -1
+        document.getElementById('scannerManual').classList.add('hidden')
+        document.getElementById('scannerModeToggle').textContent = '⌨️'
+        document.getElementById('scannerModeToggle').classList.remove('active')
+        
         try {
             if (!('BarcodeDetector' in window)) {
                 console.warn('BarcodeDetector не поддерживается этим браузером')
+                scannerMode = 'manual'
+                document.getElementById('scannerManual').classList.remove('hidden')
+                document.getElementById('scannerModeToggle').textContent = '📷'
+                document.getElementById('scannerModeToggle').classList.add('active')
+                document.getElementById('manualBarcodeInput').focus()
                 return
             }
 
@@ -671,7 +690,6 @@ async function toggleBarcodeScanner() {
             video.srcObject = stream
             barcodeStream = stream
 
-            // Ждём метаданные и реальные кадры, иначе detect получает пустой кадр
             await new Promise((resolve) => {
                 if (video.readyState >= 1 && video.videoWidth > 0) return resolve()
                 video.onloadedmetadata = () => resolve()
@@ -680,7 +698,6 @@ async function toggleBarcodeScanner() {
 
             try { await video.play() } catch (e) { console.error('video.play error:', e) }
 
-            // Ждём первый реальный кадр
             await new Promise((resolve) => {
                 if (video.videoWidth > 0) return resolve()
                 const check = () => {
@@ -696,6 +713,11 @@ async function toggleBarcodeScanner() {
             detectBarcode()
         } catch (error) {
             console.error('Camera unavailable:', error)
+            scannerMode = 'manual'
+            document.getElementById('scannerManual').classList.remove('hidden')
+            document.getElementById('scannerModeToggle').textContent = '📷'
+            document.getElementById('scannerModeToggle').classList.add('active')
+            document.getElementById('manualBarcodeInput').focus()
         }
     } else {
         closeBarcodeScanner()
@@ -703,21 +725,18 @@ async function toggleBarcodeScanner() {
 }
 
 async function detectBarcode() {
-    if (!barcodeStream) return
+    if (!barcodeStream || scannerMode !== 'camera') return
 
     const video = document.getElementById('scannerVideo')
     const scanner = document.getElementById('barcodeScanner')
     const frame = document.querySelector('.scanner-frame')
 
-    // Offscreen canvas — сканируем ТОЛЬКО область внутри рамки (легче для CPU, точнее)
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d', { willReadFrequently: true })
     const SCAN_MAX = 480
 
     let busy = false
 
-    // Переводит прямоугольник рамки (в CSS-пикселях экрана) в координаты
-    // исходного кадра видео с учётом object-fit: cover.
     function getScanCrop() {
         const vRect = video.getBoundingClientRect()
         const fRect = frame.getBoundingClientRect()
@@ -725,20 +744,17 @@ async function detectBarcode() {
         const vh = video.videoHeight
         if (!vw || !vh) return null
 
-        // visible-часть видео (cover) в CSS-пикселях
         const scale = Math.max(vRect.width / vw, vRect.height / vh)
         const dispW = vw * scale
         const dispH = vh * scale
         const offX = (vRect.width - dispW) / 2
         const offY = (vRect.height - dispH) / 2
 
-        // рамка относительно video-элемента
         const fx = (fRect.left - vRect.left - offX) / scale
         const fy = (fRect.top - vRect.top - offY) / scale
         const fw = fRect.width / scale
         const fh = fRect.height / scale
 
-        // небольшой padding вокруг рамки
         const pad = Math.min(fw, fh) * 0.08
         const x = Math.max(0, Math.floor(fx - pad))
         const y = Math.max(0, Math.floor(fy - pad))
@@ -748,51 +764,98 @@ async function detectBarcode() {
     }
 
     async function loop() {
-        if (!barcodeStream) return
+        if (!barcodeStream || scannerMode !== 'camera') return
 
         if (video.readyState >= 2 && video.videoWidth > 0 && !busy) {
-            busy = true
-            try {
-                const crop = getScanCrop()
-                if (crop && crop.w > 0 && crop.h > 0) {
-                    const scale = SCAN_MAX / crop.w
-                    canvas.width = SCAN_MAX
-                    canvas.height = Math.max(1, Math.round(crop.h * scale))
-                    ctx.drawImage(
-                        video,
-                        crop.x, crop.y, crop.w, crop.h,
-                        0, 0, canvas.width, canvas.height
-                    )
+            if (video.currentTime !== lastVideoTime) {
+                lastVideoTime = video.currentTime
+                busy = true
+                try {
+                    const crop = getScanCrop()
+                    if (crop && crop.w > 0 && crop.h > 0) {
+                        const scale = SCAN_MAX / crop.w
+                        const w = SCAN_MAX
+                        const h = Math.max(1, Math.round(crop.h * scale))
+                        canvas.width = w
+                        canvas.height = h
+                        ctx.drawImage(
+                            video,
+                            crop.x, crop.y, crop.w, crop.h,
+                            0, 0, w, h
+                        )
 
-                    const barcodes = await barcodeDetector.detect(canvas)
-                    if (barcodes.length > 0) {
-                        const barcode = barcodes[0].rawValue
+                        const barcodes = await barcodeDetector.detect(canvas)
+                        if (barcodes.length > 0) {
+                            const barcode = barcodes[0].rawValue
 
-                        if (navigator.vibrate) navigator.vibrate(200)
+                            if (navigator.vibrate) navigator.vibrate(200)
 
-                        const found = await searchByBarcode(barcode)
+                            const found = await searchByBarcode(barcode)
 
-                        if (found) {
-                            closeBarcodeScanner()
-                        } else {
-                            scanner.classList.add('not-found')
-                            setTimeout(() => closeBarcodeScanner(), 900)
+                            if (found) {
+                                closeBarcodeScanner()
+                            } else {
+                                scanner.classList.add('not-found')
+                                setTimeout(() => closeBarcodeScanner(), 900)
+                            }
+                            return
                         }
-                        return
                     }
+                } catch (error) {
+                    console.error('Barcode detection error:', error)
+                } finally {
+                    busy = false
                 }
-            } catch (error) {
-                console.error('Barcode detection error:', error)
-            } finally {
-                busy = false
             }
         }
 
-        // Throttle: следующая попытка через ~150мс (не на каждом кадре)
-        setTimeout(loop, 150)
+        setTimeout(loop, SCAN_THROTTLE)
     }
 
     loop()
+}
+
+function toggleScannerMode() {
+    const manual = document.getElementById('scannerManual')
+    const modeBtn = document.getElementById('scannerModeToggle')
+    const video = document.getElementById('scannerVideo')
+    
+    if (scannerMode === 'camera') {
+        scannerMode = 'manual'
+        manual.classList.remove('hidden')
+        modeBtn.textContent = '📷'
+        modeBtn.classList.add('active')
+        if (barcodeStream) {
+            barcodeStream.getTracks().forEach(track => track.stop())
+            barcodeStream = null
+        }
+        video.srcObject = null
+        document.getElementById('manualBarcodeInput').focus()
+    } else {
+        scannerMode = 'camera'
+        manual.classList.add('hidden')
+        modeBtn.textContent = '⌨️'
+        modeBtn.classList.remove('active')
+        toggleBarcodeScanner()
+    }
+}
+
+async function handleManualBarcode() {
+    const input = document.getElementById('manualBarcodeInput')
+    const barcode = input.value.trim()
+    if (!barcode) return
+    
+    if (navigator.vibrate) navigator.vibrate(200)
+    const found = await searchByBarcode(barcode)
+    
+    if (found) {
+        closeBarcodeScanner()
+    } else {
+        const scanner = document.getElementById('barcodeScanner')
+        scanner.classList.add('not-found')
+        input.value = ''
+        setTimeout(() => scanner.classList.remove('not-found'), 900)
+    }
 }
 
 async function toggleFlash() {
@@ -833,11 +896,15 @@ function closeBarcodeScanner() {
         barcodeStream = null
     }
     scannerZoom = 1
+    scannerMode = 'camera'
+    lastVideoTime = -1
     const zoomBtn = document.getElementById('zoomToggle')
     if (zoomBtn) zoomBtn.textContent = '1×'
     const scanner = document.getElementById('barcodeScanner')
     scanner.classList.add('hidden')
     scanner.classList.remove('not-found')
+    const manual = document.getElementById('scannerManual')
+    if (manual) manual.classList.add('hidden')
 }
 
 async function searchByBarcode(barcode) {

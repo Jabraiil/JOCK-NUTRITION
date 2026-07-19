@@ -356,6 +356,86 @@ body {
     background: var(--primary);
 }
 
+.scanner-mode-toggle {
+    width: var(--touch);
+    height: var(--touch);
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.18);
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    font-family: var(--font);
+    transition: background 0.2s, transform 0.1s;
+}
+
+.scanner-mode-toggle:active {
+    transform: scale(0.92);
+}
+
+.scanner-mode-toggle:hover {
+    background: rgba(255, 255, 255, 0.32);
+}
+
+.scanner-mode-toggle.active {
+    background: var(--primary);
+}
+
+.scanner-manual {
+    position: absolute;
+    bottom: calc(84px + env(safe-area-inset-bottom));
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    z-index: 3;
+    width: 90%;
+    max-width: 400px;
+}
+
+.scanner-manual input {
+    flex: 1;
+    height: 44px;
+    border: none;
+    border-radius: 22px;
+    padding: 0 16px;
+    font-size: 1rem;
+    font-family: var(--font);
+    background: rgba(255, 255, 255, 0.95);
+    color: #1C1C1E;
+    outline: none;
+}
+
+.scanner-manual input::placeholder {
+    color: #8E8E93;
+}
+
+.scanner-manual-btn {
+    height: 44px;
+    padding: 0 20px;
+    border: none;
+    border-radius: 22px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 600;
+    font-family: var(--font);
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+}
+
+.scanner-manual-btn:active {
+    transform: scale(0.95);
+}
+
+.scanner-manual-btn:hover {
+    background: var(--primary-hover);
+}
+
 /* ---------- Filters (inside modal) ---------- */
 .filters {
     display: grid;
