@@ -105,7 +105,8 @@ serve(async (req) => {
         .select("*, categories(name), brands(name)", { count: "exact" })
 
       if (search) {
-        query = query.or(`name.ilike.%${search}%,sku.ilike.%${search}%,barcode.ilike.%${search}%`)
+        const escaped = search.replace(/%/g, '\\%').replace(/_/g, '\\_').replace(/,/g, '\\,')
+        query = query.or(`name.ilike.%${escaped}%,sku.ilike.%${escaped}%,barcode.ilike.%${escaped}%`)
       }
 
       if (category) {
@@ -182,10 +183,11 @@ serve(async (req) => {
       }
 
       if (Array.isArray(images) && images.length > 0) {
+        const hasMain = images.some(img => img.is_main)
         const imagesToInsert = images.map((img, idx) => ({
           product_id: product.id,
           url: img.url,
-          is_main: Boolean(img.is_main) && idx === 0,
+          is_main: hasMain ? Boolean(img.is_main) : idx === 0,
           sort_order: idx
         }))
         await supabase.from("product_images").insert(imagesToInsert)
@@ -237,30 +239,31 @@ serve(async (req) => {
         )
       }
 
-      if (Array.isArray(images)) {
+      if (!Array.isArray(images) || images.length === 0) {
         await supabase.from("product_images").delete().eq("product_id", productId)
-        if (images.length > 0) {
-          const imagesToInsert = images.map((img, idx) => ({
-            product_id: productId,
-            url: img.url,
-            is_main: Boolean(img.is_main) && idx === 0,
-            sort_order: idx
-          }))
-          await supabase.from("product_images").insert(imagesToInsert)
-        }
+      } else {
+        await supabase.from("product_images").delete().eq("product_id", productId)
+        const hasMain = images.some(img => img.is_main)
+        const imagesToInsert = images.map((img, idx) => ({
+          product_id: productId,
+          url: img.url,
+          is_main: hasMain ? Boolean(img.is_main) : idx === 0,
+          sort_order: idx
+        }))
+        await supabase.from("product_images").insert(imagesToInsert)
       }
 
-      if (Array.isArray(links)) {
+      if (!Array.isArray(links) || links.length === 0) {
         await supabase.from("product_links").delete().eq("product_id", productId)
-        if (links.length > 0) {
-          const linksToInsert = links.map((link, idx) => ({
-            product_id: productId,
-            url: link.url,
-            title: link.title || "",
-            sort_order: idx
-          }))
-          await supabase.from("product_links").insert(linksToInsert)
-        }
+      } else {
+        await supabase.from("product_links").delete().eq("product_id", productId)
+        const linksToInsert = links.map((link, idx) => ({
+          product_id: productId,
+          url: link.url,
+          title: link.title || "",
+          sort_order: idx
+        }))
+        await supabase.from("product_links").insert(linksToInsert)
       }
 
       await saveRelated(productId, related)
@@ -458,7 +461,7 @@ serve(async (req) => {
 
       const productSales = {}
       for (const order of orders || []) {
-        for (const item of order.items) {
+        for (const item of (order.items || [])) {
           if (!productSales[item.name]) {
             productSales[item.name] = { name: item.name, quantity: 0, total: 0 }
           }
@@ -483,7 +486,7 @@ serve(async (req) => {
       // Group by day
       const dailyStats = {}
       for (const order of dailyData || []) {
-        const day = order.created_at.split("T")[0]
+        const day = (order.created_at || "").split("T")[0]
         if (!dailyStats[day]) {
           dailyStats[day] = { date: day, total: 0, orders: 0 }
         }
@@ -749,26 +752,21 @@ serve(async (req) => {
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     )
   }
+
+  async function saveRelated(productId: string, related: any) {
+    if (!Array.isArray(related)) return
+
+    await supabase.from("product_related").delete().eq("product_id", productId)
+
+    const unique = [...new Set(related.filter(Boolean))]
+    if (unique.length === 0) return
+
+    const rows = unique.map((relatedId: string, idx: number) => ({
+      product_id: productId,
+      related_id: relatedId,
+      sort_order: idx
+    }))
+
+    await supabase.from("product_related").insert(rows)
+  }
 })
-
-// ============================================
-// Helpers
-// ============================================
-
-// Сохраняет явные связанные товары (полная замена).
-async function saveRelated(productId: string, related: any) {
-  if (!Array.isArray(related)) return
-
-  await supabase.from("product_related").delete().eq("product_id", productId)
-
-  const unique = [...new Set(related.filter(Boolean))]
-  if (unique.length === 0) return
-
-  const rows = unique.map((relatedId: string, idx: number) => ({
-    product_id: productId,
-    related_id: relatedId,
-    sort_order: idx
-  }))
-
-  await supabase.from("product_related").insert(rows)
-}

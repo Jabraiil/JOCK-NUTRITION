@@ -5,6 +5,16 @@ const CONFIG = {
     adminApiUrl: 'https://hpphfeojjejculvdundj.supabase.co/functions/v1/admin-api'
 }
 
+function escapeHtml(str) {
+    if (str == null) return ''
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;')
+}
+
 let allProducts = []
 let relatedMap = []
 let cart = JSON.parse(localStorage.getItem('jack-cart') || '[]')
@@ -31,6 +41,12 @@ function init() {
     checkOrderTime()
     setInterval(checkOrderTime, 60000)
     window.addEventListener('resize', invalidateScanCropCache)
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden && scanRafId) {
+            cancelAnimationFrame(scanRafId)
+            scanRafId = null
+        }
+    })
 }
 
 function applyTheme() {
@@ -124,9 +140,8 @@ async function loadSettings() {
         })
         if (response.ok) {
             const settings = await response.json()
-            CONFIG.whatsappNumber = settings.whatsapp_number || ''
-            CONFIG.storeName = settings.store_name || 'JACK NUTRITION'
-            CONFIG.currency = settings.currency || '₽'
+            // Settings are cached globally for checkOrderTime
+            window.__storeSettings = settings
         }
     } catch (error) {
         console.error('Error loading settings:', error)
@@ -190,11 +205,11 @@ async function loadFilters() {
 
         const categorySelect = document.getElementById('categoryFilter')
         categorySelect.innerHTML = '<option value="">Все</option>' +
-            categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('')
+            categories.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('')
 
         const brandSelect = document.getElementById('brandFilter')
         brandSelect.innerHTML = '<option value="">Все</option>' +
-            brands.map(b => `<option value="${b.id}">${b.name}</option>`).join('')
+            brands.map(b => `<option value="${b.id}">${escapeHtml(b.name)}</option>`).join('')
     } catch (error) {
         console.error('Error loading filters:', error)
     }
@@ -220,11 +235,11 @@ function filterAndRenderProducts(filters = {}) {
     }
 
     if (filters.priceFrom) {
-        filtered = filtered.filter(p => p.price >= parseInt(filters.priceFrom))
+        filtered = filtered.filter(p => p.price >= parseInt(filters.priceFrom, 10))
     }
 
     if (filters.priceTo) {
-        filtered = filtered.filter(p => p.price <= parseInt(filters.priceTo))
+        filtered = filtered.filter(p => p.price <= parseInt(filters.priceTo, 10))
     }
 
     if (filters.sort === 'price-asc') {
@@ -279,11 +294,11 @@ function renderProducts(products) {
 
         return `
             <div class="product-card" data-id="${product.id}">
-                <img src="${imageUrl}" alt="${product.name}" class="product-image" loading="lazy">
+                <img src="${imageUrl}" alt="${escapeHtml(product.name)}" class="product-image" loading="lazy">
                 <div class="product-info">
-                    <div class="product-brand">${product.brands?.name || ''}</div>
-                    <div class="product-name">${product.name}</div>
-                    <div class="product-volume">${product.volume || ''}</div>
+                    <div class="product-brand">${escapeHtml(product.brands?.name || '')}</div>
+                    <div class="product-name">${escapeHtml(product.name)}</div>
+                    <div class="product-volume">${escapeHtml(product.volume || '')}</div>
                     <div class="product-badges">
                         ${product.is_hit ? '<span class="badge badge-hit">Хит</span>' : ''}
                         ${product.is_new ? '<span class="badge badge-new">Новинка</span>' : ''}
@@ -350,10 +365,10 @@ function openProductModal(productId) {
 
     const modalBody = document.getElementById('modalBody')
     modalBody.innerHTML = `
-        ${imageUrl ? '<img src="' + imageUrl + '" alt="' + product.name + '">' : ''}
-        <div class="modal-brand">${product.brands?.name || ''}</div>
-        <h2>${product.name}</h2>
-        <div class="modal-volume">${product.volume || ''}</div>
+        ${imageUrl ? '<img src="' + imageUrl + '" alt="' + escapeHtml(product.name) + '">' : ''}
+        <div class="modal-brand">${escapeHtml(product.brands?.name || '')}</div>
+        <h2>${escapeHtml(product.name)}</h2>
+        <div class="modal-volume">${escapeHtml(product.volume || '')}</div>
         <div class="modal-badges">
             ${product.is_hit ? '<span class="badge badge-hit">Хит</span>' : ''}
             ${product.is_new ? '<span class="badge badge-new">Новинка</span>' : ''}
@@ -367,42 +382,42 @@ function openProductModal(productId) {
         ${product.full_description ? `
             <div class="modal-section">
                 <h3>Описание</h3>
-                <p>${product.full_description}</p>
+                <p>${escapeHtml(product.full_description)}</p>
             </div>
         ` : ''}
         
         ${product.composition ? `
             <div class="modal-section">
                 <h3>Состав</h3>
-                <p>${product.composition}</p>
+                <p>${escapeHtml(product.composition)}</p>
             </div>
         ` : ''}
         
         ${product.dosage ? `
             <div class="modal-section">
                 <h3>Дозировка</h3>
-                <p>${product.dosage}</p>
+                <p>${escapeHtml(product.dosage)}</p>
             </div>
         ` : ''}
         
         ${product.usage ? `
             <div class="modal-section">
                 <h3>Способ применения</h3>
-                <p>${product.usage}</p>
+                <p>${escapeHtml(product.usage)}</p>
             </div>
         ` : ''}
         
         ${product.contraindications ? `
             <div class="modal-section">
                 <h3>Противопоказания</h3>
-                <p>${product.contraindications}</p>
+                <p>${escapeHtml(product.contraindications)}</p>
             </div>
         ` : ''}
         
         ${product.shelf_life ? `
             <div class="modal-section">
                 <h3>Срок годности</h3>
-                <p>${product.shelf_life}</p>
+                <p>${escapeHtml(product.shelf_life)}</p>
             </div>
         ` : ''}
 
@@ -411,8 +426,8 @@ function openProductModal(productId) {
                 <h3>Ссылки</h3>
                 <div class="modal-links">
                     ${product.product_links.map(link => `
-                        <a href="${link.url}" target="_blank" rel="noopener noreferrer" class="modal-link">
-                            ${link.title || link.url}
+                        <a href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer" class="modal-link">
+                            ${escapeHtml(link.title || link.url)}
                         </a>
                     `).join('')}
                 </div>
@@ -448,8 +463,8 @@ function openProductModal(productId) {
                             const rUrl = rImg?.url || ''
                             return `
                                 <button class="related-card" data-id="${r.id}">
-                                    ${rUrl ? `<img src="${rUrl}" alt="${r.name}" loading="lazy">` : ''}
-                                    <div class="related-name">${r.name}</div>
+                                    ${rUrl ? `<img src="${rUrl}" alt="${escapeHtml(r.name)}" loading="lazy">` : ''}
+                                    <div class="related-name">${escapeHtml(r.name)}</div>
                                     <div class="related-price">${r.price} ₽</div>
                                 </button>
                             `
@@ -536,9 +551,9 @@ function renderCart() {
 
         return `
             <div class="cart-item">
-                <img src="${product.product_images?.[0]?.url || ''}" alt="${product.name}" class="cart-item-image">
+                <img src="${product.product_images?.[0]?.url || ''}" alt="${escapeHtml(product.name)}" class="cart-item-image">
                 <div class="cart-item-info">
-                    <div class="cart-item-name">${product.name}</div>
+                    <div class="cart-item-name">${escapeHtml(product.name)}</div>
                     <div class="cart-item-price">${product.price} ₽ × ${cartItem.quantity} = ${itemTotal} ₽</div>
                     <div class="cart-item-controls">
                         <button class="cart-minus" data-id="${product.id}">-</button>
@@ -601,7 +616,13 @@ async function checkout() {
 
         // Open WhatsApp
         if (data.whatsappUrl) {
-            window.open(data.whatsappUrl, '_blank')
+            const a = document.createElement('a')
+            a.href = data.whatsappUrl
+            a.target = '_blank'
+            a.rel = 'noopener noreferrer'
+            document.body.appendChild(a)
+            a.click()
+            document.body.removeChild(a)
         }
 
         // Clear cart
@@ -625,44 +646,34 @@ async function checkOrderTime() {
     const timeMessage = document.getElementById('orderTimeMessage')
     const checkoutBtn = document.getElementById('checkoutBtn')
     
-    try {
-        const response = await fetch(`${CONFIG.adminApiUrl}/settings`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token') || ''}` }
-        })
-        
-        if (response.ok) {
-            const settings = await response.json()
-            const timeLimitEnabled = settings.order_time_limit_enabled === 'true'
-            
-            if (!timeLimitEnabled) {
-                checkoutBtn.disabled = false
-                timeMessage.classList.add('hidden')
-                return
-            }
-            
-            const startHour = parseInt(settings.order_start_hour || '9')
-            const endHour = parseInt(settings.order_end_hour || '20')
-            const timezone = settings.timezone || 'Europe/Moscow'
-            
-            const now = new Date()
-            const formatter = new Intl.DateTimeFormat('ru-RU', {
-                timeZone: timezone,
-                hour: 'numeric',
-                hour12: false,
-            })
-            const currentHour = parseInt(formatter.format(now))
-            
-            if (currentHour < startHour || currentHour >= endHour) {
-                checkoutBtn.disabled = true
-                timeMessage.textContent = 'Заказы принимаются с 9:00 до 20:00. Добавьте товары в корзину и оформите заказ утром.'
-                timeMessage.classList.remove('hidden')
-            } else {
-                checkoutBtn.disabled = false
-                timeMessage.classList.add('hidden')
-            }
-        }
-    } catch (error) {
-        console.error('Error checking order time:', error)
+    const settings = window.__storeSettings || {}
+    const timeLimitEnabled = settings.order_time_limit_enabled === 'true'
+    
+    if (!timeLimitEnabled) {
+        checkoutBtn.disabled = false
+        timeMessage.classList.add('hidden')
+        return
+    }
+    
+    const startHour = parseInt(settings.order_start_hour || '9', 10)
+    const endHour = parseInt(settings.order_end_hour || '20', 10)
+    const timezone = settings.timezone || 'Europe/Moscow'
+    
+    const now = new Date()
+    const formatter = new Intl.DateTimeFormat('ru-RU', {
+        timeZone: timezone,
+        hour: 'numeric',
+        hour12: false,
+    })
+    const currentHour = parseInt(formatter.format(now), 10)
+    
+    if (currentHour < startHour || currentHour >= endHour) {
+        checkoutBtn.disabled = true
+        timeMessage.textContent = `Заказы принимаются с ${startHour}:00 до ${endHour}:00. Добавьте товары в корзину и оформите заказ в рабочее время.`
+        timeMessage.classList.remove('hidden')
+    } else {
+        checkoutBtn.disabled = false
+        timeMessage.classList.add('hidden')
     }
 }
 

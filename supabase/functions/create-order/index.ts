@@ -76,7 +76,7 @@ serve(async (req) => {
       if (currentHour < startHour || currentHour >= endHour) {
         return new Response(
           JSON.stringify({ 
-            error: "Заказы принимаются с 9:00 до 20:00. Добавьте товары в корзину и оформите заказ утром.",
+            error: `Заказы принимаются с ${startHour}:00 до ${endHour}:00. Добавьте товары в корзину и оформите заказ в рабочее время.`,
             time_restricted: true
           }),
           { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -176,6 +176,10 @@ serve(async (req) => {
 
     if (updateCounterError) {
       console.error("Update counter error:", updateCounterError)
+      return new Response(
+        JSON.stringify({ error: "Ошибка сохранения номера заказа" }),
+        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      )
     }
 
     // Save analytics

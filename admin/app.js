@@ -9,12 +9,21 @@ const CONFIG = {
     orderFunctionUrl: 'https://hpphfeojjejculvdundj.supabase.co/functions/v1/create-order'
 }
 
+function escapeHtml(str) {
+    if (str == null) return ''
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;')
+}
+
 let supabase = null
 let currentPage = 'products'
 let editingProductId = null
 let productImages = []
 let productLinks = []
-let allProductsList = []
 let monitorInterval = null
 let salesChart = null
 let productsPage = 1
@@ -330,9 +339,9 @@ async function loadProducts() {
     tbody.innerHTML = data.map(product => `
         <tr>
             <td><img src="${product.product_images?.[0]?.url || ''}" alt=""></td>
-            <td>${product.name}</td>
-            <td>${product.categories?.name || '-'}</td>
-            <td>${product.brands?.name || '-'}</td>
+            <td>${escapeHtml(product.name)}</td>
+            <td>${escapeHtml(product.categories?.name || '-')}</td>
+            <td>${escapeHtml(product.brands?.name || '-')}</td>
             <td>${product.price} ₽</td>
             <td>${product.stock}</td>
             <td>${product.is_visible ? '✅' : '❌'}</td>
@@ -381,7 +390,11 @@ async function openProductModal(productId = null) {
     document.getElementById('imagePreview').innerHTML = ''
     document.getElementById('linksContainer').innerHTML = ''
 
-    await loadFormOptions()
+    const loadOk = await loadFormOptions()
+    if (!loadOk) {
+        closeProductModal()
+        return
+    }
 
     if (productId) {
         const response = await fetch(`${CONFIG.adminApiUrl}/products?limit=1&page=1&search=${productId}`, {
@@ -452,7 +465,7 @@ async function loadFormOptions() {
     if (!categoriesRes.ok || !brandsRes.ok) {
         const result = await categoriesRes.json().catch(() => ({}))
         alert(translateError(result.error) || 'Ошибка загрузки справочников')
-        return
+        return false
     }
     
     const categories = await categoriesRes.json()
@@ -474,14 +487,16 @@ async function loadFormOptions() {
     if (!allRes.ok) {
         const result = await allRes.json().catch(() => ({}))
         alert(translateError(result.error) || 'Ошибка загрузки товаров')
-        return
+        return false
     }
     
     const allData = await allRes.json()
-    allProductsList = allData.data || []
-    document.getElementById('prodRelated').innerHTML = allProductsList
-        .map(p => `<option value="${p.id}">${p.name}</option>`)
+    const productsList = allData.data || []
+    document.getElementById('prodRelated').innerHTML = productsList
+        .map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`)
         .join('')
+
+    return true
 }
 
 async function handleProductSubmit(e) {
@@ -728,7 +743,7 @@ async function loadCategories() {
     
     document.getElementById('categoriesTable').innerHTML = data.map(cat => `
         <tr>
-            <td>${cat.name}</td>
+            <td>${escapeHtml(cat.name)}</td>
             <td>
                 <button class="btn btn-sm btn-secondary" onclick="editCategory('${cat.id}')">✏️</button>
                 <button class="btn btn-sm btn-danger" onclick="deleteCategory('${cat.id}')">🗑️</button>
@@ -761,9 +776,20 @@ function closeNameModal() {
 }
 
 async function openCategoryModal(categoryId = null) {
+    let currentName = ''
+    if (categoryId) {
+        const res = await fetch(`${CONFIG.adminApiUrl}/categories`)
+        if (res.ok) {
+            const data = await res.json()
+            const cat = data.find(c => c.id === categoryId)
+            if (cat) currentName = cat.name
+        }
+    }
+
     const name = await openNameModal(
         categoryId ? 'Редактировать категорию' : 'Новая категория',
-        'Название категории'
+        'Название категории',
+        currentName
     )
     if (!name) return
 
@@ -826,7 +852,7 @@ async function loadBrands() {
 
     document.getElementById('brandsTable').innerHTML = data.map(brand => `
         <tr>
-            <td>${brand.name}</td>
+            <td>${escapeHtml(brand.name)}</td>
             <td>
                 <button class="btn btn-sm btn-secondary" onclick="editBrand('${brand.id}')">✏️</button>
                 <button class="btn btn-sm btn-danger" onclick="deleteBrand('${brand.id}')">🗑️</button>
@@ -836,9 +862,20 @@ async function loadBrands() {
 }
 
 async function openBrandModal(brandId = null) {
+    let currentName = ''
+    if (brandId) {
+        const res = await fetch(`${CONFIG.adminApiUrl}/brands`)
+        if (res.ok) {
+            const data = await res.json()
+            const brand = data.find(b => b.id === brandId)
+            if (brand) currentName = brand.name
+        }
+    }
+
     const name = await openNameModal(
         brandId ? 'Редактировать бренд' : 'Новый бренд',
-        'Название бренда'
+        'Название бренда',
+        currentName
     )
     if (!name) return
 
@@ -907,7 +944,7 @@ async function loadAnalytics() {
     // Top products
     document.getElementById('topProductsTable').innerHTML = data.topProducts.map(p => `
         <tr>
-            <td>${p.name}</td>
+            <td>${escapeHtml(p.name)}</td>
             <td>${p.quantity}</td>
             <td>${p.total.toLocaleString()} ₽</td>
         </tr>
@@ -1229,6 +1266,8 @@ async function checkMonitor() {
         const dot = document.querySelector('.indicator-dot')
         const text = document.querySelector('.indicator-text')
         
+        if (!dot || !text) return
+        
         if (response.ok) {
             dot.className = 'indicator-dot active'
             text.textContent = 'Edge Function работает'
@@ -1240,6 +1279,7 @@ async function checkMonitor() {
     } catch (error) {
         const dot = document.querySelector('.indicator-dot')
         const text = document.querySelector('.indicator-text')
+        if (!dot || !text) return
         dot.className = 'indicator-dot error'
         text.textContent = 'Нет подключения'
     }
@@ -1257,7 +1297,13 @@ async function sendAlert(message) {
         const whatsappNumber = settings.whatsapp_number?.replace(/\D/g, '')
         if (whatsappNumber) {
             const url = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`
-            window.open(url, '_blank')
+            const a = document.createElement('a')
+            a.href = url
+            a.target = '_blank'
+            a.rel = 'noopener noreferrer'
+            document.body.appendChild(a)
+            a.click()
+            document.body.removeChild(a)
         }
     } catch (e) {
         // ignore
