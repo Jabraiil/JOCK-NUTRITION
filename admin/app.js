@@ -262,6 +262,12 @@ async function loadProducts() {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
     })
     
+    if (!response.ok) {
+        const result = await response.json().catch(() => ({}))
+        alert(result.error || 'Ошибка загрузки товаров')
+        return
+    }
+    
     const { data, total } = await response.json()
     productsTotal = total || 0
     
@@ -388,6 +394,12 @@ async function loadFormOptions() {
         })
     ])
     
+    if (!categoriesRes.ok || !brandsRes.ok) {
+        const result = await categoriesRes.json().catch(() => ({}))
+        alert(result.error || 'Ошибка загрузки справочников')
+        return
+    }
+    
     const categories = await categoriesRes.json()
     const brands = await brandsRes.json()
     
@@ -403,6 +415,13 @@ async function loadFormOptions() {
     const allRes = await fetch(`${CONFIG.adminApiUrl}/products?limit=1000&page=1`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
     })
+    
+    if (!allRes.ok) {
+        const result = await allRes.json().catch(() => ({}))
+        alert(result.error || 'Ошибка загрузки товаров')
+        return
+    }
+    
     const allData = await allRes.json()
     allProductsList = allData.data || []
     document.getElementById('prodRelated').innerHTML = allProductsList
@@ -412,7 +431,7 @@ async function loadFormOptions() {
 
 async function handleProductSubmit(e) {
     e.preventDefault()
-    const errorEl = document.getElementById('loginError')
+    const errorEl = document.getElementById('productError')
     errorEl.classList.add('hidden')
 
     const productData = {
@@ -628,6 +647,12 @@ async function loadCategories() {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
     })
     
+    if (!response.ok) {
+        const result = await response.json().catch(() => ({}))
+        alert(result.error || 'Ошибка загрузки категорий')
+        return
+    }
+    
     const data = await response.json()
     
     document.getElementById('categoriesTable').innerHTML = data.map(cat => `
@@ -720,6 +745,12 @@ async function loadBrands() {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
     })
 
+    if (!response.ok) {
+        const result = await response.json().catch(() => ({}))
+        alert(result.error || 'Ошибка загрузки брендов')
+        return
+    }
+
     const data = await response.json()
 
     document.getElementById('brandsTable').innerHTML = data.map(brand => `
@@ -791,6 +822,12 @@ async function loadAnalytics() {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
     })
     
+    if (!response.ok) {
+        const result = await response.json().catch(() => ({}))
+        alert(result.error || 'Ошибка загрузки статистики')
+        return
+    }
+    
     const data = await response.json()
     
     document.getElementById('totalRevenue').textContent = `${data.totalRevenue.toLocaleString()} ₽`
@@ -812,6 +849,12 @@ async function loadAnalytics() {
     const ordersRes = await fetch(`${CONFIG.adminApiUrl}/orders?period=${period}&page=${ordersPage}&limit=${ORDERS_PER_PAGE}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
     })
+    
+    if (!ordersRes.ok) {
+        const result = await ordersRes.json().catch(() => ({}))
+        alert(result.error || 'Ошибка загрузки заказов')
+        return
+    }
     
     const ordersData = await ordersRes.json()
     ordersTotal = ordersData.total || 0
@@ -898,6 +941,12 @@ async function loadSettings() {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
     })
     
+    if (!response.ok) {
+        const result = await response.json().catch(() => ({}))
+        alert(result.error || 'Ошибка загрузки настроек')
+        return
+    }
+    
     const settings = await response.json()
     
     document.getElementById('whatsappNumber').value = settings.whatsapp_number || ''
@@ -939,6 +988,9 @@ async function handleSettingsSave(e) {
     
     if (response.ok) {
         alert('Настройки сохранены')
+    } else {
+        const result = await response.json().catch(() => ({}))
+        alert(result.error || 'Ошибка сохранения настроек')
     }
 }
 
@@ -1036,6 +1088,12 @@ async function handleExport() {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
     })
     
+    if (!response.ok) {
+        const result = await response.json().catch(() => ({}))
+        alert(result.error || 'Ошибка экспорта')
+        return
+    }
+    
     const data = await response.json()
     
     const ws = XLSX.utils.json_to_sheet(data)
@@ -1049,6 +1107,12 @@ async function handleBackup() {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
     })
     
+    if (!response.ok) {
+        const result = await response.json().catch(() => ({}))
+        alert(result.error || 'Ошибка резервного копирования')
+        return
+    }
+    
     const blob = await response.blob()
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -1061,6 +1125,12 @@ async function handleBackupSql() {
     const response = await fetch(`${CONFIG.adminApiUrl}/backup-sql`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
     })
+
+    if (!response.ok) {
+        const result = await response.json().catch(() => ({}))
+        alert(result.error || 'Ошибка SQL-дампа')
+        return
+    }
 
     const blob = await response.blob()
     const url = window.URL.createObjectURL(blob)
@@ -1105,14 +1175,21 @@ async function checkMonitor() {
 }
 
 async function sendAlert(message) {
-    const settings = await fetch(`${CONFIG.adminApiUrl}/settings`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
-    }).then(r => r.json())
-    
-    const whatsappNumber = settings.whatsapp_number?.replace(/\D/g, '')
-    if (whatsappNumber) {
-        const url = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`
-        window.open(url, '_blank')
+    try {
+        const response = await fetch(`${CONFIG.adminApiUrl}/settings`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
+        })
+        
+        if (!response.ok) return
+        
+        const settings = await response.json()
+        const whatsappNumber = settings.whatsapp_number?.replace(/\D/g, '')
+        if (whatsappNumber) {
+            const url = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`
+            window.open(url, '_blank')
+        }
+    } catch (e) {
+        // ignore
     }
 }
 
