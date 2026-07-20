@@ -10,7 +10,6 @@ let relatedMap = []
 let cart = JSON.parse(localStorage.getItem('jack-cart') || '[]')
 let darkMode = localStorage.getItem('jack-theme') === 'dark'
 let barcodeStream = null
-let barcodeDetector = null
 let scannerFlashOn = false
 let scannerMode = 'camera'
 let lastVideoTime = -1
@@ -19,7 +18,9 @@ let workerBusy = false
 let scanCropCache = null
 let scanCropVideoW = 0
 let scanCropVideoH = 0
-const SCAN_THROTTLE = 500
+let scanFrameCount = 0
+const SCAN_INTERVAL_FRAMES = 3
+let scanRafId = null
 
 function init() {
     applyTheme()
@@ -692,7 +693,7 @@ async function toggleBarcodeScanner() {
             }
 
             const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'environment', torch: false, width: { ideal: 640 }, height: { ideal: 480 } }
+                video: { facingMode: 'environment', torch: false, width: { ideal: 640 }, height: { ideal: 480 }, powerEfficient: true }
             })
             video.srcObject = stream
             barcodeStream = stream
@@ -714,9 +715,6 @@ async function toggleBarcodeScanner() {
                 check()
             })
 
-            const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'qr_code'] })
-            barcodeDetector = detector
-
             scannerWorker = new Worker('/scanner-worker.js')
             scannerWorker.onmessage = onWorkerMessage
             scannerWorker.onerror = (err) => console.error('Scanner worker error:', err)
@@ -727,7 +725,8 @@ async function toggleBarcodeScanner() {
                 scannerWorker.postMessage({ type: 'init', crop: crop, tw: 320 })
             }
 
-            scanLoop()
+            scanFrameCount = 0
+            scanRafId = requestAnimationFrame(scanLoop)
         } catch (error) {
             console.error('Camera unavailable:', error)
             scannerMode = 'manual'
@@ -787,38 +786,42 @@ function getScanCrop() {
     return { x, y, w, h }
 }
 
-async function scanLoop() {
+function scanLoop() {
     if (!barcodeStream || scannerMode !== 'camera') return
     if (!scannerWorker) return
 
     const video = document.getElementById('scannerVideo')
-    const scanner = document.getElementById('barcodeScanner')
 
     if (video.readyState >= 2 && video.videoWidth > 0 && !workerBusy) {
         if (video.currentTime !== lastVideoTime) {
             lastVideoTime = video.currentTime
             workerBusy = true
-            try {
-                const crop = getCachedScanCrop()
-                if (crop && crop.w > 0 && crop.h > 0) {
-                    const bitmap = await createImageBitmap(video)
-                    scannerWorker.postMessage({
-                        type: 'scan',
-                        bitmap: bitmap,
-                        crop: crop,
-                        tw: 320
-                    }, [bitmap])
-                } else {
+            scanFrameCount++
+            if (scanFrameCount >= SCAN_INTERVAL_FRAMES) {
+                scanFrameCount = 0
+                try {
+                    const crop = getCachedScanCrop()
+                    if (crop && crop.w > 0 && crop.h > 0) {
+                        createImageBitmap(video).then(bitmap => {
+                            scannerWorker.postMessage({
+                                type: 'scan',
+                                bitmap: bitmap,
+                                crop: crop,
+                                tw: 320
+                            }, [bitmap])
+                        }).catch(() => { workerBusy = false })
+                    } else {
+                        workerBusy = false
+                    }
+                } catch (error) {
+                    console.error('Scan error:', error)
                     workerBusy = false
                 }
-            } catch (error) {
-                console.error('Scan error:', error)
-                workerBusy = false
             }
         }
     }
 
-    setTimeout(scanLoop, SCAN_THROTTLE)
+    scanRafId = requestAnimationFrame(scanLoop)
 }
 
 function onWorkerMessage(e) {
@@ -919,11 +922,16 @@ async function toggleZoom() {
 }
 
 function closeBarcodeScanner() {
+    if (scanRafId) {
+        cancelAnimationFrame(scanRafId)
+        scanRafId = null
+    }
     if (scannerWorker) {
         scannerWorker.terminate()
         scannerWorker = null
     }
     workerBusy = false
+    scanFrameCount = 0
     invalidateScanCropCache()
     if (barcodeStream) {
         barcodeStream.getTracks().forEach(track => track.stop())

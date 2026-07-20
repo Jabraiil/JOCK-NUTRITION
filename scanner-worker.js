@@ -1,13 +1,15 @@
 let detector = null
 let cropRect = null
-let targetWidth = 480
+let targetWidth = 320
+let canvas = null
+let ctx = null
 
 self.onmessage = async (e) => {
   const { type, bitmap, crop, tw } = e.data
 
   if (type === 'init') {
     cropRect = crop
-    targetWidth = tw || 480
+    targetWidth = tw || 320
     try {
       detector = new BarcodeDetector({
         formats: ['ean_13', 'ean_8', 'code_128', 'qr_code']
@@ -26,8 +28,12 @@ self.onmessage = async (e) => {
       const tw = targetWidth
       const th = Math.max(1, Math.round(h * scale))
 
-      const canvas = new OffscreenCanvas(tw, th)
-      const ctx = canvas.getContext('2d')
+      if (!canvas || canvas.width !== tw || canvas.height !== th) {
+        canvas = new OffscreenCanvas(tw, th)
+        ctx = canvas.getContext('2d')
+      } else {
+        ctx.clearRect(0, 0, tw, th)
+      }
       ctx.drawImage(bitmap, x, y, w, h, 0, 0, tw, th)
 
       const barcodes = await detector.detect(canvas)
