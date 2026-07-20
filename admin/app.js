@@ -24,7 +24,57 @@ let ordersPage = 1
 let ordersTotal = 0
 const ORDERS_PER_PAGE = 50
 
+function handleAuthError(message) {
+    localStorage.removeItem('admin-token')
+    showAuthPage()
+    const errorEl = document.getElementById('loginError')
+    if (errorEl) {
+        errorEl.textContent = message || 'Сессия истекла. Войдите снова.'
+        errorEl.classList.remove('hidden')
+    }
+}
+
+function translateError(message) {
+    if (!message) return 'Неизвестная ошибка'
+    const lower = message.toLowerCase()
+    if (lower.includes('unauthorized') || lower.includes('jwt expired') || lower.includes('token has expired')) return 'Сессия истекла. Войдите снова.'
+    if (lower.includes('forbidden')) return 'Доступ запрещён'
+    if (lower.includes('duplicate key') || lower.includes('unique constraint')) return 'Такой товар уже существует'
+    if (lower.includes('foreign key')) return 'Ошибка связи с другими данными'
+    if (lower.includes('invalid input syntax')) return 'Некорректный формат данных'
+    if (lower.includes('null value') || lower.includes('not null constraint')) return 'Обязательное поле не заполнено'
+    if (lower.includes('row-level security') || lower.includes('rls')) return 'Нет прав на эту операцию'
+    if (lower.includes('invalid login credentials') || lower.includes('invalid_login_credentials') || lower.includes('invalid signin credentials')) return 'Неверный email или пароль'
+    if (lower.includes('email not confirmed') || lower.includes('email_not_confirmed')) return 'Email не подтверждён'
+    if (lower.includes('too many requests')) return 'Слишком много запросов. Подождите немного.'
+    if (lower.includes('network') || lower.includes('fetch')) return 'Ошибка сети. Проверьте подключение к интернету.'
+    if (lower.includes('user not found') || lower.includes('user_not_found')) return 'Пользователь не найден'
+    if (lower.includes('password too short') || lower.includes('password_too_short')) return 'Пароль слишком короткий'
+    if (lower.includes('same password')) return 'Новый пароль должен отличаться от старого'
+    return message
+}
+
 function init() {
+    const hash = window.location.hash
+    if (hash.includes('access_token=')) {
+        const params = new URLSearchParams(hash.substring(1))
+        const accessToken = params.get('access_token')
+        const refreshToken = params.get('refresh_token')
+        if (accessToken) {
+            localStorage.setItem('admin-token', accessToken)
+            if (refreshToken) {
+                localStorage.setItem('admin-refresh-token', refreshToken)
+            }
+            const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            if (isLocalhost) {
+                const productionUrl = 'https://jabraiil.github.io/JOCK-NUTRITION/admin/'
+                window.location.href = productionUrl + hash
+                return
+            }
+            window.location.hash = ''
+        }
+    }
+
     const token = localStorage.getItem('admin-token')
     
     applyTheme()
@@ -166,10 +216,11 @@ async function handleLogin(e) {
             showAdminPage()
             loadPageData('products')
         } else {
-            throw new Error(data.msg || 'Неверный email или пароль')
+            const errorMessage = data.msg || data.error || data.error_description || 'Неверный email или пароль'
+            throw new Error(translateError(errorMessage))
         }
     } catch (error) {
-        errorEl.textContent = error.message
+        errorEl.textContent = translateError(error.message)
         errorEl.classList.remove('hidden')
     }
 }
@@ -185,16 +236,17 @@ async function handleForgotPassword() {
                 'apikey': CONFIG.supabaseAnonKey,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ email })
+            body: JSON.stringify({ email, redirect_to: 'https://jabraiil.github.io/JOCK-NUTRITION/admin/' })
         })
         
         if (response.ok) {
             alert('Письмо для сброса пароля отправлено на почту')
         } else {
-            alert('Ошибка отправки письма')
+            const result = await response.json().catch(() => ({}))
+            alert(translateError(result.msg || result.error || result.error_description || 'Ошибка отправки письма'))
         }
     } catch (error) {
-        alert('Ошибка: ' + error.message)
+        alert('Ошибка: ' + translateError(error.message))
     }
 }
 
@@ -264,7 +316,7 @@ async function loadProducts() {
     
     if (!response.ok) {
         const result = await response.json().catch(() => ({}))
-        alert(result.error || 'Ошибка загрузки товаров')
+        alert(translateError(result.error) || 'Ошибка загрузки товаров')
         return
     }
     
@@ -396,7 +448,7 @@ async function loadFormOptions() {
     
     if (!categoriesRes.ok || !brandsRes.ok) {
         const result = await categoriesRes.json().catch(() => ({}))
-        alert(result.error || 'Ошибка загрузки справочников')
+        alert(translateError(result.error) || 'Ошибка загрузки справочников')
         return
     }
     
@@ -418,7 +470,7 @@ async function loadFormOptions() {
     
     if (!allRes.ok) {
         const result = await allRes.json().catch(() => ({}))
-        alert(result.error || 'Ошибка загрузки товаров')
+        alert(translateError(result.error) || 'Ошибка загрузки товаров')
         return
     }
     
@@ -434,7 +486,8 @@ async function handleProductSubmit(e) {
     const errorEl = document.getElementById('productError')
     errorEl.classList.add('hidden')
 
-    const productData = {
+    try {
+        const productData = {
         name: document.getElementById('prodName').value.trim(),
         description: document.getElementById('prodDescription').value.trim(),
         full_description: document.getElementById('prodFullDescription').value.trim(),
@@ -515,6 +568,9 @@ async function handleProductSubmit(e) {
                 productImages.push({ url: imageUrl, is_main: productImages.length === 0 })
             } else {
                 const text = await uploadRes.text()
+                if (uploadRes.status === 401) {
+                    throw new Error('Unauthorized')
+                }
                 throw new Error(`Ошибка загрузки изображения: ${uploadRes.status} ${text}`)
             }
         }
@@ -550,8 +606,20 @@ async function handleProductSubmit(e) {
         closeProductModal()
         loadProducts()
     } else {
-        errorEl.textContent = result.error || 'Ошибка сохранения товара'
-        errorEl.classList.remove('hidden')
+        if (result.error === 'Unauthorized' || result.error === 'Сессия истекла. Войдите снова.') {
+            handleAuthError('Сессия истекла. Войдите снова.')
+        } else {
+            errorEl.textContent = translateError(result.error) || 'Ошибка сохранения товара'
+            errorEl.classList.remove('hidden')
+        }
+    }
+    } catch (err) {
+        if (err.message && (err.message.includes('Unauthorized') || err.message.includes('Сессия истекла'))) {
+            handleAuthError('Сессия истекла. Войдите снова.')
+        } else {
+            errorEl.textContent = translateError(err.message) || 'Неизвестная ошибка при сохранении'
+            errorEl.classList.remove('hidden')
+        }
     }
 }
 
@@ -649,7 +717,7 @@ async function loadCategories() {
     
     if (!response.ok) {
         const result = await response.json().catch(() => ({}))
-        alert(result.error || 'Ошибка загрузки категорий')
+        alert(translateError(result.error) || 'Ошибка загрузки категорий')
         return
     }
     
@@ -715,7 +783,7 @@ async function openCategoryModal(categoryId = null) {
         loadCategories()
     } else {
         const result = await response.json().catch(() => ({}))
-        alert(result.error || 'Ошибка сохранения категории')
+        alert(translateError(result.error) || 'Ошибка сохранения категории')
     }
 }
 
@@ -747,7 +815,7 @@ async function loadBrands() {
 
     if (!response.ok) {
         const result = await response.json().catch(() => ({}))
-        alert(result.error || 'Ошибка загрузки брендов')
+        alert(translateError(result.error) || 'Ошибка загрузки брендов')
         return
     }
 
@@ -790,7 +858,7 @@ async function openBrandModal(brandId = null) {
         loadBrands()
     } else {
         const result = await response.json().catch(() => ({}))
-        alert(result.error || 'Ошибка сохранения бренда')
+        alert(translateError(result.error) || 'Ошибка сохранения бренда')
     }
 }
 
@@ -824,7 +892,7 @@ async function loadAnalytics() {
     
     if (!response.ok) {
         const result = await response.json().catch(() => ({}))
-        alert(result.error || 'Ошибка загрузки статистики')
+        alert(translateError(result.error) || 'Ошибка загрузки статистики')
         return
     }
     
@@ -852,7 +920,7 @@ async function loadAnalytics() {
     
     if (!ordersRes.ok) {
         const result = await ordersRes.json().catch(() => ({}))
-        alert(result.error || 'Ошибка загрузки заказов')
+        alert(translateError(result.error) || 'Ошибка загрузки заказов')
         return
     }
     
@@ -943,7 +1011,7 @@ async function loadSettings() {
     
     if (!response.ok) {
         const result = await response.json().catch(() => ({}))
-        alert(result.error || 'Ошибка загрузки настроек')
+        alert(translateError(result.error) || 'Ошибка загрузки настроек')
         return
     }
     
@@ -990,7 +1058,7 @@ async function handleSettingsSave(e) {
         alert('Настройки сохранены')
     } else {
         const result = await response.json().catch(() => ({}))
-        alert(result.error || 'Ошибка сохранения настроек')
+        alert(translateError(result.error) || 'Ошибка сохранения настроек')
     }
 }
 
@@ -1025,10 +1093,10 @@ async function handleChangePassword(e) {
             document.getElementById('changePasswordForm').reset()
         } else {
             const data = await response.json()
-            alert(data.msg || 'Ошибка изменения пароля')
+            alert(translateError(data.msg || data.error || data.error_description) || 'Ошибка изменения пароля')
         }
     } catch (error) {
-        alert('Ошибка: ' + error.message)
+        alert('Ошибка: ' + translateError(error.message))
     }
 }
 
@@ -1090,7 +1158,7 @@ async function handleExport() {
     
     if (!response.ok) {
         const result = await response.json().catch(() => ({}))
-        alert(result.error || 'Ошибка экспорта')
+        alert(translateError(result.error) || 'Ошибка экспорта')
         return
     }
     
@@ -1109,7 +1177,7 @@ async function handleBackup() {
     
     if (!response.ok) {
         const result = await response.json().catch(() => ({}))
-        alert(result.error || 'Ошибка резервного копирования')
+        alert(translateError(result.error) || 'Ошибка резервного копирования')
         return
     }
     
@@ -1128,7 +1196,7 @@ async function handleBackupSql() {
 
     if (!response.ok) {
         const result = await response.json().catch(() => ({}))
-        alert(result.error || 'Ошибка SQL-дампа')
+        alert(translateError(result.error) || 'Ошибка SQL-дампа')
         return
     }
 

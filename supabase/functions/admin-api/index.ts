@@ -23,7 +23,7 @@ serve(async (req) => {
     const authHeader = req.headers.get("Authorization")
     if (!authHeader) {
       return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
+        JSON.stringify({ error: "Не авторизован" }),
         { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
       )
     }
@@ -33,7 +33,7 @@ serve(async (req) => {
 
     if (authError || !user) {
       return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
+        JSON.stringify({ error: "Сессия истекла. Войдите снова." }),
         { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
       )
     }
@@ -47,7 +47,7 @@ serve(async (req) => {
 
     if (adminError || !adminUser) {
       return new Response(
-        JSON.stringify({ error: "Forbidden" }),
+        JSON.stringify({ error: "Доступ запрещён" }),
         { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
       )
     }
@@ -738,14 +738,14 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ error: "Not found" }),
+      JSON.stringify({ error: "Не найдено" }),
       { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } }
     )
 
   } catch (error) {
     console.error("Admin API error:", error)
     return new Response(
-      JSON.stringify({ error: "Internal server error" }),
+      JSON.stringify({ error: "Внутренняя ошибка сервера" }),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     )
   }
