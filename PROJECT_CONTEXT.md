@@ -704,28 +704,28 @@ CSS-переменные для цветов и шрифтов.
 - [x] Перевод всех ошибок на русский язык (`translateError()` в фронтенде, русские строки в бэкенде).
 - [x] Автоперенаправление токена сброса пароля с `localhost` или корня домена на `/admin/`.
 - [x] Файл `.nojekyll` в корне репозитория для отключения Jekyll на GitHub Pages.
+- [x] XSS-защита: функция `escapeHtml()` во фронтенде и админке для всех полей из БД.
+- [x] Попап-защита для WhatsApp: открытие через программный клик по `<a>`, а не `window.open()`.
+- [x] Null-safe обработка `order.items` и `order.created_at` в аналитике бэкенда.
+- [x] Экранирование поискового запроса в PostgREST `.or()` фильтре (защита от инъекций).
+- [x] Полная замена images/links при PUT /products/:id, включая очистку при `null`/`[]`.
+- [x] Убран мёртвый код: `allProductsList`, `CONFIG.whatsappNumber`, `CONFIG.storeName`, `CONFIG.currency`.
+- [x] Кеширование настроек: `loadSettings()` сохраняет в `window.__storeSettings`, `checkOrderTime()` не дублирует запрос.
+- [x] `parseInt` с radix `10` во всех местах.
+- [x] `visibilitychange` listener для остановки RAF-цикла сканера при сворачивании вкладки.
+- [x] Редактирование категорий/брендов: модалка предзаполняется текущим именем из API.
+- [x] Бэкап: JSON-дамп и SQL-дамп через `generate_sql_dump()`.
+- [x] Мониторинг Edge Function: polling `/health` каждые 30 сек, индикатор, WhatsApp-алерт.
 
 ### Что НЕ работает / требует доработки
 | Проблема | Статус |
 |----------|--------|
-| Создание/редактирование товара в админке может падать из-за отправки пустых массивов images/links | **Исправлено**: теперь отправляются только при наличии |
-| Ошибки настроек/товаров не показываются пользователю | **Исправлено**: возвращается `{ error }` и показывается в UI |
-| Редактирование товара не загружало данные в форму | **Исправлено**: `openProductModal` теперь `async` и загружает товар |
-| Категории/бренды редактировались через `prompt()` | **Исправлено**: кастомная модалка `#nameModal` |
-| `openProductModal` вызывался как sync из async контекста | **Исправлено**: вызовы через `onclick`/`addEventListener` корректны (Promise игнорируется), функция `async` |
-| Ссылки на товары в админке не отображались на фронтенде | **Реализовано**: секция «Ссылки» в модалке витрины |
-| Связанные товары (`is_related_enabled`) | **Реализовано**: явная таблица `product_related`, мульти-селект в админке, секция в витрине с фолбэком по категории/бренду |
-| Пагинация в админке | **Реализовано** |
-| Мобильное меню админки | **Реализовано** |
-| Сканер штрих-кодов — лаги/мороз камеры | **Исправлено**: Web Worker через `OffscreenCanvas`, дедупликация кадров, throttle 400мс. **Ограничение**: работает только в Chrome/Edge |
-| Валидация форм | **Улучшена**: проверка цены/остатка ≥ 0, валидность URL ссылок, лимит ссылок 4 |
-| «Дублировать товар» | **Реализовано** |
-| Стили (iOS-стиль) | **Переписаны** под единый дизайн |
-| Кеш браузера на GitHub Pages | **Исправлено**: `sw.js` с версионированным кешем + `.nojekyll` |
-| Резервное копирование | **Исправлено**: JSON + SQL дамп |
-| Сброс пароля ведёт на `localhost:3000` | **Исправлено в коде**: автоперенаправление на прод. **Требуется настройка в Supabase Dashboard**: Site URL = `https://jabraiil.github.io/JOCK-NUTRITION/admin/` |
-| Ошибки на английском языке | **Исправлено**: все ошибки переведены на русский через `translateError()` и в бэкенде |
-| 401 Unauthorized при добавлении товара | **Исправлено**: `try-catch` в `handleProductSubmit`, обработка 401 с разлогином |
+| Публикация на GitHub Pages | **Требуется настройка**: Settings → Pages → Source = Deploy from a branch → main → `/ (root)` |
+| Supabase Auth сброс пароля | **Требуется настройка**: Dashboard → Authentication → URL Configuration → Site URL = `https://jabraiil.github.io/JOCK-NUTRITION/admin/` |
+| PWA-установка | **Не реализовано**: нет `manifest.json` и иконок |
+| Сканер штрих-кодов | **Ограничение**: работает только в Chrome/Edge (есть ручной ввод) |
+| Офлайн-режим | **Не реализовано**: `sw.js` кеширует только статику |
+| Real-time обновление корзины/заказов | **Не реализовано**: используется polling |
 
 ---
 
@@ -766,22 +766,22 @@ PWA-установка на главный экран **не работает**.
 ## 9. Что нужно доработать
 
 ### Критично
-1. **GitHub Pages deployment** — настроить в репозитории Settings → Pages: Source = Deploy from a branch → main → / (root). Добавлен `.nojekyll` для отключения Jekyll.
-2. **PWA: добавить иконки и манифест** — `manifest.json`, `icons/icon-192.png`, `icons/icon-512.png`, `icons/apple-touch-icon.png` (сейчас только документация, файлов нет).
-3. **Supabase Auth URL Configuration** — в Dashboard → Authentication → URL Configuration установить Site URL = `https://jabraiil.github.io/JOCK-NUTRITION/admin/` и добавить этот URL в Redirect URLs. Без этого сброс пароля ведёт на `localhost:3000`.
+1. **GitHub Pages deployment** — настроить в репозитории Settings → Pages: Source = Deploy from a branch → main → `/ (root)`. Добавлен `.nojekyll` для отключения Jekyll.
+2. **Supabase Auth URL Configuration** — в Dashboard → Authentication → URL Configuration установить Site URL = `https://jabraiil.github.io/JOCK-NUTRITION/admin/` и добавить этот URL в Redirect URLs. Без этого сброс пароля ведёт на `localhost:3000`.
+3. **PWA: добавить иконки и манифест** — `manifest.json`, `icons/icon-192.png`, `icons/icon-512.png`, `icons/apple-touch-icon.png` (сейчас только документация, файлов нет).
 
 ### Желательно
 4. **Офлайн-режим** — расширить `sw.js` для полноценной офлайн-работы (кеширование основных страниц).
 5. **Push-уведомления** — добавить позже, если потребуется.
-6. **Сплеш-скрин для iOS** — настроить через мета-теги и манифест (после добавления манифеста).
-7. **Добавить retry-логику** для сетевых запросов.
-8. **Добавить логирование ошибок** в админку (вместо `console.error`).
-9. **Реальные иконки** — заменить placeholder-иконки в манифесте на настоящие PNG.
+6. **Добавить retry-логику** для сетевых запросов.
+7. **Добавить логирование ошибок** в админку (вместо `console.error`).
+8. **Real-time обновление** — подписка на изменения товаров/заказов в реальном времени.
+9. **SEO** — meta-теги, Open Graph, Schema.org.
 
 ### Опционально
-9. **Отзывы** — по промту не реализовывать, но можно добавить позже.
-10. **Мультиязычность** — если потребуется.
-11. **SEO** — meta-теги, Open Graph, Schema.org.
+10. **Отзывы** — по промту не реализовывать, но можно добавить позже.
+11. **Мультиязычность** — если потребуется.
+12. **Аналитика посещений** — если потребуется, но с соблюдением анонимности.
 
 ---
 
@@ -803,37 +803,34 @@ cd JOCK-NUTRITION
 1. Зайдите на [supabase.com](https://supabase.com), создайте проект.
 2. В **SQL Editor** выполните содержимое файла `supabase/migrations/001_initial_schema.sql`.
 3. При необходимости связанных товаров и SQL-дампа выполните `supabase/migrations/002_related_products_and_sql_backup.sql` (создаёт таблицу `product_related`, RLS и функцию `generate_sql_dump()`).
-3. В **Storage** создайте bucket `product-images` (public, до 5MB, image/*).
-4. В **Table Editor → admin_users** добавьте свой email.
+4. В **Storage** создайте bucket `product-images` (public, до 5MB, image/*).
+5. В **Table Editor → admin_users** добавьте свой email.
 
 ### Шаг 3: Развернуть Edge Functions
 ```bash
 npm install -g supabase
 supabase login
 supabase init
-supabase link --project-ref <ваш-project-id>
+supabase link --project-ref hpphfeojjejculvdundj
 supabase functions deploy create-order --no-verify-jwt
 supabase functions deploy admin-api --no-verify-jwt
 ```
 Скопируйте URL функций:
-- `https://<project-id>.supabase.co/functions/v1/create-order`
-- `https://<project-id>.supabase.co/functions/v1/admin-api`
+- `https://hpphfeojjejculvdundj.supabase.co/functions/v1/create-order`
+- `https://hpphfeojjejculvdundj.supabase.co/functions/v1/admin-api`
 
 ### Шаг 4: Настроить фронтенд
-Откройте `app.js`, найдите `CONFIG` и проверьте, что там стоят реальные значения вашего проекта:
+В `app.js` и `admin/app.js` проверьте `CONFIG`:
 ```javascript
 const CONFIG = {
     supabaseUrl: 'https://hpphfeojjejculvdundj.supabase.co',
-    supabaseAnonKey: '...',
+    supabaseAnonKey: 'sb_publishable_1EGpjPEw9gU2W5OKL-gFIQ_x4Gvger1',
     orderFunctionUrl: 'https://hpphfeojjejculvdundj.supabase.co/functions/v1/create-order',
     adminApiUrl: 'https://hpphfeojjejculvdundj.supabase.co/functions/v1/admin-api'
 }
 ```
 
-### Шаг 5: Настроить админку
-В `admin/app.js` аналогично проверьте `CONFIG`.
-
-### Шаг 6: Включить GitHub Pages
+### Шаг 5: Включить GitHub Pages
 1. Settings → Pages в репозитории.
 2. Source: Deploy from a branch → Branch: `main` → `/ (root)`.
 3. Сохранить.
@@ -841,6 +838,11 @@ const CONFIG = {
 Сайт будет доступен по адресу: `https://jabraiil.github.io/JOCK-NUTRITION/`.
 
 Админка: `https://jabraiil.github.io/JOCK-NUTRITION/admin/`.
+
+### Шаг 6: Настроить Supabase Auth
+1. Dashboard → Authentication → URL Configuration.
+2. Site URL: `https://jabraiil.github.io/JOCK-NUTRITION/admin/`
+3. Redirect URLs: добавьте `https://jabraiil.github.io/JOCK-NUTRITION/admin/`
 
 ### Шаг 7: Первый вход в админку
 1. Зарегистрируйтесь через форму входа (Supabase Auth).
@@ -863,25 +865,42 @@ const CONFIG = {
 - **Excel-библиотека** (`xlsx`) подключается через CDN (`https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js`), не вшита в код.
 - **Все ошибки в админке переводятся на русский** через функцию `translateError()` на фронтенде и через русские строки в бэкенде.
 - **Автоперенаправление после сброса пароля**: если токен приходит на `localhost` или корень домена без `/admin/`, фронтенд сам перебрасывает на правильный URL админки.
+- **XSS-защита**: все данные из БД экранируются через `escapeHtml()` перед вставкой в HTML.
+- **WhatsApp ссылка** открывается через программный клик по `<a>`, защита от popup-blocker.
+- **Кеш GitHub Pages**: после обновления статики делать хард-релоад (Cmd/Ctrl+Shift+R); `sw.js` с версионированным кешем активен.
 
 ---
 
 ## 12. Текущие задачи / следующее
 
-> **СЕССИЯ 2026-07-20 — ИСПРАВЛЕНИЕ АВТОРИЗАЦИИ И ДЕПЛОЯ.**
-> Проблема: сброс пароля через Supabase Auth ведёт на `localhost:3000` или на корень `jabraiil.github.io` без пути к админке. GitHub Pages возвращает 404 из-за неправильной конфигурации или сборки Jekyll.
+> **СЕССИЯ 2026-07-20 — АУДИТ, ИСПРАВЛЕНИЕ БАГОВ, ОЧИСТКА КОДА.**
+> Выполнен полный аудит кодовой базы, исправлены критические баги, удалён мёртвый код, добавлена безопасность.
 
 ### ВЫПОЛНЕНО (запущено в main)
-1. **Добавлен `.nojekyll`** — отключает Jekyll на GitHub Pages, предотвращает ошибку сборки `assets/css/style.scss` из папки `docs/`.
-2. **Обновлён `sw.js` до v13** — версионированный кеш, чтобы браузер загрузил новый код после фиксов.
-3. **Автоперенаправление токена сброса пароля** — в `admin/app.js` добавлена обработка `#access_token=` в URL: если токен приходит на `localhost` или на корень домена без `/admin/`, страница сама перебрасывает на `https://jabraiil.github.io/JOCK-NUTRITION/admin/`.
-4. **Обработка 401 в админке** — при истечении сессии фронтенд автоматически разлогинивает и возвращает на экран входа с русским сообщением.
-5. **Перевод всех ошибок на русский** — добавлена функция `translateError()` в `admin/app.js`, которая переводит распространённые ошибки Supabase/PostgreSQL (Unauthorized, Forbidden, duplicate key, invalid login credentials и т.д.). На бэкенде (`admin-api/index.ts`) ошибки тоже возвращаются на русском.
-6. **Обработка `error_description`** — при логине и сбросе пароля проверяются все поля ответа Supabase: `data.msg || data.error || data.error_description`.
+1. **Исправлен scope error `saveRelated`** — функция перемещена внутрь `serve()` в `admin-api/index.ts`.
+2. **Исправлена гонка счётчика заказов** — ошибка обновления `order_counter` возвращает 500, а не молча игнорируется.
+3. **Добавлен `escapeHtml()`** — XSS-защита во фронтенде и админке для всех полей из БД.
+4. **Исправлен popup-blocker для WhatsApp** — открытие через программный клик по `<a>`.
+5. **Добавлен radix `10`** для всех `parseInt`.
+6. **Добавлен `visibilitychange` listener** — RAF-цикл сканера останавливается при сворачивании вкладки.
+7. **Исправлено редактирование категорий/брендов** — модалка предзаполняется текущим именем.
+8. **Исправлен флаг `is_main`** — теперь уважается клиентское значение, если оно передано.
+9. **Исправлена очистка images/links** при PUT `/products/:id` — теперь очищает даже при `null`/`[]`.
+10. **Экранирован поисковый запрос** в PostgREST `.or()` фильтре (защита от инъекций).
+11. **Добавлены null checks** для `order.items` и `order.created_at` в аналитике.
+12. **Удалён мёртвый код**: `allProductsList`, `CONFIG.whatsappNumber`, `CONFIG.storeName`, `CONFIG.currency`.
+13. **Убран дублирующий запрос настроек** в `checkOrderTime()` — использует кеш `window.__storeSettings`.
+14. **Динамическое сообщение о времени заказов** — текст формируется из настроек, а не хардкодом.
+15. **Добавлен `.nojekyll`** — отключает Jekyll на GitHub Pages.
+16. **Обновлён `sw.js` до v13** — версионированный кеш.
+17. **Автоперенаправление токена сброса пароля** — с `localhost`/корня домена на `/admin/`.
+18. **Обработка `401` в админке** — автоматический разлогин с русским сообщением.
+19. **Перевод всех ошибок на русский** — `translateError()` на фронтенде, русские строки в бэкенде.
+20. **Обработка `error_description`** при логине и сбросе пароля.
 
 ### ГОТОВО К ДЕЙСТВИЮ
 - **В репозитории:** все исправления запушены в ветку `main`.
-- **GitHub Pages:** нужно вручную проверить Settings → Pages → Source = Deploy from a branch → main → / (root).
+- **GitHub Pages:** нужно вручную проверить Settings → Pages → Source = Deploy from a branch → main → `/ (root)`.
 - **Supabase Dashboard:** нужно вручную проверить Authentication → URL Configuration → Site URL = `https://jabraiil.github.io/JOCK-NUTRITION/admin/`.
 
 ### ИЗВЕСТНЫЕ ОГРАНИЧЕНИЯ
@@ -890,6 +909,8 @@ const CONFIG = {
 - Сканер штрих-кодов через камеру работает только в Chrome/Edge (есть ручной ввод).
 - PWA: иконки и манифест отсутствуют, установка на главный экран не работает.
 - Кеш GitHub Pages: после обновления статики делать хард-релоад (Cmd/Ctrl+Shift+R); `sw.js` с версионированным кешем активен.
+- Counter race condition: при очень высоком параллельном потоке заказов теоретически возможны дубликаты номеров. Для защиты нужен атомарный UPDATE ... RETURNING в БД.
+- WhatsApp открывается в новой вкладке; если браузер блокирует popups — пользователь должен разрешить их для сайта.
 
 ### Команды
 - `/new session` — в конце сессии перезаписать пункт 12 настоящего документа: зафиксировать выполненное, задеплоенное, заблокированное, обновить ограничения.
