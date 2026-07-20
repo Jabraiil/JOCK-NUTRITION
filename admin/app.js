@@ -65,13 +65,16 @@ function init() {
             if (refreshToken) {
                 localStorage.setItem('admin-refresh-token', refreshToken)
             }
+            window.location.hash = ''
             const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
             if (isLocalhost) {
-                const productionUrl = 'https://jabraiil.github.io/JOCK-NUTRITION/admin/'
-                window.location.href = productionUrl + hash
+                window.location.href = 'https://jabraiil.github.io/JOCK-NUTRITION/admin/'
                 return
             }
-            window.location.hash = ''
+            if (!window.location.pathname.includes('/admin/')) {
+                window.location.href = 'https://jabraiil.github.io/JOCK-NUTRITION/admin/'
+                return
+            }
         }
     }
 
