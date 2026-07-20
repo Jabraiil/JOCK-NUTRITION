@@ -16,7 +16,10 @@ let scannerMode = 'camera'
 let lastVideoTime = -1
 let scannerWorker = null
 let workerBusy = false
-const SCAN_THROTTLE = 400
+let scanCropCache = null
+let scanCropVideoW = 0
+let scanCropVideoH = 0
+const SCAN_THROTTLE = 500
 
 function init() {
     applyTheme()
@@ -26,6 +29,7 @@ function init() {
     setupEventListeners()
     checkOrderTime()
     setInterval(checkOrderTime, 60000)
+    window.addEventListener('resize', invalidateScanCropCache)
 }
 
 function applyTheme() {
@@ -678,6 +682,7 @@ async function toggleBarcodeScanner() {
         
         try {
             if (!('BarcodeDetector' in window)) {
+                console.warn('BarcodeDetector не поддерживается этим браузером')
                 scannerMode = 'manual'
                 document.getElementById('scannerManual').classList.remove('hidden')
                 document.getElementById('scannerModeToggle').textContent = '📷'
@@ -687,7 +692,7 @@ async function toggleBarcodeScanner() {
             }
 
             const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'environment', torch: false }
+                video: { facingMode: 'environment', torch: false, width: { ideal: 640 }, height: { ideal: 480 } }
             })
             video.srcObject = stream
             barcodeStream = stream
@@ -698,7 +703,7 @@ async function toggleBarcodeScanner() {
                 setTimeout(resolve, 1500)
             })
 
-            try { await video.play() } catch (e) {}
+            try { await video.play() } catch (e) { console.error('video.play error:', e) }
 
             await new Promise((resolve) => {
                 if (video.videoWidth > 0) return resolve()
@@ -712,29 +717,19 @@ async function toggleBarcodeScanner() {
             const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'qr_code'] })
             barcodeDetector = detector
 
-            try {
-                const track = stream.getVideoTracks()[0]
-                if (track) {
-                    scannerZoom = 2
-                    await track.applyConstraints({ zoom: 2 })
-                    document.getElementById('zoomToggle').textContent = '2×'
-                }
-            } catch (error) {
-                scannerZoom = 1
-                document.getElementById('zoomToggle').textContent = '1×'
-            }
-
             scannerWorker = new Worker('/scanner-worker.js')
             scannerWorker.onmessage = onWorkerMessage
-            scannerWorker.onerror = () => {}
+            scannerWorker.onerror = (err) => console.error('Scanner worker error:', err)
 
+            invalidateScanCropCache()
             const crop = getScanCrop()
             if (crop) {
-                scannerWorker.postMessage({ type: 'init', crop: crop, tw: 480 })
+                scannerWorker.postMessage({ type: 'init', crop: crop, tw: 320 })
             }
 
             scanLoop()
         } catch (error) {
+            console.error('Camera unavailable:', error)
             scannerMode = 'manual'
             document.getElementById('scannerManual').classList.remove('hidden')
             document.getElementById('scannerModeToggle').textContent = '📷'
@@ -744,6 +739,24 @@ async function toggleBarcodeScanner() {
     } else {
         closeBarcodeScanner()
     }
+}
+
+function invalidateScanCropCache() {
+    scanCropCache = null
+    scanCropVideoW = 0
+    scanCropVideoH = 0
+}
+
+function getCachedScanCrop() {
+    const video = document.getElementById('scannerVideo')
+    if (!video || !video.videoWidth || !video.videoHeight) return null
+    if (scanCropCache && scanCropVideoW === video.videoWidth && scanCropVideoH === video.videoHeight) {
+        return scanCropCache
+    }
+    scanCropCache = getScanCrop()
+    scanCropVideoW = video.videoWidth
+    scanCropVideoH = video.videoHeight
+    return scanCropCache
 }
 
 function getScanCrop() {
@@ -786,19 +799,20 @@ async function scanLoop() {
             lastVideoTime = video.currentTime
             workerBusy = true
             try {
-                const crop = getScanCrop()
+                const crop = getCachedScanCrop()
                 if (crop && crop.w > 0 && crop.h > 0) {
                     const bitmap = await createImageBitmap(video)
                     scannerWorker.postMessage({
                         type: 'scan',
                         bitmap: bitmap,
                         crop: crop,
-                        tw: 480
+                        tw: 320
                     }, [bitmap])
                 } else {
                     workerBusy = false
                 }
             } catch (error) {
+                console.error('Scan error:', error)
                 workerBusy = false
             }
         }
@@ -823,6 +837,7 @@ function onWorkerMessage(e) {
             }
         })
     } else if (type === 'error') {
+        console.error('Scanner worker error:', error)
     }
 }
 
@@ -880,6 +895,8 @@ async function toggleFlash() {
         await track.applyConstraints({ torch: scannerFlashOn })
         document.getElementById('flashToggle').classList.toggle('active', scannerFlashOn)
     } catch (error) {
+        console.error('Torch not supported:', error)
+        scannerFlashOn = false
         document.getElementById('flashToggle').classList.remove('active')
     }
 }
@@ -895,6 +912,8 @@ async function toggleZoom() {
         await track.applyConstraints({ zoom: scannerZoom })
         document.getElementById('zoomToggle').textContent = scannerZoom + '×'
     } catch (error) {
+        console.error('Zoom not supported:', error)
+        scannerZoom = 1
         document.getElementById('zoomToggle').textContent = '1×'
     }
 }
@@ -905,6 +924,7 @@ function closeBarcodeScanner() {
         scannerWorker = null
     }
     workerBusy = false
+    invalidateScanCropCache()
     if (barcodeStream) {
         barcodeStream.getTracks().forEach(track => track.stop())
         barcodeStream = null
@@ -938,6 +958,7 @@ async function searchByBarcode(barcode) {
         }
         return false
     } catch (error) {
+        console.error('Ошибка поиска по штрих-коду:', error)
         return false
     }
 }
