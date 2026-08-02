@@ -4,13 +4,17 @@
 // обновляет статику при изменении CACHE_VERSION.
 // ============================================
 
-const CACHE_VERSION = 'jack-nutrition-v13-2026-07-20'
+const CACHE_VERSION = 'jack-nutrition-v14-2026-08-02'
 const ASSETS = [
     '/',
     '/index.html',
     '/styles.css',
     '/app.js',
     '/scanner-worker.js',
+    '/manifest.json',
+    '/icons/icon-192.svg',
+    '/icons/icon-512.svg',
+    '/icons/apple-touch-icon.svg',
     '/admin/',
     '/admin/index.html',
     '/admin/styles.css',
