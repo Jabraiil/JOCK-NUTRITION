@@ -821,10 +821,6 @@ body {
 }
 
 /* ---------- Cart ---------- */
-.cart-items {
-    margin: 12px 0;
-}
-
 .cart-item {
     display: flex;
     gap: 12px;

@@ -19,7 +19,6 @@ function escapeHtml(str) {
         .replace(/'/g, '&#039;')
 }
 
-let supabase = null
 let currentPage = 'products'
 let editingProductId = null
 let productImages = []

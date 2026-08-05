@@ -30,3 +30,6 @@ build/
 # Temporary files
 *.tmp
 *.temp
+
+# Kilo config (local only, not for git)
+.kilo/
