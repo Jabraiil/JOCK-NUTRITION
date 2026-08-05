@@ -19,6 +19,23 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
+    async function saveRelated(productId: string, related: any) {
+      if (!Array.isArray(related)) return
+
+      await supabase.from("product_related").delete().eq("product_id", productId)
+
+      const unique = [...new Set(related.filter(Boolean))]
+      if (unique.length === 0) return
+
+      const rows = unique.map((relatedId: string, idx: number) => ({
+        product_id: productId,
+        related_id: relatedId,
+        sort_order: idx
+      }))
+
+      await supabase.from("product_related").insert(rows)
+    }
+
     // Verify JWT token
     const authHeader = req.headers.get("Authorization")
     if (!authHeader) {
@@ -433,12 +450,13 @@ serve(async (req) => {
     if (req.method === "GET" && path === "/analytics") {
       const period = url.searchParams.get("period") || "month"
 
-      let dateFilter = "now()"
-      if (period === "day") dateFilter = "now() - interval '1 day'"
-      else if (period === "week") dateFilter = "now() - interval '7 days'"
-      else if (period === "month") dateFilter = "now() - interval '1 month'"
-      else if (period === "quarter") dateFilter = "now() - interval '3 months'"
-      else if (period === "year") dateFilter = "now() - interval '1 year'"
+      const now = new Date()
+      let dateFilter = now.toISOString()
+      if (period === "day") dateFilter = new Date(now.getTime() - 86400000).toISOString()
+      else if (period === "week") dateFilter = new Date(now.getTime() - 7 * 86400000).toISOString()
+      else if (period === "month") dateFilter = new Date(now.getTime() - 30 * 86400000).toISOString()
+      else if (period === "quarter") dateFilter = new Date(now.getTime() - 90 * 86400000).toISOString()
+      else if (period === "year") dateFilter = new Date(now.getTime() - 365 * 86400000).toISOString()
 
       // Total stats
       const { data: totalStats, error: totalError } = await supabase
@@ -512,12 +530,13 @@ serve(async (req) => {
       const limit = parseInt(url.searchParams.get("limit") || "20")
       const offset = (page - 1) * limit
 
-      let dateFilter = "now()"
-      if (period === "day") dateFilter = "now() - interval '1 day'"
-      else if (period === "week") dateFilter = "now() - interval '7 days'"
-      else if (period === "month") dateFilter = "now() - interval '1 month'"
-      else if (period === "quarter") dateFilter = "now() - interval '3 months'"
-      else if (period === "year") dateFilter = "now() - interval '1 year'"
+      const now = new Date()
+      let dateFilter = now.toISOString()
+      if (period === "day") dateFilter = new Date(now.getTime() - 86400000).toISOString()
+      else if (period === "week") dateFilter = new Date(now.getTime() - 7 * 86400000).toISOString()
+      else if (period === "month") dateFilter = new Date(now.getTime() - 30 * 86400000).toISOString()
+      else if (period === "quarter") dateFilter = new Date(now.getTime() - 90 * 86400000).toISOString()
+      else if (period === "year") dateFilter = new Date(now.getTime() - 365 * 86400000).toISOString()
 
       const { data, error, count } = await supabase
         .from("orders_analytics")
@@ -751,22 +770,5 @@ serve(async (req) => {
       JSON.stringify({ error: "Внутренняя ошибка сервера" }),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     )
-  }
-
-  async function saveRelated(productId: string, related: any) {
-    if (!Array.isArray(related)) return
-
-    await supabase.from("product_related").delete().eq("product_id", productId)
-
-    const unique = [...new Set(related.filter(Boolean))]
-    if (unique.length === 0) return
-
-    const rows = unique.map((relatedId: string, idx: number) => ({
-      product_id: productId,
-      related_id: relatedId,
-      sort_order: idx
-    }))
-
-    await supabase.from("product_related").insert(rows)
   }
 })
