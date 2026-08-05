@@ -108,6 +108,49 @@ serve(async (req) => {
       )
     }
 
+    // GET /products/:id
+    if (req.method === "GET" && path.match(/^\/products\/[^/]+$/)) {
+      const productId = path.split("/")[2]
+
+      const { data: product, error: productError } = await supabase
+        .from("products")
+        .select("*, categories(name), brands(name)")
+        .eq("id", productId)
+        .single()
+
+      if (productError) throw productError
+
+      const { data: images } = await supabase
+        .from("product_images")
+        .select("*")
+        .eq("product_id", productId)
+        .order("sort_order")
+
+      const { data: links } = await supabase
+        .from("product_links")
+        .select("*")
+        .eq("product_id", productId)
+        .order("sort_order")
+
+      const { data: related } = await supabase
+        .from("product_related")
+        .select("product_id, related_id")
+        .eq("product_id", productId)
+        .order("sort_order")
+
+      const result = {
+        ...product,
+        images: images || [],
+        links: links || [],
+        related: related?.map(rel => rel.related_id) || []
+      }
+
+      return new Response(
+        JSON.stringify(result),
+        { headers: { "Content-Type": "application/json", ...corsHeaders } }
+      )
+    }
+
     // GET /products
     if (req.method === "GET" && path.startsWith("/products")) {
       const search = url.searchParams.get("search") || ""
@@ -256,31 +299,31 @@ serve(async (req) => {
         )
       }
 
-      if (!Array.isArray(images) || images.length === 0) {
+      if (Array.isArray(images)) {
         await supabase.from("product_images").delete().eq("product_id", productId)
-      } else {
-        await supabase.from("product_images").delete().eq("product_id", productId)
-        const hasMain = images.some(img => img.is_main)
-        const imagesToInsert = images.map((img, idx) => ({
-          product_id: productId,
-          url: img.url,
-          is_main: hasMain ? Boolean(img.is_main) : idx === 0,
-          sort_order: idx
-        }))
-        await supabase.from("product_images").insert(imagesToInsert)
+        if (images.length > 0) {
+          const hasMain = images.some(img => img.is_main)
+          const imagesToInsert = images.map((img, idx) => ({
+            product_id: productId,
+            url: img.url,
+            is_main: hasMain ? Boolean(img.is_main) : idx === 0,
+            sort_order: idx
+          }))
+          await supabase.from("product_images").insert(imagesToInsert)
+        }
       }
 
-      if (!Array.isArray(links) || links.length === 0) {
+      if (Array.isArray(links)) {
         await supabase.from("product_links").delete().eq("product_id", productId)
-      } else {
-        await supabase.from("product_links").delete().eq("product_id", productId)
-        const linksToInsert = links.map((link, idx) => ({
-          product_id: productId,
-          url: link.url,
-          title: link.title || "",
-          sort_order: idx
-        }))
-        await supabase.from("product_links").insert(linksToInsert)
+        if (links.length > 0) {
+          const linksToInsert = links.map((link, idx) => ({
+            product_id: productId,
+            url: link.url,
+            title: link.title || "",
+            sort_order: idx
+          }))
+          await supabase.from("product_links").insert(linksToInsert)
+        }
       }
 
       await saveRelated(productId, related)
@@ -304,6 +347,24 @@ serve(async (req) => {
 
       return new Response(
         JSON.stringify({ success: true }),
+        { headers: { "Content-Type": "application/json", ...corsHeaders } }
+      )
+    }
+
+    // GET /categories/:id
+    if (req.method === "GET" && path.match(/^\/categories\/[^/]+$/)) {
+      const categoryId = path.split("/")[2]
+
+      const { data, error } = await supabase
+        .from("categories")
+        .select("*")
+        .eq("id", categoryId)
+        .single()
+
+      if (error) throw error
+
+      return new Response(
+        JSON.stringify(data),
         { headers: { "Content-Type": "application/json", ...corsHeaders } }
       )
     }
@@ -373,6 +434,24 @@ serve(async (req) => {
 
       return new Response(
         JSON.stringify({ success: true }),
+        { headers: { "Content-Type": "application/json", ...corsHeaders } }
+      )
+    }
+
+    // GET /brands/:id
+    if (req.method === "GET" && path.match(/^\/brands\/[^/]+$/)) {
+      const brandId = path.split("/")[2]
+
+      const { data, error } = await supabase
+        .from("brands")
+        .select("*")
+        .eq("id", brandId)
+        .single()
+
+      if (error) throw error
+
+      return new Response(
+        JSON.stringify(data),
         { headers: { "Content-Type": "application/json", ...corsHeaders } }
       )
     }

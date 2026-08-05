@@ -663,12 +663,35 @@ body {
     margin-top: 8px;
 }
 
-.image-preview img {
+.image-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+.image-wrapper img {
     width: 80px;
     height: 80px;
     object-fit: cover;
     border-radius: var(--radius-sm);
     background: var(--bg);
+}
+
+.remove-image {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: none;
+    background: var(--error);
+    color: #fff;
+    font-size: 1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
 }
 
 .link-item {
@@ -683,6 +706,18 @@ body {
 
 .remove-link {
     flex-shrink: 0;
+}
+
+.link-title {
+    flex: 1;
+    padding: 0 14px;
+    min-height: var(--touch);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-elevated);
+    color: var(--text);
+    font-size: 0.95rem;
+    font-family: var(--font);
 }
 
 /* ---------- Buttons (match storefront) ---------- */

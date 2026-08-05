@@ -189,6 +189,16 @@ function setupEventListeners() {
         document.getElementById('nameModal').classList.add('hidden')
         document.getElementById('nameModalInput').value = ''
     })
+
+    // Product image removal
+    document.getElementById('imagePreview')?.addEventListener('click', (e) => {
+        if (e.target.classList.contains('remove-image')) {
+            const idx = parseInt(e.target.dataset.idx, 10)
+            productImages.splice(idx, 1)
+            const preview = document.getElementById('imagePreview')
+            preview.innerHTML = productImages.map((img, i) => `<span class="image-wrapper"><img src="${img.url}" alt=""><button type="button" class="remove-image" data-idx="${i}">&times;</button></span>`).join('')
+        }
+    })
 }
 
 function showAuthPage() {
@@ -396,13 +406,10 @@ async function openProductModal(productId = null) {
     }
 
     if (productId) {
-        const response = await fetch(`${CONFIG.adminApiUrl}/products?limit=1&page=1&search=${productId}`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
-        })
-        const { data } = await response.json()
-        const product = data?.find(p => p.id === productId)
+        const response = await fetch(`${CONFIG.adminApiUrl}/products/${productId}`)
+        const product = await response.json()
 
-        if (product) {
+        if (product && product.id) {
             document.getElementById('prodName').value = product.name || ''
             document.getElementById('prodDescription').value = product.description || ''
             document.getElementById('prodFullDescription').value = product.full_description || ''
@@ -429,11 +436,11 @@ async function openProductModal(productId = null) {
             productLinks = Array.isArray(product.links) ? product.links.map(link => ({ ...link })) : []
 
             const preview = document.getElementById('imagePreview')
-            preview.innerHTML = productImages.map(img => `<img src="${img.url}" alt="">`).join('')
+            preview.innerHTML = productImages.map((img, idx) => `<span class="image-wrapper"><img src="${img.url}" alt=""><button type="button" class="remove-image" data-idx="${idx}">&times;</button></span>`).join('')
 
             const linksContainer = document.getElementById('linksContainer')
             linksContainer.innerHTML = ''
-            productLinks.forEach(link => addLinkField(link.url))
+            productLinks.forEach(link => addLinkField(link.url, link.title))
 
             const relatedIds = Array.isArray(product.related) ? product.related : []
             const relatedSelect = document.getElementById('prodRelated')
@@ -514,9 +521,9 @@ async function handleProductSubmit(e) {
         contraindications: document.getElementById('prodContraindications').value.trim(),
         category_id: document.getElementById('prodCategory').value || null,
         brand_id: document.getElementById('prodBrand').value || null,
-        price: parseInt(document.getElementById('prodPrice').value, 10),
-        old_price: document.getElementById('prodOldPrice').value ? parseInt(document.getElementById('prodOldPrice').value, 10) : null,
-        stock: parseInt(document.getElementById('prodStock').value, 10),
+        price: parseFloat(document.getElementById('prodPrice').value) || 0,
+        old_price: document.getElementById('prodOldPrice').value ? parseFloat(document.getElementById('prodOldPrice').value) : null,
+        stock: parseInt(document.getElementById('prodStock').value, 10) || 0,
         volume: document.getElementById('prodVolume').value.trim(),
         sku: document.getElementById('prodSku').value.trim() || null,
         barcode: document.getElementById('prodBarcode').value.trim() || null,
@@ -552,8 +559,10 @@ async function handleProductSubmit(e) {
         return
     }
 
-    const linkInputs = Array.from(document.querySelectorAll('.link-item input'))
+    const linkInputs = Array.from(document.querySelectorAll('.link-item input[type="url"]'))
+    const linkTitleInputs = Array.from(document.querySelectorAll('.link-item input.link-title'))
     const urls = linkInputs.map(input => input.value.trim()).filter(Boolean)
+    const titles = linkTitleInputs.map(input => input.value.trim())
     for (const url of urls) {
         try {
             new URL(url)
@@ -593,7 +602,7 @@ async function handleProductSubmit(e) {
         }
     }
 
-    productLinks = urls.slice(0, 4).map(url => ({ url, title: '' }))
+    productLinks = urls.slice(0, 4).map((url, idx) => ({ url, title: titles[idx] || '' }))
 
     const relatedSelect = document.getElementById('prodRelated')
     const related = Array.from(relatedSelect.selectedOptions).map(opt => opt.value)
@@ -640,11 +649,11 @@ async function handleProductSubmit(e) {
     }
 }
 
-function addLinkField(value = '') {
+function addLinkField(value = '', title = '') {
     const container = document.getElementById('linksContainer')
     const div = document.createElement('div')
     div.className = 'link-item'
-    div.innerHTML = `<input type="url" placeholder="https://..." value="${value}" required><button type="button" class="btn btn-sm btn-danger remove-link">×</button>`
+    div.innerHTML = `<input type="url" placeholder="https://..." value="${value}" required><input type="text" placeholder="Заголовок" value="${title}" class="link-title"><button type="button" class="btn btn-sm btn-danger remove-link">×</button>`
     container.appendChild(div)
 
     div.querySelector('.remove-link').addEventListener('click', () => {
@@ -662,6 +671,9 @@ async function deleteProduct(id) {
     
     if (response.ok) {
         loadProducts()
+    } else {
+        const result = await response.json().catch(() => ({}))
+        alert(translateError(result.error) || 'Ошибка удаления товара')
     }
 }
 
@@ -681,13 +693,10 @@ async function duplicateProduct(id) {
 
     await loadFormOptions()
 
-    const response = await fetch(`${CONFIG.adminApiUrl}/products?limit=1&page=1&search=${id}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
-    })
-    const { data } = await response.json()
-    const product = data?.find(p => p.id === id)
+    const response = await fetch(`${CONFIG.adminApiUrl}/products/${id}`)
+    const product = await response.json()
 
-    if (product) {
+    if (product && product.id) {
         document.getElementById('prodName').value = product.name + ' (копия)'
         document.getElementById('prodDescription').value = product.description || ''
         document.getElementById('prodFullDescription').value = product.full_description || ''
@@ -713,8 +722,8 @@ async function duplicateProduct(id) {
         productImages = Array.isArray(product.images) ? product.images.map(img => ({ ...img })) : []
         productLinks = Array.isArray(product.links) ? product.links.map(link => ({ ...link })) : []
 
-        document.getElementById('imagePreview').innerHTML = productImages.map(img => `<img src="${img.url}" alt="">`).join('')
-        productLinks.forEach(link => addLinkField(link.url))
+        document.getElementById('imagePreview').innerHTML = productImages.map((img, idx) => `<span class="image-wrapper"><img src="${img.url}" alt=""><button type="button" class="remove-image" data-idx="${idx}">&times;</button></span>`).join('')
+        productLinks.forEach(link => addLinkField(link.url, link.title))
 
         // Связи при дублировании не копируем
         Array.from(document.getElementById('prodRelated').options).forEach(opt => { opt.selected = false })
@@ -777,10 +786,9 @@ function closeNameModal() {
 async function openCategoryModal(categoryId = null) {
     let currentName = ''
     if (categoryId) {
-        const res = await fetch(`${CONFIG.adminApiUrl}/categories`)
+        const res = await fetch(`${CONFIG.adminApiUrl}/categories/${categoryId}`)
         if (res.ok) {
-            const data = await res.json()
-            const cat = data.find(c => c.id === categoryId)
+            const cat = await res.json()
             if (cat) currentName = cat.name
         }
     }
@@ -825,6 +833,9 @@ async function deleteCategory(id) {
 
     if (response.ok) {
         loadCategories()
+    } else {
+        const result = await response.json().catch(() => ({}))
+        alert(translateError(result.error) || 'Ошибка удаления категории')
     }
 }
 
@@ -863,10 +874,9 @@ async function loadBrands() {
 async function openBrandModal(brandId = null) {
     let currentName = ''
     if (brandId) {
-        const res = await fetch(`${CONFIG.adminApiUrl}/brands`)
+        const res = await fetch(`${CONFIG.adminApiUrl}/brands/${brandId}`)
         if (res.ok) {
-            const data = await res.json()
-            const brand = data.find(b => b.id === brandId)
+            const brand = await res.json()
             if (brand) currentName = brand.name
         }
     }
@@ -911,6 +921,9 @@ async function deleteBrand(id) {
 
     if (response.ok) {
         loadBrands()
+    } else {
+        const result = await response.json().catch(() => ({}))
+        alert(translateError(result.error) || 'Ошибка удаления бренда')
     }
 }
 
@@ -1077,8 +1090,8 @@ async function handleSettingsSave(e) {
         logo_text: document.getElementById('logoText').value,
         timezone: document.getElementById('timezone').value,
         order_time_limit_enabled: document.getElementById('orderTimeLimitEnabled').checked ? 'true' : 'false',
-        order_start_hour: document.getElementById('orderStartHour').value.split(':')[0],
-        order_end_hour: document.getElementById('orderEndHour').value.split(':')[0],
+        order_start_hour: document.getElementById('orderStartHour').value,
+        order_end_hour: document.getElementById('orderEndHour').value,
         order_error_code: document.getElementById('orderErrorCode').value,
         currency: document.getElementById('currency').value,
         order_template: document.getElementById('orderTemplate').value
