@@ -345,22 +345,26 @@ async function loadProducts() {
     productsTotal = total || 0
     
     const tbody = document.getElementById('productsTable')
-    tbody.innerHTML = data.map(product => `
-        <tr>
-            <td><img src="${product.product_images?.[0]?.url || ''}" alt=""></td>
-            <td>${escapeHtml(product.name)}</td>
-            <td>${escapeHtml(product.categories?.name || '-')}</td>
-            <td>${escapeHtml(product.brands?.name || '-')}</td>
-            <td>${product.price} ₽</td>
-            <td>${product.stock}</td>
-            <td>${product.is_visible ? '✅' : '❌'}</td>
-            <td>
-                <button class="btn btn-sm btn-secondary" onclick="editProduct('${product.id}')">✏️</button>
-                <button class="btn btn-sm btn-primary" onclick="duplicateProduct('${product.id}')">⧉</button>
-                <button class="btn btn-sm btn-danger" onclick="deleteProduct('${product.id}')">🗑️</button>
-            </td>
-        </tr>
-    `).join('')
+    if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-secondary)">Товары не найдены</td></tr>'
+    } else {
+        tbody.innerHTML = data.map(product => `
+            <tr>
+                <td>${product.product_images?.[0]?.url ? `<img src="${product.product_images[0].url}" alt="">` : '<span style="color:var(--text-secondary)">—</span>'}</td>
+                <td>${escapeHtml(product.name)}</td>
+                <td>${escapeHtml(product.categories?.name || '-')}</td>
+                <td>${escapeHtml(product.brands?.name || '-')}</td>
+                <td>${product.price} ₽</td>
+                <td>${product.stock}</td>
+                <td>${product.is_visible ? '✅' : '❌'}</td>
+                <td>
+                    <button class="btn btn-sm btn-secondary" onclick="editProduct('${product.id}')">✏️</button>
+                    <button class="btn btn-sm btn-primary" onclick="duplicateProduct('${product.id}')">⧉</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteProduct('${product.id}')">🗑️</button>
+                </td>
+            </tr>
+        `).join('')
+    }
     
     renderProductsPagination()
 }
