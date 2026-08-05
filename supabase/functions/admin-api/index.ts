@@ -736,19 +736,27 @@ serve(async (req) => {
 
     // GET /backup-sql (SQL dump instead of JSON)
     if (req.method === "GET" && path === "/backup-sql") {
-      const { data, error } = await supabase.rpc("generate_sql_dump")
+      try {
+        const { data, error } = await supabase.rpc("generate_sql_dump")
 
-      if (error) throw error
+        if (error) throw error
 
-      return new Response(
-        data as string,
-        {
-          headers: {
-            "Content-Type": "application/sql",
-            "Content-Disposition": `attachment; filename=jack-nutrition-backup-${new Date().toISOString().split("T")[0]}.sql`
+        return new Response(
+          data as string,
+          {
+            headers: {
+              "Content-Type": "application/sql",
+              "Content-Disposition": `attachment; filename=jack-nutrition-backup-${new Date().toISOString().split("T")[0]}.sql`
+            }
           }
-        }
-      )
+        )
+      } catch (sqlError) {
+        console.error("SQL backup error:", sqlError)
+        return new Response(
+          JSON.stringify({ error: "SQL-дамп временно недоступен. Используйте JSON-дампа." }),
+          { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        )
+      }
     }
 
     // Health check
