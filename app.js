@@ -31,6 +31,17 @@ let scanCropVideoH = 0
 let scanFrameCount = 0
 const SCAN_INTERVAL_FRAMES = 3
 let scanRafId = null
+let productsPage = 1
+const PRODUCTS_PER_PAGE = 20
+let productsTotal = 0
+let isLoadingMore = false
+let hasMoreProducts = true
+const apiCache = {
+    products: { data: null, ts: 0, ttl: 30000 },
+    related: { data: null, ts: 0, ttl: 60000 },
+    categories: { data: null, ts: 0, ttl: 60000 },
+    brands: { data: null, ts: 0, ttl: 60000 },
+}
 
 function init() {
     applyTheme()
@@ -42,9 +53,14 @@ function init() {
     setInterval(checkOrderTime, 60000)
     window.addEventListener('resize', invalidateScanCropCache)
     document.addEventListener('visibilitychange', () => {
-        if (document.hidden && scanRafId) {
-            cancelAnimationFrame(scanRafId)
-            scanRafId = null
+        if (document.hidden) {
+            if (scanRafId) {
+                cancelAnimationFrame(scanRafId)
+                scanRafId = null
+            }
+            if (barcodeStream || scannerWorker) {
+                closeBarcodeScanner()
+            }
         }
     })
 }
@@ -73,6 +89,7 @@ function setupEventListeners() {
     document.getElementById('manualBarcodeSubmit').addEventListener('click', handleManualBarcode)
     document.getElementById('cartBtn').addEventListener('click', openCart)
     document.getElementById('checkoutBtn').addEventListener('click', checkout)
+    document.getElementById('loadMoreBtn').addEventListener('click', loadMoreProducts)
 
     // Filters (modal)
     document.getElementById('filterToggle').addEventListener('click', openFilters)
@@ -148,45 +165,83 @@ async function loadSettings() {
     }
 }
 
-async function loadProducts() {
-    showLoading(true)
+async function loadProducts(reset = true) {
+    if (reset) {
+        productsPage = 1
+        hasMoreProducts = true
+        showLoading(true)
+    }
+    
     try {
-        const response = await fetch(`${CONFIG.supabaseUrl}/rest/v1/products?is_visible=eq.true&select=*,categories(name),brands(name),product_images(*),product_links(*)`, {
-            headers: {
-                'apikey': CONFIG.supabaseAnonKey,
-                'Authorization': `Bearer ${CONFIG.supabaseAnonKey}`
-            }
-        })
-
-        if (!response.ok) throw new Error('Failed to load products')
-
-        allProducts = await response.json()
-
-        // Load explicit related products
-        try {
-            const relatedRes = await fetch(`${CONFIG.supabaseUrl}/rest/v1/product_related?select=product_id,related_id`, {
+        const now = Date.now()
+        let products = []
+        
+        if (apiCache.products.data && now - apiCache.products.ts < apiCache.products.ttl) {
+            products = apiCache.products.data
+        } else {
+            const response = await fetch(`${CONFIG.supabaseUrl}/rest/v1/products?is_visible=eq.true&select=*,categories(name),brands(name),product_images(*),product_links(*)&order=created_at.desc&limit=1000`, {
                 headers: {
                     'apikey': CONFIG.supabaseAnonKey,
                     'Authorization': `Bearer ${CONFIG.supabaseAnonKey}`
                 }
             })
-            if (relatedRes.ok) {
-                relatedMap = await relatedRes.json()
-            }
-        } catch (e) {
-            console.error('Error loading related products:', e)
+            if (!response.ok) throw new Error('Failed to load products')
+            products = await response.json()
+            apiCache.products = { data: products, ts: now, ttl: 30000 }
         }
         
-        // Load categories and brands for filters
+        productsTotal = products.length
+        allProducts = products
+        
+        // Load related products (cached)
+        if (!apiCache.related.data || now - apiCache.related.ts >= apiCache.related.ttl) {
+            try {
+                const relatedRes = await fetch(`${CONFIG.supabaseUrl}/rest/v1/product_related?select=product_id,related_id`, {
+                    headers: {
+                        'apikey': CONFIG.supabaseAnonKey,
+                        'Authorization': `Bearer ${CONFIG.supabaseAnonKey}`
+                    }
+                })
+                if (relatedRes.ok) {
+                    apiCache.related = { data: await relatedRes.json(), ts: now, ttl: 60000 }
+                }
+            } catch (e) {
+                console.error('Error loading related products:', e)
+            }
+        }
+        relatedMap = apiCache.related.data || []
+        
+        // Load categories and brands for filters (cached)
         await loadFilters()
         
-        renderProducts(allProducts)
+        if (reset) {
+            renderProducts(allProducts.slice(0, PRODUCTS_PER_PAGE))
+            updatePagination()
+        }
     } catch (error) {
         showError('Ошибка загрузки товаров')
         console.error(error)
     } finally {
-        showLoading(false)
+        if (reset) showLoading(false)
+        isLoadingMore = false
     }
+}
+
+function updatePagination() {
+    const container = document.getElementById('loadMoreContainer')
+    if (!container) return
+    hasMoreProducts = productsPage * PRODUCTS_PER_PAGE < productsTotal
+    container.classList.toggle('hidden', !hasMoreProducts)
+}
+
+function loadMoreProducts() {
+    if (isLoadingMore || !hasMoreProducts) return
+    isLoadingMore = true
+    productsPage++
+    const start = (productsPage - 1) * PRODUCTS_PER_PAGE
+    const end = start + PRODUCTS_PER_PAGE
+    appendProducts(allProducts.slice(start, end))
+    updatePagination()
 }
 
 async function loadFilters() {
@@ -252,7 +307,11 @@ function filterAndRenderProducts(filters = {}) {
         filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
     }
 
-    renderProducts(filtered)
+    productsTotal = filtered.length
+    productsPage = 1
+    hasMoreProducts = productsTotal > PRODUCTS_PER_PAGE
+    renderProducts(filtered.slice(0, PRODUCTS_PER_PAGE))
+    updatePagination()
 }
 
 function applyFilters() {
@@ -285,43 +344,54 @@ function renderProducts(products) {
         return
     }
 
-    catalog.innerHTML = products.map(product => {
-        const mainImage = product.product_images?.find(img => img.is_main) || product.product_images?.[0]
-        const imageUrl = mainImage?.url || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect fill="%23f0f0f0" width="200" height="200"/><text fill="%23999" font-family="sans-serif" font-size="14" x="50%" y="50%" text-anchor="middle" dy=".3em">Нет фото</text></svg>'
-        
-        const cartItem = cart.find(c => c.id === product.id)
-        const inCart = cartItem ? cartItem.quantity : 0
+    catalog.innerHTML = products.map(product => createProductCard(product)).join('')
+    attachProductListeners()
+}
 
-        return `
-            <div class="product-card" data-id="${product.id}">
-                <img src="${imageUrl}" alt="${escapeHtml(product.name)}" class="product-image" loading="lazy">
-                <div class="product-info">
-                    <div class="product-brand">${escapeHtml(product.brands?.name || '')}</div>
-                    <div class="product-name">${escapeHtml(product.name)}</div>
-                    <div class="product-volume">${escapeHtml(product.volume || '')}</div>
-                    <div class="product-badges">
-                        ${product.is_hit ? '<span class="badge badge-hit">Хит</span>' : ''}
-                        ${product.is_new ? '<span class="badge badge-new">Новинка</span>' : ''}
-                        ${product.is_discount ? '<span class="badge badge-discount">Скидка</span>' : ''}
+function appendProducts(products) {
+    const catalog = document.getElementById('catalog')
+    const html = products.map(product => createProductCard(product)).join('')
+    catalog.insertAdjacentHTML('beforeend', html)
+    attachProductListeners()
+}
+
+function createProductCard(product) {
+    const mainImage = product.product_images?.find(img => img.is_main) || product.product_images?.[0]
+    const imageUrl = mainImage?.url || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect fill="%23f0f0f0" width="200" height="200"/><text fill="%23999" font-family="sans-serif" font-size="14" x="50%" y="50%" text-anchor="middle" dy=".3em">Нет фото</text></svg>'
+    
+    const cartItem = cart.find(c => c.id === product.id)
+    const inCart = cartItem ? cartItem.quantity : 0
+
+    return `
+        <div class="product-card" data-id="${product.id}">
+            <img src="${imageUrl}" alt="${escapeHtml(product.name)}" class="product-image" loading="lazy">
+            <div class="product-info">
+                <div class="product-brand">${escapeHtml(product.brands?.name || '')}</div>
+                <div class="product-name">${escapeHtml(product.name)}</div>
+                <div class="product-volume">${escapeHtml(product.volume || '')}</div>
+                <div class="product-badges">
+                    ${product.is_hit ? '<span class="badge badge-hit">Хит</span>' : ''}
+                    ${product.is_new ? '<span class="badge badge-new">Новинка</span>' : ''}
+                    ${product.is_discount ? '<span class="badge badge-discount">Скидка</span>' : ''}
+                </div>
+                <div class="product-footer">
+                    <div>
+                        <span class="product-price">${product.price} ₽</span>
+                        ${product.old_price ? `<span class="product-old-price">${product.old_price} ₽</span>` : ''}
                     </div>
-                    <div class="product-footer">
-                        <div>
-                            <span class="product-price">${product.price} ₽</span>
-                            ${product.old_price ? `<span class="product-old-price">${product.old_price} ₽</span>` : ''}
-                        </div>
-                        <div class="cart-controls ${inCart > 0 ? 'active' : ''}">
-                            <button class="cart-minus" data-id="${product.id}" ${inCart === 0 ? 'disabled' : ''}>-</button>
-                            <span class="cart-qty">${inCart}</span>
-                            <button class="cart-plus" data-id="${product.id}">+</button>
-                        </div>
-                        ${inCart === 0 ? `<button class="add-to-cart" data-id="${product.id}">В корзину</button>` : ''}
+                    <div class="cart-controls ${inCart > 0 ? 'active' : ''}">
+                        <button class="cart-minus" data-id="${product.id}" ${inCart === 0 ? 'disabled' : ''}>-</button>
+                        <span class="cart-qty">${inCart}</span>
+                        <button class="cart-plus" data-id="${product.id}">+</button>
                     </div>
+                    ${inCart === 0 ? `<button class="add-to-cart" data-id="${product.id}">В корзину</button>` : ''}
                 </div>
             </div>
-        `
-    }).join('')
+        </div>
+    `
+}
 
-    // Add event listeners
+function attachProductListeners() {
     document.querySelectorAll('.product-card').forEach(card => {
         card.addEventListener('click', (e) => {
             if (!e.target.closest('button')) {
@@ -435,7 +505,6 @@ function openProductModal(productId) {
         ` : ''}
 
         ${(() => {
-            // Явные связи из product_related, иначе фолбэк по категории/бренду
             const explicitIds = (relatedMap || [])
                 .filter(rel => rel.product_id === product.id)
                 .map(rel => rel.related_id)
@@ -479,10 +548,13 @@ function openProductModal(productId) {
         </button>
     `
 
-    document.querySelector('.add-to-cart-modal').addEventListener('click', () => {
-        addToCart(product.id, 1)
-        closeModal()
-    })
+    const addToCartBtn = modalBody.querySelector('.add-to-cart-modal')
+    if (addToCartBtn) {
+        addToCartBtn.onclick = () => {
+            addToCart(product.id, 1)
+            closeModal()
+        }
+    }
 
     modalBody.querySelectorAll('.related-card').forEach(card => {
         card.addEventListener('click', () => {
@@ -510,7 +582,30 @@ function addToCart(productId, quantity) {
 
     saveCart()
     updateCartCount()
-    renderProducts(allProducts)
+    updateProductCardCart(productId)
+}
+
+function updateProductCardCart(productId) {
+    const card = document.querySelector(`.product-card[data-id="${productId}"]`)
+    if (!card) return
+    
+    const cartItem = cart.find(c => c.id === productId)
+    const inCart = cartItem ? cartItem.quantity : 0
+    const footer = card.querySelector('.product-footer')
+    if (!footer) return
+    
+    footer.innerHTML = `
+        <div>
+            <span class="product-price">${allProducts.find(p => p.id === productId)?.price || 0} ₽</span>
+            ${allProducts.find(p => p.id === productId)?.old_price ? `<span class="product-old-price">${allProducts.find(p => p.id === productId).old_price} ₽</span>` : ''}
+        </div>
+        <div class="cart-controls ${inCart > 0 ? 'active' : ''}">
+            <button class="cart-minus" data-id="${productId}" ${inCart === 0 ? 'disabled' : ''}>-</button>
+            <span class="cart-qty">${inCart}</span>
+            <button class="cart-plus" data-id="${productId}">+</button>
+        </div>
+        ${inCart === 0 ? `<button class="add-to-cart" data-id="${productId}">В корзину</button>` : ''}
+    `
 }
 
 function saveCart() {
@@ -577,11 +672,12 @@ function renderCart() {
     })
     document.querySelectorAll('.cart-item-remove').forEach(btn => {
         btn.addEventListener('click', () => {
-            cart = cart.filter(c => c.id !== btn.dataset.id)
+            const productId = btn.dataset.id
+            cart = cart.filter(c => c.id !== productId)
             saveCart()
             updateCartCount()
             renderCart()
-            renderProducts(allProducts)
+            updateProductCardCart(productId)
         })
     })
 }

@@ -1076,6 +1076,12 @@ body {
     min-height: var(--touch);
 }
 
+.load-more-container {
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+}
+
 /* ---------- Small screens ---------- */
 @media (max-width: 374px) {
     .filters { grid-template-columns: 1fr; }
