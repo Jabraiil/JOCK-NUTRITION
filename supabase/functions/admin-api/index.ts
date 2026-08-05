@@ -42,7 +42,7 @@ serve(async (req) => {
     const { data: adminUser, error: adminError } = await supabase
       .from("admin_users")
       .select("*")
-      .eq("email", user.email)
+      .ilike("email", user.email)
       .single()
 
     if (adminError || !adminUser) {
