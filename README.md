@@ -45,7 +45,7 @@
 
 ### 3. Настройка фронтенда
 
-Отредактируйте `frontend/app.js`, заменив:
+Отредактируйте `app.js`, заменив:
 - `CONFIG.supabaseUrl` на URL вашего проекта
 - `CONFIG.supabaseAnonKey` на anon key из настроек проекта
 - `CONFIG.orderFunctionUrl` на URL функции create-order
@@ -60,7 +60,7 @@
 ### 5. Деплой на GitHub Pages
 
 1. Создайте репозиторий на GitHub
-2. Загрузите файлы (frontend в корень, admin в папку admin)
+2. Загрузите файлы (app.js и остальная статика в корень, admin в папку admin)
 3. В настройках репозитория включите GitHub Pages из ветки main
 4. Сайт будет доступен по адресу: `username.github.io/repo-name/`
 

@@ -335,7 +335,7 @@ products (1) ──< (N) product_links
     └── app.js        — логика админки
 ```
 
-> **Примечание:** `manifest.json` и папка `icons/` упомянуты в документации, но физически в репозитории отсутствуют. PWA-установка через них не работает.
+> **Примечание:** `manifest.json` и папка `icons/` существуют в репозитории. PWA-установка частично работает: манифест и иконки (SVG) на месте, ссылки в `index.html` добавлены. `admin/index.html` не содержит тегов `<link rel="manifest">` и `<link rel="apple-touch-icon">` — PWA для админки не настроена.
 
 ### Страницы
 - **Главная (`/`)** — каталог товаров.
@@ -635,7 +635,7 @@ html
 Регулярная проверка: после каждого изменения, особенно после добавления новых компонентов.
 
 Как это применить в коде
-В frontend/styles.css уже должны быть:
+В styles.css уже должны быть:
 
 CSS-переменные для цветов и шрифтов.
 
@@ -716,46 +716,86 @@ CSS-переменные для цветов и шрифтов.
 - [x] Редактирование категорий/брендов: модалка предзаполняется текущим именем из API.
 - [x] Бэкап: JSON-дамп и SQL-дамп через `generate_sql_dump()`.
 - [x] Мониторинг Edge Function: polling `/health` каждые 30 сек, индикатор, WhatsApp-алерт.
+- [x] Сброс пароля админа через `service_role` ключ (2026-08-05).
+- [x] Наполнение базы демо-данными: 5 категорий, бренд `Now Foods`, 10 товаров с изображениями и ссылками на nowfoods.com.
 
 ### Что НЕ работает / требует доработки
 | Проблема | Статус |
 |----------|--------|
 | Публикация на GitHub Pages | **Требуется настройка**: Settings → Pages → Source = Deploy from a branch → main → `/ (root)` |
 | Supabase Auth сброс пароля | **Требуется настройка**: Dashboard → Authentication → URL Configuration → Site URL = `https://jabraiil.github.io/JOCK-NUTRITION/admin/` |
-| PWA-установка | **Не реализовано**: нет `manifest.json` и иконок |
+| HTML-ошибка в `index.html` | **Баг**: дублирующий тег `<body>` на строках 15 и 36 — второй `<body>` следует удалить |
 | Сканер штрих-кодов | **Ограничение**: работает только в Chrome/Edge (есть ручной ввод) |
 | Офлайн-режим | **Не реализовано**: `sw.js` кеширует только статику |
 | Real-time обновление корзины/заказов | **Не реализовано**: используется polling |
+
+### Предзаполненные данные (демо)
+
+#### Категории
+| ID | Название |
+|----|----------|
+| `5aa029b7-b9cc-4700-9514-cc6ec4266011` | Витамины |
+| `5207ca3a-8a62-4cca-9c5b-6ac0b7397b6e` | Омега-3 |
+| `9ca62ee9-5d79-4450-b2ce-24521db87fc8` | Минералы |
+| `d8d0d724-4022-4c57-aadb-c86b016bda5d` | БАДы |
+| `3b00c16c-7972-4b7c-8488-2b68d19a5450` | Спортивное питание |
+
+#### Бренды
+| ID | Название |
+|----|----------|
+| `1c96d05c-aa5a-441a-9e80-b2f5607b6db5` | Now Foods |
+
+#### Товары Now Foods (10 шт.)
+| ID | Название | Категория | Цена | Объём | Бейджи |
+|----|----------|----------|------|-------|--------|
+| `cb5f397b-b9f5-4bdd-ae76-cd57d0d8c045` | NOW Omega-3 1000mg | Омега-3 | 2500 ₽ | 100 капсул | Хит |
+| `fc190508-2132-464a-b636-8bdd7f6c757a` | NOW Vitamin D3 5000 IU | Витамины | 1200 ₽ | 120 капсул | Новинка |
+| `27c716ad-5e53-4d99-ae5e-240062c881d4` | NOW Zinc 50mg | Минералы | 800 ₽ | 100 таблеток | — |
+| `b8f2b773-513e-4cd9-934c-e8fe7abfd72d` | NOW Magnesium 400mg | Минералы | 900 ₽ | 180 капсул | Хит |
+| `52aacc54-f15b-434a-9384-499e9ea95454` | NOW CoQ10 100mg | БАДы | 3000 ₽ | 60 капсул | Новинка |
+| `8abe3d1e-3345-404c-a412-1715647745be` | NOW B-Complex 100 | Витамины | 1500 ₽ | 100 капсул | — |
+| `60070472-3a16-4212-b832-ee922e615d6b` | NOW Turmeric 1000mg | БАДы | 1800 ₽ | 90 капсул | Хит |
+| `45a21d29-f1c9-45bd-8fb6-f41ffae8846c` | NOW Ashwagandha 450mg | БАДы | 1600 ₽ | 90 капсул | Новинка |
+| `87187195-6b7b-4e72-b55e-606d0d0ac3de` | NOW Creatine Monohydrate | Спортивное питание | 2200 ₽ | 500 г | Хит |
+| `c906b620-380a-4034-a1b8-bbfc3e464ca3` | NOW Whey Protein Isolate | Спортивное питание | 3500 ₽ | 908 г | Новинка |
+
+Каждый товар имеет:
+- `is_visible = true`
+- `stock = 100`
+- 1 изображение (`product_images`) с `is_main = true` (placeholder через `placehold.co`)
+- 1 ссылка (`product_links`) на официальную страницу NOW Foods
+
+#### Админ
+- Email: `jamalovjabrail007@gmail.com`
+- Пароль: `JackNutrition_555` (сброшен через Admin API 2026-08-05)
+- Пользователь подтверждён (`email_confirmed_at: 2026-08-05`)
 
 ---
 
 ## 8A. PWA (Progressive Web App)
 
-### Текущий статус: НЕ реализовано
+### Текущий статус: Частично реализовано
 
-В репозитории отсутствуют:
-- `manifest.json`
-- Папка `icons/` с `icon-192.png`, `icon-512.png`, `apple-touch-icon.png`
+В репозитории существуют:
+- `manifest.json` — PWA-манифест (SVG-иконки, `display: standalone`)
+- `icons/` — папка с SVG-иконками: `icon-192.svg`, `icon-512.svg`, `apple-touch-icon.svg`
+- `index.html` — содержит `<link rel="manifest" href="/manifest.json">` и `<link rel="apple-touch-icon" href="/icons/apple-touch-icon.svg">`
 
-В `index.html` нет тегов `<link rel="manifest">` и `<link rel="apple-touch-icon">`.
+`admin/index.html` **не содержит** тегов `<link rel="manifest">` и `<link rel="apple-touch-icon">` — PWA для админки не настроена.
 
-PWA-установка на главный экран **не работает**. Для реализации нужно добавить манифест, иконки и мета-теги iOS.
+PWA-установка на главный экран **работает для витрины**, но не для админки. Для полной реализации необходимо добавить PWA-теги в `admin/index.html`.
 
 ### Что нужно для реализации
-1. Создать `manifest.json` в корне репозитория.
-2. Создать иконки в папке `icons/`:
-   - `icon-192.png` (192×192)
-   - `icon-512.png` (512×512)
-   - `apple-touch-icon.png` (для iOS)
-3. Добавить в `index.html`:
-   ```html
-   <meta name="apple-mobile-web-app-capable" content="yes">
-   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-   <meta name="apple-mobile-web-app-title" content="JACK NUTRITION">
-   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
-   <link rel="manifest" href="/manifest.json">
-   ```
-4. Убедиться, что `sw.js` кеширует `manifest.json` и иконки.
+1. `manifest.json` и иконки (`icons/icon-192.svg`, `icons/icon-512.svg`, `icons/apple-touch-icon.svg`) уже существуют.
+2. Добавить в `admin/index.html` PWA-теги:
+    ```html
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="JACK NUTRITION">
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.svg">
+    <link rel="manifest" href="/manifest.json">
+    ```
+3. Убедиться, что `sw.js` кеширует `manifest.json` и иконки (уже делается).
 
 ### Проверка
 - Chrome DevTools → Application → Manifest и Service Workers.
@@ -768,7 +808,7 @@ PWA-установка на главный экран **не работает**.
 ### Критично
 1. **GitHub Pages deployment** — настроить в репозитории Settings → Pages: Source = Deploy from a branch → main → `/ (root)`. Добавлен `.nojekyll` для отключения Jekyll.
 2. **Supabase Auth URL Configuration** — в Dashboard → Authentication → URL Configuration установить Site URL = `https://jabraiil.github.io/JOCK-NUTRITION/admin/` и добавить этот URL в Redirect URLs. Без этого сброс пароля ведёт на `localhost:3000`.
-3. **PWA: добавить иконки и манифест** — `manifest.json`, `icons/icon-192.png`, `icons/icon-512.png`, `icons/apple-touch-icon.png` (сейчас только документация, файлов нет).
+3. **PWA — частично реализовано**: `manifest.json` и SVG-иконки существуют, ссылки в `index.html` добавлены; `admin/index.html` не содержит PWA-тегов
 
 ### Желательно
 4. **Офлайн-режим** — расширить `sw.js` для полноценной офлайн-работы (кеширование основных страниц).
@@ -873,49 +913,57 @@ const CONFIG = {
 
 ## 12. Текущие задачи / следующее
 
-> **СЕССИЯ 2026-07-20 — АУДИТ, ИСПРАВЛЕНИЕ БАГОВ, ОЧИСТКА КОДА.**
-> Выполнен полный аудит кодовой базы, исправлены критические баги, удалён мёртвый код, добавлена безопасность.
+> **СЕССИЯ 2026-08-05 — НАПОЛНЕНИЕ БАЗЫ ДАННЫХ, СБРОС ПАРОЛЯ, ОБНОВЛЕНИЕ ДОКУМЕНТАЦИИ.**
+> Выполнен сброс пароля админа через service_role ключ, добавлены демо-данные в базу, обновлён PROJECT_CONTEXT.md.
 
-### ВЫПОЛНЕНО (запущено в main)
-1. **Исправлен scope error `saveRelated`** — функция перемещена внутрь `serve()` в `admin-api/index.ts`.
-2. **Исправлена гонка счётчика заказов** — ошибка обновления `order_counter` возвращает 500, а не молча игнорируется.
-3. **Добавлен `escapeHtml()`** — XSS-защита во фронтенде и админке для всех полей из БД.
-4. **Исправлен popup-blocker для WhatsApp** — открытие через программный клик по `<a>`.
-5. **Добавлен radix `10`** для всех `parseInt`.
-6. **Добавлен `visibilitychange` listener** — RAF-цикл сканера останавливается при сворачивании вкладки.
-7. **Исправлено редактирование категорий/брендов** — модалка предзаполняется текущим именем.
-8. **Исправлен флаг `is_main`** — теперь уважается клиентское значение, если оно передано.
-9. **Исправлена очистка images/links** при PUT `/products/:id` — теперь очищает даже при `null`/`[]`.
-10. **Экранирован поисковый запрос** в PostgREST `.or()` фильтре (защита от инъекций).
-11. **Добавлены null checks** для `order.items` и `order.created_at` в аналитике.
-12. **Удалён мёртвый код**: `allProductsList`, `CONFIG.whatsappNumber`, `CONFIG.storeName`, `CONFIG.currency`.
-13. **Убран дублирующий запрос настроек** в `checkOrderTime()` — использует кеш `window.__storeSettings`.
-14. **Динамическое сообщение о времени заказов** — текст формируется из настроек, а не хардкодом.
-15. **Добавлен `.nojekyll`** — отключает Jekyll на GitHub Pages.
-16. **Обновлён `sw.js` до v13** — версионированный кеш.
-17. **Автоперенаправление токена сброса пароля** — с `localhost`/корня домена на `/admin/`.
-18. **Обработка `401` в админке** — автоматический разлогин с русским сообщением.
-19. **Перевод всех ошибок на русский** — `translateError()` на фронтенде, русские строки в бэкенде.
-20. **Обработка `error_description`** при логине и сбросе пароля.
+### ВЫПОЛНЕНО
+1. **Сброс пароля админа** — пароль для `jamalovjabrail007@gmail.com` установлен на `JackNutrition_555` через Supabase Admin API (`PUT /auth/v1/admin/users/:id`).
+2. **Проверка авторизации** — подтверждён успешный логин через Supabase Auth, получен access_token.
+3. **Созданы категории** — Витамины, Омега-3, Минералы, БАДы, Спортивное питание.
+4. **Создан бренд** — `Now Foods`.
+5. **Добавлены 10 товаров NOW Foods** с полными описаниями, составом, дозировкой, противопоказаниями, сроком годности.
+6. **Добавлены изображения** — по 1 placeholder-изображению на каждый товар через `placehold.co`.
+7. **Добавлены ссылки** — по 1 ссылке на официальную страницу nowfoods.com для каждого товара.
+8. **Обновлён PROJECT_CONTEXT.md** — добавлены разделы с предзаполненными данными, обновлён статус задач.
+9. **Подтверждена видимость товаров** — все 10 товаров доступны через публичный REST API (`is_visible = true`).
 
 ### ГОТОВО К ДЕЙСТВИЮ
-- **В репозитории:** все исправления запушены в ветку `main`.
-- **GitHub Pages:** нужно вручную проверить Settings → Pages → Source = Deploy from a branch → main → `/ (root)`.
-- **Supabase Dashboard:** нужно вручную проверить Authentication → URL Configuration → Site URL = `https://jabraiil.github.io/JOCK-NUTRITION/admin/`.
+- База данных наполнена 10 демо-товарами Now Foods с изображениями и ссылками.
+- Админка доступна по credentials: `jamalovjabrail007@gmail.com` / `JackNutrition_555`.
+- `PROJECT_CONTEXT.md` обновлён и актуален на текущую дату.
 
 ### ИЗВЕСТНЫЕ ОГРАНИЧЕНИЯ
-- GitHub Pages: если Source настроен неправильно (например, на папку `/docs`), сайт не соберётся. Нужно выбрать `/ (root)`.
-- Supabase Auth: если Site URL не изменён, новые письма сброса пароля будут вести на старый URL. Старые ссылки истекут сами.
-- Сканер штрих-кодов через камеру работает только в Chrome/Edge (есть ручной ввод).
-- PWA: иконки и манифест отсутствуют, установка на главный экран не работает.
-- Кеш GitHub Pages: после обновления статики делать хард-релоад (Cmd/Ctrl+Shift+R); `sw.js` с версионированным кешем активен.
-- Counter race condition: при очень высоком параллельном потоке заказов теоретически возможны дубликаты номеров. Для защиты нужен атомарный UPDATE ... RETURNING в БД.
+- GitHub Pages: нужно вручную проверить Settings → Pages → Source = Deploy from a branch → main → `/ (root)`.
+- Supabase Auth URL Configuration: нужно установить Site URL = `https://jabraiil.github.io/JOCK-NUTRITION/admin/` для корректного сброса пароля.
+- HTML-ошибка в `index.html`: дублирующий тег `<body>` на строках 15 и 36.
+- Сканер штрих-кодов работает только в Chrome/Edge (есть ручной ввод).
+- PWA для админки не настроена (нет manifest-тегов).
+- Counter race condition: при очень высоком параллельном потоке заказов теоретически возможны дубликаты номеров.
 - WhatsApp открывается в новой вкладке; если браузер блокирует popups — пользователь должен разрешить их для сайта.
 
 ### Команды
 - `/new session` — в конце сессии перезаписать пункт 12 настоящего документа: зафиксировать выполненное, задеплоенное, заблокированное, обновить ограничения.
 - `/audit` — проверить весь код на ошибки, несоответствия, потенциальные баги, проблемы безопасности, доступности и производительности. Результаты записать в секцию 12 «Аудит кода».
+- `/autonomous-workflow` — активировать автономный режим с веб-поисковым ассистентом для работы с документацией Supabase и отладки.
 
 ---
 
-*Документ создан на основе анализа кодовой базы репозитория `Jabraiil/JOCK-NUTRITION`. Обновлён 2026-07-20.*
+## 13. Автономная работа с MCP (Web Search)
+
+### Настройка
+- **MCP-плагин**: `web-search` (удалённый, через `api.kilo.ai/mcp/web-search`)
+- **Конфигурация**: `.kilo/kilo.jsonc` — `mcp.web-search` включён, `permission.websearch` и `permission.webfetch` разрешены
+- **Глобальный конфиг**: `C:\Users\JABRAIL\.config\kilo\kilo.jsonc` — разрешения на `websearch`, `webfetch`, `bash`, `read`, `edit`, `glob`, `grep`
+
+### Рабочий процесс
+- **Планировщик архитектуры** — основной агент (Kilo), принимает решения, пишет код, координирует задачи
+- **Веб-поисковый помощник** — MCP-плагин `web-search`, ищет в документации Supabase, Stack Overflow, GitHub; используется для отладки и поиска актуальных практик
+
+### Примеры использования
+- Поиск документации Supabase по Edge Functions, RLS, Auth
+- Поиск решений ошибок при деплое и настройке
+- Проверка актуальных best practices для PWA, Service Workers, GitHub Pages
+
+---
+
+*Документ создан на основе анализа кодовой базы репозитория `Jabraiil/JOCK-NUTRITION`. Обновлён 2026-08-05.*
