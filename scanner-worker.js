@@ -21,6 +21,8 @@ self.onmessage = async (e) => {
   }
 
   if (type === 'scan' && detector && bitmap) {
+    let localCanvas = null
+    let localCtx = null
     try {
       const { x = 0, y = 0, w = bitmap.width, h = bitmap.height } = cropRect || {}
       const cw = Math.max(1, w)
@@ -28,15 +30,11 @@ self.onmessage = async (e) => {
       const tw = targetWidth
       const th = Math.max(1, Math.round(h * scale))
 
-      if (!canvas || canvas.width !== tw || canvas.height !== th) {
-        canvas = new OffscreenCanvas(tw, th)
-        ctx = canvas.getContext('2d')
-      } else {
-        ctx.clearRect(0, 0, tw, th)
-      }
-      ctx.drawImage(bitmap, x, y, w, h, 0, 0, tw, th)
+      localCanvas = new OffscreenCanvas(tw, th)
+      localCtx = localCanvas.getContext('2d')
+      localCtx.drawImage(bitmap, x, y, w, h, 0, 0, tw, th)
 
-      const barcodes = await detector.detect(canvas)
+      const barcodes = await detector.detect(localCanvas)
       self.postMessage({ type: 'result', barcode: barcodes.length > 0 ? barcodes[0].rawValue : null })
     } catch (err) {
       self.postMessage({ type: 'error', error: err.message })
@@ -44,6 +42,11 @@ self.onmessage = async (e) => {
       if (bitmap && typeof bitmap.close === 'function') {
         bitmap.close()
       }
+      if (localCtx) {
+        localCtx.clearRect(0, 0, localCanvas.width, localCanvas.height)
+      }
+      localCanvas = null
+      localCtx = null
     }
   }
 }

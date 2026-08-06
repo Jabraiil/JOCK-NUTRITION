@@ -1,8 +1,8 @@
 {
-  "name": "JACK NUTRITION",
-  "short_name": "JACK NUTRITION",
+  "name": "JOCK NUTRITION",
+  "short_name": "JOCK",
   "description": "Интернет-магазин биологически активных добавок",
-  "start_url": "/",
+  "start_url": "/index.html",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#34C759",
@@ -10,16 +10,28 @@
   "scope": "/",
   "icons": [
     {
-      "src": "/icons/icon-192.svg",
+      "src": "/assets/icons/icon-192.png",
       "sizes": "192x192",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/icons/icon-512.svg",
+      "src": "/assets/icons/icon-192-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/assets/icons/icon-512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/icons/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "/icons/apple-touch-icon.svg",

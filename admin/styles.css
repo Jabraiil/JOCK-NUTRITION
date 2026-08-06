@@ -862,3 +862,22 @@ body {
     font-size: 0.8rem;
     line-height: 1.4;
 }
+
+#generateDescBtn {
+    background: #6C5CE7;
+    color: #fff;
+    border: none;
+}
+
+#generateDescBtn:hover {
+    background: #5A4BD1;
+}
+
+#generateDescBtn:disabled {
+    background: var(--text-secondary);
+    cursor: not-allowed;
+}
+
+#geminiApiKey {
+    width: 100%;
+}

@@ -1,10 +1,4 @@
-// ============================================
-// JACK NUTRITION - Service Worker
-// Cache-busting для GitHub Pages: принудительно
-// обновляет статику при изменении CACHE_VERSION.
-// ============================================
-
-const CACHE_VERSION = 'jack-nutrition-v14-2026-08-02'
+const CACHE_VERSION = 'jack-nutrition-v15-2026-08-06'
 const ASSETS = [
     '/',
     '/index.html',
@@ -12,8 +6,10 @@ const ASSETS = [
     '/app.js',
     '/scanner-worker.js',
     '/manifest.json',
-    '/icons/icon-192.svg',
-    '/icons/icon-512.svg',
+    '/assets/icons/icon-192.png',
+    '/assets/icons/icon-192-maskable.png',
+    '/assets/icons/icon-512.png',
+    '/assets/icons/icon-512-maskable.png',
     '/icons/apple-touch-icon.svg',
     '/admin/',
     '/admin/index.html',
@@ -48,10 +44,8 @@ self.addEventListener('fetch', (event) => {
     const url = new URL(request.url)
     const isSameOrigin = url.origin === self.location.origin
 
-    // Supabase API/Edge Functions — не кешируем, всегда сеть.
     if (!isSameOrigin) return
 
-    // Сетевой режим «сначала сеть, при ошибке — кеш».
     event.respondWith(
         fetch(request)
             .then((response) => {

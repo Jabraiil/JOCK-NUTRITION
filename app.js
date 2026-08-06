@@ -28,8 +28,8 @@ let workerBusy = false
 let scanCropCache = null
 let scanCropVideoW = 0
 let scanCropVideoH = 0
-let scanFrameCount = 0
-const SCAN_INTERVAL_FRAMES = 3
+let scanLastTime = 0
+const SCAN_INTERVAL_MS = 250
 let scanRafId = null
 let productsPage = 1
 const PRODUCTS_PER_PAGE = 20
@@ -91,17 +91,15 @@ function setupEventListeners() {
     document.getElementById('checkoutBtn').addEventListener('click', checkout)
     document.getElementById('loadMoreBtn').addEventListener('click', loadMoreProducts)
 
-    // Filters (modal)
+    // Filters (sidebar on mobile, modal on desktop)
     document.getElementById('filterToggle').addEventListener('click', openFilters)
     document.getElementById('applyFilters').addEventListener('click', () => {
         applyFilters()
         closeFilters()
     })
     document.getElementById('resetFilters').addEventListener('click', resetFilters)
-    document.getElementById('filterModalClose').addEventListener('click', closeFilters)
-    document.getElementById('filterModal').addEventListener('click', (e) => {
-        if (e.target === e.currentTarget) closeFilters()
-    })
+    document.getElementById('filterSidebarClose').addEventListener('click', closeFilters)
+    document.getElementById('filterSidebarOverlay').addEventListener('click', closeFilters)
     // Live-применение при выборе внутри окна (для удобства)
     document.getElementById('categoryFilter').addEventListener('change', applyFilters)
     document.getElementById('brandFilter').addEventListener('change', applyFilters)
@@ -113,17 +111,73 @@ function setupEventListeners() {
     document.getElementById('productModal').addEventListener('click', (e) => {
         if (e.target === e.currentTarget) closeModal()
     })
-    document.getElementById('cartModal').addEventListener('click', (e) => {
-        if (e.target === e.currentTarget) closeCart()
+
+    // Cart drawer
+    document.getElementById('cartBtn').addEventListener('click', openCart)
+    document.getElementById('cartDrawerClose').addEventListener('click', closeCart)
+    document.getElementById('cartDrawerOverlay').addEventListener('click', closeCart)
+    document.getElementById('checkoutBtn').addEventListener('click', checkout)
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            const drawer = document.getElementById('cartDrawer')
+            if (drawer.classList.contains('open')) closeCart()
+        }
     })
+
+    // Cart drawer item buttons (event delegation)
+    const cartItemsEl = document.getElementById('cartItems')
+    if (cartItemsEl) {
+        cartItemsEl.addEventListener('click', (e) => {
+            const plusBtn = e.target.closest('.cart-plus')
+            if (plusBtn) {
+                addToCart(plusBtn.dataset.id, 1)
+                return
+            }
+            const minusBtn = e.target.closest('.cart-minus')
+            if (minusBtn) {
+                addToCart(minusBtn.dataset.id, -1)
+                return
+            }
+            const removeBtn = e.target.closest('.cart-item-remove')
+            if (removeBtn) {
+                const productId = removeBtn.dataset.id
+                cart = cart.filter(c => c.id !== productId)
+                saveCart()
+                updateCartCount()
+                renderCart()
+                updateProductCardCart(productId)
+            }
+        })
+    }
 }
 
 function openFilters() {
-    document.getElementById('filterModal').classList.remove('hidden')
+    const sidebar = document.getElementById('filterSidebar')
+    const overlay = document.getElementById('filterSidebarOverlay')
+    sidebar.classList.add('open')
+    overlay.classList.add('open')
 }
 
 function closeFilters() {
-    document.getElementById('filterModal').classList.add('hidden')
+    const sidebar = document.getElementById('filterSidebar')
+    const overlay = document.getElementById('filterSidebarOverlay')
+    sidebar.classList.remove('open')
+    overlay.classList.remove('open')
+}
+
+function openCart() {
+    renderCart()
+    const drawer = document.getElementById('cartDrawer')
+    const overlay = document.getElementById('cartDrawerOverlay')
+    drawer.classList.add('open')
+    overlay.classList.add('open')
+}
+
+function closeCart() {
+    const drawer = document.getElementById('cartDrawer')
+    const overlay = document.getElementById('cartDrawerOverlay')
+    drawer.classList.remove('open')
+    overlay.classList.remove('open')
 }
 
 function toggleTheme() {
@@ -401,28 +455,27 @@ function attachProductListeners() {
         })
     })
 
-    document.querySelectorAll('.add-to-cart').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation()
-            const productId = btn.dataset.id
-            addToCart(productId, 1)
-        })
-    })
+    const catalog = document.getElementById('catalog')
+    if (!catalog) return
 
-    document.querySelectorAll('.cart-plus').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+    catalog.addEventListener('click', (e) => {
+        const addBtn = e.target.closest('.add-to-cart')
+        if (addBtn) {
             e.stopPropagation()
-            const productId = btn.dataset.id
-            addToCart(productId, 1)
-        })
-    })
-
-    document.querySelectorAll('.cart-minus').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+            addToCart(addBtn.dataset.id, 1)
+            return
+        }
+        const plusBtn = e.target.closest('.cart-plus')
+        if (plusBtn) {
             e.stopPropagation()
-            const productId = btn.dataset.id
-            addToCart(productId, -1)
-        })
+            addToCart(plusBtn.dataset.id, 1)
+            return
+        }
+        const minusBtn = e.target.closest('.cart-minus')
+        if (minusBtn) {
+            e.stopPropagation()
+            addToCart(minusBtn.dataset.id, -1)
+        }
     })
 }
 
@@ -619,11 +672,17 @@ function updateCartCount() {
 
 function openCart() {
     renderCart()
-    document.getElementById('cartModal').classList.remove('hidden')
+    const drawer = document.getElementById('cartDrawer')
+    const overlay = document.getElementById('cartDrawerOverlay')
+    drawer.classList.add('open')
+    overlay.classList.add('open')
 }
 
 function closeCart() {
-    document.getElementById('cartModal').classList.add('hidden')
+    const drawer = document.getElementById('cartDrawer')
+    const overlay = document.getElementById('cartDrawerOverlay')
+    drawer.classList.remove('open')
+    overlay.classList.remove('open')
 }
 
 function renderCart() {
@@ -654,7 +713,7 @@ function renderCart() {
                         <button class="cart-minus" data-id="${product.id}">-</button>
                         <span>${cartItem.quantity}</span>
                         <button class="cart-plus" data-id="${product.id}">+</button>
-                        <button class="cart-item-remove" data-id="${product.id}">Удалить</button>
+                        <button class="cart-item-remove" data-id="${product.id}">&times;</button>
                     </div>
                 </div>
             </div>
@@ -662,24 +721,6 @@ function renderCart() {
     }).join('')
 
     cartTotal.textContent = `${total} ₽`
-
-    // Add event listeners
-    document.querySelectorAll('.cart-plus').forEach(btn => {
-        btn.addEventListener('click', () => addToCart(btn.dataset.id, 1))
-    })
-    document.querySelectorAll('.cart-minus').forEach(btn => {
-        btn.addEventListener('click', () => addToCart(btn.dataset.id, -1))
-    })
-    document.querySelectorAll('.cart-item-remove').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const productId = btn.dataset.id
-            cart = cart.filter(c => c.id !== productId)
-            saveCart()
-            updateCartCount()
-            renderCart()
-            updateProductCardCart(productId)
-        })
-    })
 }
 
 async function checkout() {
@@ -893,38 +934,44 @@ function getScanCrop() {
     return { x, y, w, h }
 }
 
-function scanLoop() {
+function scanLoop(timestamp) {
     if (!barcodeStream || scannerMode !== 'camera') return
     if (!scannerWorker) return
 
     const video = document.getElementById('scannerVideo')
 
+    if (timestamp - scanLastTime < SCAN_INTERVAL_MS) {
+        scanRafId = requestAnimationFrame(scanLoop)
+        return
+    }
+
     if (video.readyState >= 2 && video.videoWidth > 0 && !workerBusy) {
         if (video.currentTime !== lastVideoTime) {
             lastVideoTime = video.currentTime
             workerBusy = true
-            scanFrameCount++
-            if (scanFrameCount >= SCAN_INTERVAL_FRAMES) {
-                scanFrameCount = 0
-                try {
-                    const crop = getCachedScanCrop()
-                    if (crop && crop.w > 0 && crop.h > 0) {
-                        createImageBitmap(video).then(bitmap => {
-                            scannerWorker.postMessage({
-                                type: 'scan',
-                                bitmap: bitmap,
-                                crop: crop,
-                                tw: 320
-                            }, [bitmap])
-                        }).catch(() => { workerBusy = false })
-                    } else {
+            scanLastTime = timestamp
+            try {
+                const crop = getCachedScanCrop()
+                if (crop && crop.w > 0 && crop.h > 0) {
+                    createImageBitmap(video).then(bitmap => {
+                        scannerWorker.postMessage({
+                            type: 'scan',
+                            bitmap: bitmap,
+                            crop: crop,
+                            tw: 320
+                        }, [bitmap])
+                    }).catch(() => {
                         workerBusy = false
-                    }
-                } catch (error) {
-                    console.error('Scan error:', error)
+                    })
+                } else {
                     workerBusy = false
                 }
+            } catch (error) {
+                console.error('Scan error:', error)
+                workerBusy = false
             }
+        } else {
+            workerBusy = false
         }
     }
 
@@ -1038,7 +1085,8 @@ function closeBarcodeScanner() {
         scannerWorker = null
     }
     workerBusy = false
-    scanFrameCount = 0
+    scanLastTime = 0
+    lastVideoTime = -1
     invalidateScanCropCache()
     if (barcodeStream) {
         barcodeStream.getTracks().forEach(track => track.stop())
@@ -1046,7 +1094,6 @@ function closeBarcodeScanner() {
     }
     scannerZoom = 1
     scannerMode = 'camera'
-    lastVideoTime = -1
     const zoomBtn = document.getElementById('zoomToggle')
     if (zoomBtn) zoomBtn.textContent = '1×'
     const scanner = document.getElementById('barcodeScanner')
@@ -1079,7 +1126,26 @@ async function searchByBarcode(barcode) {
 }
 
 function showLoading(show) {
-    document.getElementById('loading').classList.toggle('hidden', !show)
+    const loading = document.getElementById('loading')
+    const catalog = document.getElementById('catalog')
+    if (!show) {
+        loading.classList.add('hidden')
+        catalog.classList.remove('skeleton-mode')
+        return
+    }
+    loading.classList.add('hidden')
+    const count = PRODUCTS_PER_PAGE
+    catalog.innerHTML = Array.from({ length: count }, () => `
+        <div class="skeleton-card">
+            <div class="skeleton-img"></div>
+            <div class="skeleton-body">
+                <div class="skeleton-line medium"></div>
+                <div class="skeleton-line short"></div>
+                <div class="skeleton-line price"></div>
+            </div>
+        </div>
+    `).join('')
+    catalog.classList.add('skeleton-mode')
 }
 
 function showError(message) {

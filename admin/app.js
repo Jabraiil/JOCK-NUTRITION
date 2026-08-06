@@ -175,6 +175,12 @@ function setupEventListeners() {
     document.getElementById('backupBtn').addEventListener('click', handleBackup)
     document.getElementById('backupSqlBtn').addEventListener('click', handleBackupSql)
 
+    // Generate descriptions
+    const generateDescBtn = document.getElementById('generateDescBtn')
+    if (generateDescBtn) {
+        generateDescBtn.addEventListener('click', handleGenerateDescriptions)
+    }
+
     // Modal
     document.querySelector('.modal-close').addEventListener('click', closeProductModal)
     document.getElementById('nameModalClose').addEventListener('click', closeNameModal)
@@ -1083,6 +1089,7 @@ async function loadSettings() {
     document.getElementById('orderErrorCode').value = settings.order_error_code || '[!CHECK!]'
     document.getElementById('currency').value = settings.currency || '₽'
     document.getElementById('orderTemplate').value = settings.order_template || ''
+    document.getElementById('geminiApiKey').value = settings.gemini_api_key || ''
 }
 
 async function handleSettingsSave(e) {
@@ -1098,7 +1105,8 @@ async function handleSettingsSave(e) {
         order_end_hour: document.getElementById('orderEndHour').value,
         order_error_code: document.getElementById('orderErrorCode').value,
         currency: document.getElementById('currency').value,
-        order_template: document.getElementById('orderTemplate').value
+        order_template: document.getElementById('orderTemplate').value,
+        gemini_api_key: document.getElementById('geminiApiKey').value
     }
     
     const response = await fetch(`${CONFIG.adminApiUrl}/settings`, {
@@ -1111,6 +1119,7 @@ async function handleSettingsSave(e) {
     })
     
     if (response.ok) {
+        localStorage.setItem('gemini-api-key', settings.gemini_api_key)
         alert('Настройки сохранены')
     } else {
         const result = await response.json().catch(() => ({}))
@@ -1262,6 +1271,187 @@ async function handleBackupSql() {
     a.href = url
     a.download = `jack-nutrition-backup-${new Date().toISOString().split('T')[0]}.sql`
     a.click()
+}
+
+// ============================================
+// AI Description Generation
+// ============================================
+
+async function handleGenerateDescriptions() {
+    const apiKey = document.getElementById('geminiApiKey')?.value || localStorage.getItem('gemini-api-key') || ''
+    if (!apiKey) {
+        alert('Введите Gemini API ключ в настройках')
+        return
+    }
+
+    const btn = document.getElementById('generateDescBtn')
+    const originalText = btn.textContent
+    btn.disabled = true
+    btn.textContent = '⏳ Генерация...'
+
+    try {
+        const productsRes = await fetch(
+            `${CONFIG.supabaseUrl}/rest/v1/products?select=id,name,brand,brand_id,description,dosage,usage,contraindications,full_description&description=is.null&limit=100`,
+            {
+                headers: {
+                    'apikey': CONFIG.supabaseAnonKey,
+                    'Authorization': `Bearer ${CONFIG.supabaseAnonKey}`
+                }
+            }
+        )
+
+        if (!productsRes.ok) throw new Error('Ошибка загрузки товаров')
+
+        const products = await productsRes.json()
+
+        if (products.length === 0) {
+            alert('Все товары уже имеют описания')
+            btn.disabled = false
+            btn.textContent = originalText
+            return
+        }
+
+        let successCount = 0
+        let errorCount = 0
+
+        for (const product of products) {
+            try {
+                const result = await generateAndValidateDescription(product, apiKey)
+                if (result) {
+                    const updateRes = await fetch(
+                        `${CONFIG.supabaseUrl}/rest/v1/products?id=eq.${product.id}`,
+                        {
+                            method: 'PATCH',
+                            headers: {
+                                'apikey': CONFIG.supabaseAnonKey,
+                                'Authorization': `Bearer ${CONFIG.supabaseAnonKey}`,
+                                'Content-Type': 'application/json',
+                                'Prefer': 'return=minimal'
+                            },
+                            body: JSON.stringify({
+                                description: result.description,
+                                dosage: result.dosage,
+                                usage: result.usage,
+                                contraindications: result.contraindications
+                            })
+                        }
+                    )
+
+                    if (updateRes.ok) {
+                        successCount++
+                    } else {
+                        errorCount++
+                        console.error(`Failed to update product ${product.id}:`, await updateRes.text())
+                    }
+                } else {
+                    errorCount++
+                }
+
+                // Small delay to avoid rate limiting
+                await new Promise(r => setTimeout(r, 500))
+            } catch (err) {
+                console.error(`Error generating description for product ${product.id}:`, err)
+                errorCount++
+            }
+        }
+
+        alert(`Генерация завершена: ${successCount} успешно, ${errorCount} ошибок`)
+    } catch (error) {
+        alert('Ошибка при генерации описаний: ' + error.message)
+        console.error(error)
+    } finally {
+        btn.disabled = false
+        btn.textContent = originalText
+    }
+}
+
+async function generateAndValidateDescription(product, apiKey) {
+    const brandName = product.brand || ''
+    const productName = product.name || ''
+
+    const prompt = `На основе названия товара "${productName}" и бренда "${brandName}" сгенерируй структурированное описание БАДа. Строго следуй этому формату (JSON):
+{
+  "description": "2-3 предложения о пользе товара",
+  "dosage": "Количество капсул/таблеток извлечённое из названия (например '120 капсул')",
+  "usage": "Короткая инструкция приёма (например 'По 1 капсуле 2 раза в день во время еды')",
+  "contraindications": "Базовые противопоказания (индивидуальная непереносимость, беременность, кормление грудью)"
+}
+Ответ должен быть ТОЛЬКО валидным JSON без пояснений. Описание должно точно соответствовать названию товара "${productName}" и бренду "${brandName}". Не путай названия похожих товаров.`
+
+    const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+        {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: {
+                    temperature: 0.3,
+                    maxOutputTokens: 500
+                }
+            })
+        }
+    )
+
+    if (!response.ok) {
+        const errData = await response.json().catch(() => ({}))
+        throw new Error(errData.error?.message || 'Gemini API error')
+    }
+
+    const data = await response.json()
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
+
+    if (!rawText) throw new Error('Empty response from Gemini')
+
+    let parsed
+    try {
+        const jsonMatch = rawText.match(/\{[\s\S]*\}/)
+        if (!jsonMatch) throw new Error('No JSON found in response')
+        parsed = JSON.parse(jsonMatch[0])
+    } catch (e) {
+        console.error('Failed to parse Gemini response:', rawText)
+        return null
+    }
+
+    // Self-audit: verify description matches product name
+    const auditPrompt = `Проверь следующее описание БАДа на логическую ошибку и соответствие названию товара.
+
+Название товара: "${productName}"
+Бренд: "${brandName}"
+Сгенерированное описание: "${parsed.description || ''}"
+Дозировка: "${parsed.dosage || ''}"
+
+Ответь ТОЛЬКО "OK" если описание логически соответствует названию товара и бренду, или "ERROR: причина" если есть ошибка или путаница.`
+
+    const auditResponse = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+        {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: auditPrompt }] }],
+                generationConfig: {
+                    temperature: 0.1,
+                    maxOutputTokens: 100
+                }
+            })
+        }
+    )
+
+    if (!auditResponse.ok) {
+        console.warn('Audit failed, skipping self-check')
+        return parsed
+    }
+
+    const auditData = await auditResponse.json()
+    const auditResult = auditData.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || ''
+
+    if (auditResult.toLowerCase().includes('error:')) {
+        console.warn('Self-audit failed for product:', productName, auditResult)
+        return null
+    }
+
+    return parsed
 }
 
 // ============================================

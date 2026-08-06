@@ -2,15 +2,16 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JACK NUTRITION</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>JOCK NUTRITION</title>
     <link rel="stylesheet" href="styles.css">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="JACK NUTRITION">
-    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.svg">
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#34C759">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="JOCK">
+    <link rel="apple-touch-icon" href="/assets/icons/icon-192.png">
+    <meta name="apple-mobile-web-app-title" content="JOCK NUTRITION">
 </head>
 <body>
     <script>
@@ -106,45 +107,65 @@
                 </div>
             </div>
 
-            <div id="filterModal" class="modal hidden">
-                <div class="modal-content filter-modal-content">
-                    <button class="modal-close" id="filterModalClose">&times;</button>
+            <div id="filterSidebarOverlay" class="sidebar-overlay"></div>
+            <aside id="filterSidebar" class="sidebar-drawer">
+                <div class="sidebar-drawer-header">
                     <h2>Фильтры</h2>
-                    <div class="filters">
-                        <div class="filter-group">
-                            <label>Категория</label>
-                            <select id="categoryFilter">
-                                <option value="">Все</option>
-                            </select>
-                        </div>
-                        <div class="filter-group">
-                            <label>Бренд</label>
-                            <select id="brandFilter">
-                                <option value="">Все</option>
-                            </select>
-                        </div>
-                        <div class="filter-group">
-                            <label>Цена от</label>
-                            <input type="number" id="priceFrom" placeholder="0">
-                        </div>
-                        <div class="filter-group">
-                            <label>Цена до</label>
-                            <input type="number" id="priceTo" placeholder="∞">
-                        </div>
-                        <div class="filter-group">
-                            <label>Сортировка</label>
-                            <select id="sortFilter">
-                                <option value="newest">По новизне</option>
-                                <option value="price-asc">Цена по возр.</option>
-                                <option value="price-desc">Цена по убыв.</option>
-                                <option value="name">По названию</option>
-                            </select>
-                        </div>
+                    <button id="filterSidebarClose" class="sidebar-drawer-close">&times;</button>
+                </div>
+                <div class="filters">
+                    <div class="filter-group">
+                        <label>Категория</label>
+                        <select id="categoryFilter">
+                            <option value="">Все</option>
+                        </select>
                     </div>
-                    <div class="filter-actions">
-                        <button id="resetFilters" class="btn btn-secondary">Сбросить</button>
-                        <button id="applyFilters" class="btn btn-primary">Применить</button>
+                    <div class="filter-group">
+                        <label>Бренд</label>
+                        <select id="brandFilter">
+                            <option value="">Все</option>
+                        </select>
                     </div>
+                    <div class="filter-group">
+                        <label>Цена от</label>
+                        <input type="number" id="priceFrom" placeholder="0">
+                    </div>
+                    <div class="filter-group">
+                        <label>Цена до</label>
+                        <input type="number" id="priceTo" placeholder="∞">
+                    </div>
+                    <div class="filter-group">
+                        <label>Сортировка</label>
+                        <select id="sortFilter">
+                            <option value="newest">По новизне</option>
+                            <option value="price-asc">Цена по возр.</option>
+                            <option value="price-desc">Цена по убыв.</option>
+                            <option value="name">По названию</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="filter-actions">
+                    <button id="resetFilters" class="btn btn-secondary">Сбросить</button>
+                    <button id="applyFilters" class="btn btn-primary">Применить</button>
+                </div>
+            </aside>
+
+            <div id="cartDrawerOverlay" class="cart-drawer-overlay"></div>
+            <div id="cartDrawer" class="cart-drawer">
+                <div class="cart-drawer-header">
+                    <h2>Корзина</h2>
+                    <button id="cartDrawerClose" class="cart-drawer-close">&times;</button>
+                </div>
+                <div class="cart-drawer-body">
+                    <div id="cartItems"></div>
+                </div>
+                <div class="cart-drawer-footer">
+                    <div class="cart-total">
+                        <span>Итого:</span>
+                        <span id="cartTotal">0 ₽</span>
+                    </div>
+                    <button id="checkoutBtn" class="btn btn-primary btn-block">Оформить заказ</button>
+                    <div id="orderTimeMessage" class="order-time-message hidden"></div>
                 </div>
             </div>
 
@@ -165,20 +186,6 @@
         <div class="modal-content">
             <button class="modal-close">&times;</button>
             <div id="modalBody"></div>
-        </div>
-    </div>
-
-    <div id="cartModal" class="modal hidden">
-        <div class="modal-content cart-modal-content">
-            <button class="modal-close">&times;</button>
-            <h2>Корзина</h2>
-            <div id="cartItems"></div>
-            <div class="cart-total">
-                <span>Итого:</span>
-                <span id="cartTotal">0 ₽</span>
-            </div>
-            <button id="checkoutBtn" class="btn btn-primary btn-block">Оформить заказ</button>
-            <div id="orderTimeMessage" class="order-time-message hidden"></div>
         </div>
     </div>
 
