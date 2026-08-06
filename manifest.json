@@ -42,5 +42,6 @@
   ],
   "categories": ["shopping", "health", "fitness"],
   "lang": "ru",
-  "dir": "ltr"
+  "dir": "ltr",
+  "_cacheBust": "2026-08-06-v2"
 }
