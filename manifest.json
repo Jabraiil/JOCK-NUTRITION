@@ -11,6 +11,12 @@
   "icons": [
     {
       "src": "/assets/icons/icon-192.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
@@ -32,11 +38,6 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
-    },
-    {
-      "src": "/icons/apple-touch-icon.svg",
-      "sizes": "180x180",
-      "type": "image/svg+xml"
     }
   ],
   "categories": ["shopping", "health", "fitness"],

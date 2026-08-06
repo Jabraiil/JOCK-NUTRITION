@@ -195,6 +195,9 @@ body {
     border-top: 1px solid var(--border);
     z-index: 200;
     padding-bottom: env(safe-area-inset-bottom);
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
 }
 
 .bottom-nav-item {
