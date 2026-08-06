@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'jack-nutrition-v16-2026-08-06'
+const CACHE_VERSION = 'jack-nutrition-v17-2026-08-06-force-redeploy'
 const STATIC_ASSETS = [
     '/styles.css',
     '/app.js',
