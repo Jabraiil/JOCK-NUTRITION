@@ -174,7 +174,7 @@ body {
 
 .nav-item {
     width: 100%;
-    padding: 12px 16px;
+    padding: 14px 16px;
     margin-bottom: 4px;
     border: none;
     background: none;
@@ -371,7 +371,7 @@ body {
 .data-table th {
     background: var(--bg);
     font-weight: 600;
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: var(--text-secondary);
@@ -394,7 +394,7 @@ body {
 }
 
 .btn-sm {
-    min-height: 36px;
+    min-height: 44px;
     padding: 0 12px;
     font-size: 0.85rem;
 }
@@ -814,6 +814,13 @@ body {
     .admin-header h1 {
         font-size: 1.2rem;
     }
+
+    /* Таблицы: уменьшаем padding на мобильных */
+    .data-table th,
+    .data-table td {
+        padding: 8px 10px;
+        font-size: 0.85rem;
+    }
 }
 
 /* Очень узкие экраны (iPhone SE и меньше) */
@@ -859,7 +866,7 @@ body {
     display: block;
     margin-top: 6px;
     color: var(--text-secondary);
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     line-height: 1.4;
 }
 

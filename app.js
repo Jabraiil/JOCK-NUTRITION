@@ -16,8 +16,11 @@ function escapeHtml(str) {
 }
 
 let allProducts = []
+let filteredProducts = []
 let relatedMap = []
 let cart = JSON.parse(localStorage.getItem('jack-cart') || '[]')
+let favorites = JSON.parse(localStorage.getItem('jack-favorites') || '[]')
+let favoritesOnly = false
 let darkMode = localStorage.getItem('jack-theme') === 'dark'
 let barcodeStream = null
 let scannerFlashOn = false
@@ -48,6 +51,7 @@ function init() {
     loadSettings()
     loadProducts()
     updateCartCount()
+    updateFavoritesCount()
     setupEventListeners()
     checkOrderTime()
     setInterval(checkOrderTime, 60000)
@@ -91,6 +95,10 @@ function setupEventListeners() {
     document.getElementById('checkoutBtn').addEventListener('click', checkout)
     document.getElementById('loadMoreBtn').addEventListener('click', loadMoreProducts)
 
+    // Favorites view toggle
+    const favToggle = document.getElementById('favoritesToggle')
+    if (favToggle) favToggle.addEventListener('click', toggleFavoritesView)
+
     // Filters (sidebar on mobile, modal on desktop)
     document.getElementById('filterToggle').addEventListener('click', openFilters)
     document.getElementById('applyFilters').addEventListener('click', () => {
@@ -113,7 +121,6 @@ function setupEventListeners() {
     })
 
     // Cart drawer
-    document.getElementById('cartBtn').addEventListener('click', openCart)
     document.getElementById('cartDrawerClose').addEventListener('click', closeCart)
     document.getElementById('cartDrawerOverlay').addEventListener('click', closeCart)
     document.getElementById('checkoutBtn').addEventListener('click', checkout)
@@ -146,6 +153,37 @@ function setupEventListeners() {
                 updateCartCount()
                 renderCart()
                 updateProductCardCart(productId)
+            }
+        })
+    }
+
+    // Catalog delegation (single listener for card clicks + cart buttons)
+    const catalog = document.getElementById('catalog')
+    if (catalog) {
+        catalog.addEventListener('click', (e) => {
+            const addBtn = e.target.closest('.add-to-cart')
+            if (addBtn) {
+                addToCart(addBtn.dataset.id, 1)
+                return
+            }
+            const plusBtn = e.target.closest('.cart-plus')
+            if (plusBtn) {
+                addToCart(plusBtn.dataset.id, 1)
+                return
+            }
+            const minusBtn = e.target.closest('.cart-minus')
+            if (minusBtn) {
+                addToCart(minusBtn.dataset.id, -1)
+                return
+            }
+            const favBtn = e.target.closest('.favorite-btn')
+            if (favBtn) {
+                toggleFavorite(favBtn.dataset.id)
+                return
+            }
+            const card = e.target.closest('.product-card')
+            if (card) {
+                openProductModal(card.dataset.id)
             }
         })
     }
@@ -195,8 +233,7 @@ function toggleSearch() {
 }
 
 function handleSearch(e) {
-    const query = e.target.value.toLowerCase()
-    filterAndRenderProducts({ search: query })
+    applyFilters()
 }
 
 function clearSearch() {
@@ -206,13 +243,21 @@ function clearSearch() {
 
 async function loadSettings() {
     try {
-        const response = await fetch(`${CONFIG.adminApiUrl}/settings`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token') || ''}` }
+        const response = await fetch(`${CONFIG.supabaseUrl}/rest/v1/settings?select=key,value`, {
+            headers: {
+                'apikey': CONFIG.supabaseAnonKey,
+                'Authorization': `Bearer ${CONFIG.supabaseAnonKey}`
+            }
         })
         if (response.ok) {
-            const settings = await response.json()
-            // Settings are cached globally for checkOrderTime
+            const settingsRaw = await response.json()
+            const settings = {}
+            for (const s of settingsRaw) {
+                settings[s.key] = s.value
+            }
             window.__storeSettings = settings
+            // Re-run time check now that settings are loaded
+            checkOrderTime()
         }
     } catch (error) {
         console.error('Error loading settings:', error)
@@ -269,6 +314,8 @@ async function loadProducts(reset = true) {
         await loadFilters()
         
         if (reset) {
+            filteredProducts = allProducts
+            productsTotal = allProducts.length
             renderProducts(allProducts.slice(0, PRODUCTS_PER_PAGE))
             updatePagination()
         }
@@ -294,7 +341,7 @@ function loadMoreProducts() {
     productsPage++
     const start = (productsPage - 1) * PRODUCTS_PER_PAGE
     const end = start + PRODUCTS_PER_PAGE
-    appendProducts(allProducts.slice(start, end))
+    appendProducts(filteredProducts.slice(start, end))
     updatePagination()
 }
 
@@ -339,9 +386,13 @@ function filterAndRenderProducts(filters = {}) {
         filtered = filtered.filter(p => p.category_id === filters.category)
     }
 
-    if (filters.brand) {
-        filtered = filtered.filter(p => p.brand_id === filters.brand)
-    }
+     if (filters.brand) {
+         filtered = filtered.filter(p => p.brand_id === filters.brand)
+     }
+
+     if (filters.favoritesOnly) {
+         filtered = filtered.filter(p => favorites.includes(p.id))
+     }
 
     if (filters.priceFrom) {
         filtered = filtered.filter(p => p.price >= parseInt(filters.priceFrom, 10))
@@ -362,6 +413,7 @@ function filterAndRenderProducts(filters = {}) {
     }
 
     productsTotal = filtered.length
+    filteredProducts = filtered
     productsPage = 1
     hasMoreProducts = productsTotal > PRODUCTS_PER_PAGE
     renderProducts(filtered.slice(0, PRODUCTS_PER_PAGE))
@@ -374,10 +426,11 @@ function applyFilters() {
         category: document.getElementById('categoryFilter').value,
         brand: document.getElementById('brandFilter').value,
         priceFrom: document.getElementById('priceFrom').value,
-        priceTo: document.getElementById('priceTo').value,
-        sort: document.getElementById('sortFilter').value
-    }
-    filterAndRenderProducts(filters)
+         priceTo: document.getElementById('priceTo').value,
+         sort: document.getElementById('sortFilter').value,
+         favoritesOnly: favoritesOnly
+     }
+     filterAndRenderProducts(filters)
 }
 
 function resetFilters() {
@@ -387,6 +440,11 @@ function resetFilters() {
     document.getElementById('priceTo').value = ''
     document.getElementById('sortFilter').value = 'newest'
     document.getElementById('searchInput').value = ''
+    if (favoritesOnly) {
+        favoritesOnly = false
+        const btn = document.getElementById('favoritesToggle')
+        if (btn) btn.classList.remove('active')
+    }
     applyFilters()
 }
 
@@ -399,14 +457,12 @@ function renderProducts(products) {
     }
 
     catalog.innerHTML = products.map(product => createProductCard(product)).join('')
-    attachProductListeners()
 }
 
 function appendProducts(products) {
     const catalog = document.getElementById('catalog')
     const html = products.map(product => createProductCard(product)).join('')
     catalog.insertAdjacentHTML('beforeend', html)
-    attachProductListeners()
 }
 
 function createProductCard(product) {
@@ -415,10 +471,18 @@ function createProductCard(product) {
     
     const cartItem = cart.find(c => c.id === product.id)
     const inCart = cartItem ? cartItem.quantity : 0
+    const favorited = isFavorited(product.id)
 
     return `
         <div class="product-card" data-id="${product.id}">
-            <img src="${imageUrl}" alt="${escapeHtml(product.name)}" class="product-image" loading="lazy">
+            <div class="product-image-wrap">
+                <img src="${imageUrl}" alt="${escapeHtml(product.name)}" class="product-image" loading="lazy">
+                <button class="favorite-btn ${favorited ? 'active' : ''}" data-id="${product.id}" aria-label="В избранное">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78a5.5 5.5 0 0 0 0-7.78z"></path>
+                    </svg>
+                </button>
+            </div>
             <div class="product-info">
                 <div class="product-brand">${escapeHtml(product.brands?.name || '')}</div>
                 <div class="product-name">${escapeHtml(product.name)}</div>
@@ -446,37 +510,6 @@ function createProductCard(product) {
 }
 
 function attachProductListeners() {
-    document.querySelectorAll('.product-card').forEach(card => {
-        card.addEventListener('click', (e) => {
-            if (!e.target.closest('button')) {
-                const productId = card.dataset.id
-                openProductModal(productId)
-            }
-        })
-    })
-
-    const catalog = document.getElementById('catalog')
-    if (!catalog) return
-
-    catalog.addEventListener('click', (e) => {
-        const addBtn = e.target.closest('.add-to-cart')
-        if (addBtn) {
-            e.stopPropagation()
-            addToCart(addBtn.dataset.id, 1)
-            return
-        }
-        const plusBtn = e.target.closest('.cart-plus')
-        if (plusBtn) {
-            e.stopPropagation()
-            addToCart(plusBtn.dataset.id, 1)
-            return
-        }
-        const minusBtn = e.target.closest('.cart-minus')
-        if (minusBtn) {
-            e.stopPropagation()
-            addToCart(minusBtn.dataset.id, -1)
-        }
-    })
 }
 
 function openProductModal(productId) {
@@ -487,8 +520,14 @@ function openProductModal(productId) {
     const imageUrl = mainImage?.url || ''
 
     const modalBody = document.getElementById('modalBody')
+    const favorited = isFavorited(productId)
     modalBody.innerHTML = `
         ${imageUrl ? '<img src="' + imageUrl + '" alt="' + escapeHtml(product.name) + '">' : ''}
+        <button class="favorite-btn modal-favorite ${favorited ? 'active' : ''}" data-id="${product.id}" aria-label="В избранное">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78a5.5 5.5 0 0 0 0-7.78z"></path>
+            </svg>
+        </button>
         <div class="modal-brand">${escapeHtml(product.brands?.name || '')}</div>
         <h2>${escapeHtml(product.name)}</h2>
         <div class="modal-volume">${escapeHtml(product.volume || '')}</div>
@@ -609,6 +648,11 @@ function openProductModal(productId) {
         }
     }
 
+    const modalFav = modalBody.querySelector('.modal-favorite')
+    if (modalFav) {
+        modalFav.addEventListener('click', () => toggleFavorite(product.id))
+    }
+
     modalBody.querySelectorAll('.related-card').forEach(card => {
         card.addEventListener('click', () => {
             openProductModal(card.dataset.id)
@@ -644,13 +688,14 @@ function updateProductCardCart(productId) {
     
     const cartItem = cart.find(c => c.id === productId)
     const inCart = cartItem ? cartItem.quantity : 0
+    const product = allProducts.find(p => p.id === productId)
     const footer = card.querySelector('.product-footer')
     if (!footer) return
     
     footer.innerHTML = `
         <div>
-            <span class="product-price">${allProducts.find(p => p.id === productId)?.price || 0} ₽</span>
-            ${allProducts.find(p => p.id === productId)?.old_price ? `<span class="product-old-price">${allProducts.find(p => p.id === productId).old_price} ₽</span>` : ''}
+            <span class="product-price">${product?.price || 0} ₽</span>
+             ${product.old_price ? `<span class="product-old-price">${product.old_price} ₽</span>` : ''}
         </div>
         <div class="cart-controls ${inCart > 0 ? 'active' : ''}">
             <button class="cart-minus" data-id="${productId}" ${inCart === 0 ? 'disabled' : ''}>-</button>
@@ -668,6 +713,46 @@ function saveCart() {
 function updateCartCount() {
     const count = cart.reduce((sum, c) => sum + c.quantity, 0)
     document.getElementById('cartCount').textContent = count
+}
+
+function saveFavorites() {
+    localStorage.setItem('jack-favorites', JSON.stringify(favorites))
+}
+
+function isFavorited(productId) {
+    return favorites.includes(productId)
+}
+
+function toggleFavorite(productId) {
+    if (isFavorited(productId)) {
+        favorites = favorites.filter(id => id !== productId)
+    } else {
+        favorites.push(productId)
+    }
+    saveFavorites()
+    updateFavoritesCount()
+    document.querySelectorAll(`.favorite-btn[data-id="${productId}"]`).forEach(btn => {
+        btn.classList.toggle('active', isFavorited(productId))
+    })
+    if (favoritesOnly) {
+        applyFilters()
+    }
+}
+
+function updateFavoritesCount() {
+    const count = favorites.length
+    const el = document.getElementById('favoritesCount')
+    if (el) {
+        el.textContent = count
+        el.classList.toggle('hidden', count === 0)
+    }
+}
+
+function toggleFavoritesView() {
+    favoritesOnly = !favoritesOnly
+    const btn = document.getElementById('favoritesToggle')
+    if (btn) btn.classList.toggle('active', favoritesOnly)
+    applyFilters()
 }
 
 function openCart() {
@@ -688,12 +773,16 @@ function closeCart() {
 function renderCart() {
     const cartItems = document.getElementById('cartItems')
     const cartTotal = document.getElementById('cartTotal')
+    const checkoutBtn = document.getElementById('checkoutBtn')
 
     if (cart.length === 0) {
         cartItems.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 20px;">Корзина пуста</p>'
         cartTotal.textContent = '0 ₽'
+        checkoutBtn.disabled = true
         return
     }
+
+    checkoutBtn.disabled = false
 
     let total = 0
     cartItems.innerHTML = cart.map(cartItem => {
@@ -740,7 +829,7 @@ async function checkout() {
             body: JSON.stringify({ cart })
         })
 
-        const data = await response.json()
+        const data = await response.json().catch(() => ({}))
 
         if (!response.ok) {
             if (data.time_restricted) {
@@ -873,7 +962,6 @@ async function toggleBarcodeScanner() {
                 scannerWorker.postMessage({ type: 'init', crop: crop, tw: 320 })
             }
 
-            scanFrameCount = 0
             scanRafId = requestAnimationFrame(scanLoop)
         } catch (error) {
             console.error('Camera unavailable:', error)
@@ -1105,7 +1193,7 @@ function closeBarcodeScanner() {
 
 async function searchByBarcode(barcode) {
     try {
-        const response = await fetch(`${CONFIG.supabaseUrl}/rest/v1/products?barcode=eq.${barcode}&select=*`, {
+        const response = await fetch(`${CONFIG.supabaseUrl}/rest/v1/products?barcode=eq.${encodeURIComponent(barcode)}&select=*`, {
             headers: {
                 'apikey': CONFIG.supabaseAnonKey,
                 'Authorization': `Bearer ${CONFIG.supabaseAnonKey}`

@@ -416,7 +416,9 @@ async function openProductModal(productId = null) {
     }
 
     if (productId) {
-        const response = await fetch(`${CONFIG.adminApiUrl}/products/${productId}`)
+        const response = await fetch(`${CONFIG.adminApiUrl}/products/${productId}`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
+        })
         const product = await response.json()
 
         if (product && product.id) {
@@ -703,7 +705,9 @@ async function duplicateProduct(id) {
 
     await loadFormOptions()
 
-    const response = await fetch(`${CONFIG.adminApiUrl}/products/${id}`)
+    const response = await fetch(`${CONFIG.adminApiUrl}/products/${id}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
+    })
     const product = await response.json()
 
     if (product && product.id) {
@@ -796,7 +800,9 @@ function closeNameModal() {
 async function openCategoryModal(categoryId = null) {
     let currentName = ''
     if (categoryId) {
-        const res = await fetch(`${CONFIG.adminApiUrl}/categories/${categoryId}`)
+        const res = await fetch(`${CONFIG.adminApiUrl}/categories/${categoryId}`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
+        })
         if (res.ok) {
             const cat = await res.json()
             if (cat) currentName = cat.name
@@ -884,7 +890,9 @@ async function loadBrands() {
 async function openBrandModal(brandId = null) {
     let currentName = ''
     if (brandId) {
-        const res = await fetch(`${CONFIG.adminApiUrl}/brands/${brandId}`)
+        const res = await fetch(`${CONFIG.adminApiUrl}/brands/${brandId}`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
+        })
         if (res.ok) {
             const brand = await res.json()
             if (brand) currentName = brand.name
@@ -1185,6 +1193,9 @@ async function handleImport() {
         try {
             const data = new Uint8Array(e.target.result)
             const workbook = XLSX.read(data, { type: 'array' })
+            if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+                throw new Error('В файле нет листов')
+            }
             const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
             const jsonData = XLSX.utils.sheet_to_json(firstSheet)
             
@@ -1229,7 +1240,31 @@ async function handleExport() {
     
     const data = await response.json()
     
-    const ws = XLSX.utils.json_to_sheet(data)
+    const flatData = data.map(p => ({
+        name: p.name || '',
+        description: p.description || '',
+        full_description: p.full_description || '',
+        composition: p.composition || '',
+        dosage: p.dosage || '',
+        usage: p.usage || '',
+        contraindications: p.contraindications || '',
+        category: p.categories?.name || '',
+        brand: p.brands?.name || '',
+        price: p.price ?? '',
+        old_price: p.old_price ?? '',
+        stock: p.stock ?? '',
+        volume: p.volume || '',
+        sku: p.sku || '',
+        barcode: p.barcode || '',
+        is_hit: p.is_hit ? 'TRUE' : '',
+        is_new: p.is_new ? 'TRUE' : '',
+        is_discount: p.is_discount ? 'TRUE' : '',
+        is_visible: p.is_visible ? 'TRUE' : 'FALSE',
+        is_related_enabled: p.is_related_enabled ? 'TRUE' : '',
+        shelf_life: p.shelf_life || '',
+    }))
+    
+    const ws = XLSX.utils.json_to_sheet(flatData)
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Products')
     XLSX.writeFile(wb, 'jack-nutrition-catalog.xlsx')
@@ -1291,7 +1326,7 @@ async function handleGenerateDescriptions() {
 
     try {
         const productsRes = await fetch(
-            `${CONFIG.supabaseUrl}/rest/v1/products?select=id,name,brand,brand_id,description,dosage,usage,contraindications,full_description&description=is.null&limit=100`,
+            `${CONFIG.supabaseUrl}/rest/v1/products?select=id,name,brands(name),brand_id,description,dosage,usage,contraindications,full_description&description=is.null&limit=100`,
             {
                 headers: {
                     'apikey': CONFIG.supabaseAnonKey,
@@ -1366,7 +1401,7 @@ async function handleGenerateDescriptions() {
 }
 
 async function generateAndValidateDescription(product, apiKey) {
-    const brandName = product.brand || ''
+    const brandName = product.brands?.name || ''
     const productName = product.name || ''
 
     const prompt = `На основе названия товара "${productName}" и бренда "${brandName}" сгенерируй структурированное описание БАДа. Строго следуй этому формату (JSON):
