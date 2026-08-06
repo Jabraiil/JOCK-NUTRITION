@@ -79,7 +79,6 @@ function applyTheme() {
 
 function setupEventListeners() {
     document.getElementById('themeToggle').addEventListener('click', toggleTheme)
-    document.getElementById('searchToggle').addEventListener('click', toggleSearch)
     document.getElementById('searchInput').addEventListener('input', debounce(handleSearch, 300))
     document.getElementById('searchClear').addEventListener('click', clearSearch)
     document.getElementById('barcodeToggle').addEventListener('click', toggleBarcodeScanner)
@@ -91,16 +90,10 @@ function setupEventListeners() {
         if (e.key === 'Enter') handleManualBarcode()
     })
     document.getElementById('manualBarcodeSubmit').addEventListener('click', handleManualBarcode)
-    document.getElementById('cartBtn').addEventListener('click', openCart)
     document.getElementById('checkoutBtn').addEventListener('click', checkout)
     document.getElementById('loadMoreBtn').addEventListener('click', loadMoreProducts)
 
-    // Favorites view toggle
-    const favToggle = document.getElementById('favoritesToggle')
-    if (favToggle) favToggle.addEventListener('click', toggleFavoritesView)
-
     // Filters (sidebar on mobile, modal on desktop)
-    document.getElementById('filterToggle').addEventListener('click', openFilters)
     document.getElementById('applyFilters').addEventListener('click', () => {
         applyFilters()
         closeFilters()
@@ -128,8 +121,8 @@ function setupEventListeners() {
 
                 if (nav === 'catalog') {
                     window.scrollTo({ top: 0, behavior: 'smooth' })
-                } else if (nav === 'filters') {
-                    openFilters()
+                } else if (nav === 'search') {
+                    toggleSearch()
                 } else if (nav === 'cart') {
                     openCart()
                 } else if (nav === 'favorites') {
