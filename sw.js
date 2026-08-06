@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'jack-nutrition-v23-2026-08-07-force-redeploy'
+const CACHE_VERSION = 'jack-nutrition-v24-2026-08-07-clear-cache'
 const STATIC_ASSETS = [
     '/styles.css',
     '/app.js',
@@ -14,10 +14,10 @@ const STATIC_ASSETS = [
 ]
 
 self.addEventListener('install', (event) => {
+    self.skipWaiting()
     event.waitUntil(
         caches.open(CACHE_VERSION)
             .then((cache) => cache.addAll(STATIC_ASSETS))
-            .then(() => self.skipWaiting())
     )
 })
 
