@@ -786,7 +786,8 @@ function saveCart() {
 
 function updateCartCount() {
     const count = cart.reduce((sum, c) => sum + c.quantity, 0)
-    document.getElementById('cartCount').textContent = count
+    const cartCountEl = document.getElementById('cartCount')
+    if (cartCountEl) cartCountEl.textContent = count
     const badge = document.getElementById('bottomCartCount')
     if (badge) {
         if (count > 0) {
