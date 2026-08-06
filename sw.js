@@ -1,7 +1,5 @@
-const CACHE_VERSION = 'jack-nutrition-v15-2026-08-06'
-const ASSETS = [
-    '/',
-    '/index.html',
+const CACHE_VERSION = 'jack-nutrition-v16-2026-08-06'
+const STATIC_ASSETS = [
     '/styles.css',
     '/app.js',
     '/scanner-worker.js',
@@ -11,8 +9,6 @@ const ASSETS = [
     '/assets/icons/icon-512.png',
     '/assets/icons/icon-512-maskable.png',
     '/icons/apple-touch-icon.svg',
-    '/admin/',
-    '/admin/index.html',
     '/admin/styles.css',
     '/admin/app.js'
 ]
@@ -20,7 +16,7 @@ const ASSETS = [
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_VERSION)
-            .then((cache) => cache.addAll(ASSETS))
+            .then((cache) => cache.addAll(STATIC_ASSETS))
             .then(() => self.skipWaiting())
     )
 })
@@ -46,15 +42,30 @@ self.addEventListener('fetch', (event) => {
 
     if (!isSameOrigin) return
 
-    event.respondWith(
-        fetch(request)
-            .then((response) => {
-                if (response && response.status === 200) {
+    const isHTML = request.headers.get('accept')?.includes('text/html')
+    const isStaticAsset = STATIC_ASSETS.some((asset) => url.pathname.endsWith(asset) || url.pathname.includes(asset.replace(/^\//, '')))
+
+    if (isHTML) {
+        event.respondWith(
+            fetch(request)
+                .then((response) => {
                     const copy = response.clone()
                     caches.open(CACHE_VERSION).then((cache) => cache.put(request, copy))
-                }
-                return response
+                    return response
+                })
+                .catch(() => caches.match(request).then((cached) => cached || caches.match('/index.html')))
+        )
+    } else if (isStaticAsset) {
+        event.respondWith(
+            caches.match(request).then((cached) => {
+                return cached || fetch(request).then((response) => {
+                    if (response && response.status === 200) {
+                        const copy = response.clone()
+                        caches.open(CACHE_VERSION).then((cache) => cache.put(request, copy))
+                    }
+                    return response
+                })
             })
-            .catch(() => caches.match(request).then((cached) => cached || caches.match('/index.html')))
-    )
+        )
+    }
 })
