@@ -69,8 +69,9 @@ function init() {
             }
         })
     } catch (error) {
+        const msg = error && error.message ? error.message : String(error)
         console.error('Init error:', error)
-        showError('Ошибка инициализации приложения')
+        showError('Ошибка инициализации приложения: ' + msg)
     }
 }
 
@@ -948,6 +949,8 @@ async function checkOrderTime() {
     const timeMessage = document.getElementById('orderTimeMessage')
     const checkoutBtn = document.getElementById('checkoutBtn')
     
+    if (!timeMessage || !checkoutBtn) return
+    
     const settings = window.__storeSettings || {}
     const timeLimitEnabled = settings.order_time_limit_enabled === 'true'
     
@@ -1314,8 +1317,11 @@ function showLoading(show) {
 
 function showError(message) {
     const errorEl = document.getElementById('error')
-    errorEl.textContent = message
-    errorEl.classList.remove('hidden')
+    if (errorEl) {
+        errorEl.textContent = message
+        errorEl.classList.remove('hidden')
+    }
+    console.error('APP ERROR:', message)
 }
 
 function debounce(func, wait) {
