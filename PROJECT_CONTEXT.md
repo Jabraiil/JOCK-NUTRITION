@@ -952,10 +952,28 @@ const CONFIG = {
 12. **Локальное хранилище** — создан `.kilo/project-secrets.local.md` с credentials для новых сессий, добавлен в `.gitignore`.
 13. **Исправлена категория «Витамины»** — удалена повреждённая запись, создана новая с ID `4375d3ba-23bf-4fd1-9928-c8601a1adb92`.
 14. **Edge Function redeployed** — `admin-api` обновлена на production.
+15. **QA аудит корзины** — найдено 4 бага, исправлено все:
+    - Кнопка закрытия корзины + поддержка Escape
+    - Кнопка удаления товара в корзине — «×» вместо «Удалить»
+    - Плюс/минус на карточке товара — переделано на event delegation
+    - Повторное добавление товара после удаления через минус — работает
+16. **Аудит мобильной/ПК консистентности** — найдены и исправлены:
+    - Admin panel: добавлен `viewport-fit=cover` в meta tag
+    - Admin panel: `.data-table th` font-size увеличен с 0.8rem до 0.85rem
+    - Admin panel: `.btn-sm` min-height увеличен с 36px до 44px (touch target)
+    - Admin panel: `.hint` font-size увеличен с 0.8rem до 0.85rem
+    - Admin panel: `.nav-item` padding увеличен с 12px до 14px для touch target ≥44px
+    - Admin panel: добавлены мобильные стили для таблиц (padding 8px 10px, font-size 0.85rem)
+    - Сайт: `.product-volume` font-size увеличен с 0.75rem до 0.85rem
+    - Сайт: `.product-old-price` font-size увеличен с 0.8rem до 0.85rem
+    - Сайт: `.badge` font-size увеличен с 0.65rem до 0.75rem, padding увеличен
+    - Сайт: `.cart-item-price` font-size увеличен с 0.85rem до 0.9rem
 
 ### ГОТОВО К ДЕЙСТВИЮ
 - База данных наполнена демо-товарами, админка работает.
 - Редактирование/дублирование/удаление товаров работает корректно.
+- Корзина работает корректно на мобильных и десктопе.
+- Мобильная/ПК консистентность улучшена: шрифты, touch targets, viewport.
 - Все credentials сохранены локально в `.kilo/project-secrets.local.md`.
 - `PROJECT_CONTEXT.md` обновлён и актуален на текущую дату.
 
