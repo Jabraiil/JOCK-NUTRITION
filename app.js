@@ -78,10 +78,14 @@ function applyTheme() {
 }
 
 function setupEventListeners() {
+    document.getElementById('logoLink').addEventListener('click', (e) => {
+        e.preventDefault()
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+    })
     document.getElementById('themeToggle').addEventListener('click', toggleTheme)
     document.getElementById('searchInput').addEventListener('input', debounce(handleSearch, 300))
     document.getElementById('searchClear').addEventListener('click', clearSearch)
-    document.getElementById('barcodeToggle').addEventListener('click', toggleBarcodeScanner)
+    document.getElementById('filterToggle').addEventListener('click', openFilters)
     document.getElementById('closeScannerX').addEventListener('click', closeBarcodeScanner)
     document.getElementById('flashToggle').addEventListener('click', toggleFlash)
     document.getElementById('zoomToggle').addEventListener('click', toggleZoom)

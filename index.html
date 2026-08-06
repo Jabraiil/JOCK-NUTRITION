@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<!-- DEPLOY-MARKER: 2026-08-06-v4 -->
+<!-- DEPLOY-MARKER: 2026-08-07-v1 -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>JOCK NUTRITION</title>
-    <link rel="stylesheet" href="styles.css?v=20">
+    <link rel="stylesheet" href="styles.css?v=21">
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#34C759">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -38,7 +38,7 @@
     <header class="header">
         <div class="container">
             <div class="header-content">
-                <a href="/" class="logo">JACK NUTRITION</a>
+                <a href="./" class="logo" id="logoLink">JACK NUTRITION</a>
                 <div class="header-actions">
                     <button id="themeToggle" class="icon-btn" aria-label="Тема">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -63,6 +63,11 @@
                         <path d="M15 5v14"></path>
                         <path d="M19 5v14"></path>
                         <path d="M21 5v14"></path>
+                    </svg>
+                </button>
+                <button id="filterToggle" class="icon-btn" aria-label="Фильтры" title="Фильтры">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"></path>
                     </svg>
                 </button>
                 <button id="searchClear" class="icon-btn">&times;</button>
@@ -171,11 +176,11 @@
         </div>
     </div>
 
-    <script src="app.js?v=20"></script>
+    <script src="app.js?v=21"></script>
 
 <!-- Bottom Navigation Bar (mobile) -->
 <nav class="bottom-nav" id="bottomNav">
-    <a href="/" class="bottom-nav-item" data-nav="catalog">
+    <a href="./" class="bottom-nav-item" data-nav="catalog">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
             <polyline points="9 22 9 12 15 12 15 22"></polyline>
