@@ -875,13 +875,7 @@ async function checkout() {
 
         // Open WhatsApp
         if (data.whatsappUrl) {
-            const a = document.createElement('a')
-            a.href = data.whatsappUrl
-            a.target = '_blank'
-            a.rel = 'noopener noreferrer'
-            document.body.appendChild(a)
-            a.click()
-            document.body.removeChild(a)
+            window.open(data.whatsappUrl, '_blank', 'noopener,noreferrer')
         }
 
         // Clear cart
