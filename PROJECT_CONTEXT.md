@@ -979,6 +979,39 @@ const CONFIG = {
 - Bottom navigation bar добавлена для мобильных устройств с safe-area-inset поддержкой.
 - `PROJECT_CONTEXT.md` обновлён и актуален на текущую дату.
 
+### Аудит кода (2026-08-06)
+
+#### Безопасность
+- XSS: все пользовательские данные экранируются через `escapeHtml()` перед вставкой в innerHTML — везде корректно
+- API ключи: anon key в клиентском коде (стандарт для Supabase), service_role key только в Edge Function через `Deno.env.get()` — корректно
+- SQL инъекции: все запросы к БД через Supabase client (параметризованные) — нет уязвимостей
+- RLS: политики настроены корректно — публичное чтение для магазина, запись только через service_role
+- Нет hardcoded секретов в коде
+
+#### Логика и баги
+- Нет найденных логических ошибок в текущей кодовой базе
+- Нет race conditions в критичных путях (кроме известного order counter pattern)
+- Обработка ошибок: try/catch присутствует во всех async операциях в admin panel
+- Корзина: все 4 ранее найденных бага исправлены
+
+#### Производительность
+- Event delegation используется для динамически создаваемых кнопок (cart controls) — нет утечек памяти
+- Нет лишних console.log, debugger, TODO/FIXME комментариев
+- Service Worker (sw.js) кеширует статику для офлайн-режима
+- Индексы в БД: проверить наличие индексов для часто используемых фильтров (category_id, brand_id, is_visible)
+
+#### Доступность
+- Все интерактивные элементы имеют `cursor: pointer` и `min-height: 44px` на мобильных
+- ARIA labels присутствуют на иконных кнопках (search, cart, filters, theme, barcode)
+- Цветовой контраст: основной текст на фоне — соответствует WCAG AA
+- Фокус-индикаторы: нужно проверить видимость focus-rings на всех интерактивных элементах
+
+#### Что можно улучшить
+- Добавить `focus-visible` стили для лучшей навигации с клавиатуры
+- Рассмотреть lazy loading для изображений за пределами viewport (уже есть `loading="lazy"` на product images)
+- Рассмотреть внедрение `loading="lazy"` на admin panel images
+- Добавить `prefers-reduced-motion` media query для пользователей с чувствительностью к анимациям
+
 ### ИЗВЕСТНЫЕ ОГРАНИЧЕНИЯ
 - GitHub Pages: нужно вручную проверить Settings → Pages → Source = Deploy from a branch → main → `/ (root)`.
 - Supabase Auth URL Configuration: нужно установить Site URL = `https://jabraiil.github.io/JOCK-NUTRITION/admin/` для корректного сброса пароля.
