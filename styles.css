@@ -84,6 +84,7 @@ body {
     z-index: 100;
     backdrop-filter: saturate(180%) blur(20px);
     -webkit-backdrop-filter: saturate(180%) blur(20px);
+    padding-top: env(safe-area-inset-top);
 }
 
 .header-content {
@@ -194,7 +195,6 @@ body {
     border-top: 1px solid var(--border);
     z-index: 200;
     padding-bottom: env(safe-area-inset-bottom);
-    padding-top: env(safe-area-inset-top);
 }
 
 .bottom-nav-item {
