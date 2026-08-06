@@ -47,26 +47,31 @@ const apiCache = {
 }
 
 function init() {
-    applyTheme()
-    loadSettings()
-    loadProducts()
-    updateCartCount()
-    updateFavoritesCount()
-    setupEventListeners()
-    checkOrderTime()
-    setInterval(checkOrderTime, 60000)
-    window.addEventListener('resize', invalidateScanCropCache)
-    document.addEventListener('visibilitychange', () => {
-        if (document.hidden) {
-            if (scanRafId) {
-                cancelAnimationFrame(scanRafId)
-                scanRafId = null
+    try {
+        applyTheme()
+        loadSettings()
+        loadProducts()
+        updateCartCount()
+        updateFavoritesCount()
+        setupEventListeners()
+        checkOrderTime()
+        setInterval(checkOrderTime, 60000)
+        window.addEventListener('resize', invalidateScanCropCache)
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                if (scanRafId) {
+                    cancelAnimationFrame(scanRafId)
+                    scanRafId = null
+                }
+                if (barcodeStream || scannerWorker) {
+                    closeBarcodeScanner()
+                }
             }
-            if (barcodeStream || scannerWorker) {
-                closeBarcodeScanner()
-            }
-        }
-    })
+        })
+    } catch (error) {
+        console.error('Init error:', error)
+        showError('Ошибка инициализации приложения')
+    }
 }
 
 function applyTheme() {
@@ -78,136 +83,192 @@ function applyTheme() {
 }
 
 function setupEventListeners() {
-    document.getElementById('logoLink').addEventListener('click', (e) => {
-        e.preventDefault()
-        window.scrollTo({ top: 0, behavior: 'smooth' })
-    })
-    document.getElementById('themeToggle').addEventListener('click', toggleTheme)
-    document.getElementById('searchInput').addEventListener('input', debounce(handleSearch, 300))
-    document.getElementById('searchClear').addEventListener('click', clearSearch)
-    document.getElementById('barcodeToggle').addEventListener('click', toggleBarcodeScanner)
-    document.getElementById('filterToggle').addEventListener('click', openFilters)
-    document.getElementById('closeScannerX').addEventListener('click', closeBarcodeScanner)
-    document.getElementById('flashToggle').addEventListener('click', toggleFlash)
-    document.getElementById('zoomToggle').addEventListener('click', toggleZoom)
-    document.getElementById('scannerModeToggle').addEventListener('click', toggleScannerMode)
-    document.getElementById('manualBarcodeInput').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') handleManualBarcode()
-    })
-    document.getElementById('manualBarcodeSubmit').addEventListener('click', handleManualBarcode)
-    document.getElementById('checkoutBtn').addEventListener('click', checkout)
-    document.getElementById('loadMoreBtn').addEventListener('click', loadMoreProducts)
-
-    // Filters (sidebar on mobile, modal on desktop)
-    document.getElementById('applyFilters').addEventListener('click', () => {
-        applyFilters()
-        closeFilters()
-    })
-    document.getElementById('resetFilters').addEventListener('click', resetFilters)
-    document.getElementById('filterSidebarClose').addEventListener('click', closeFilters)
-    document.getElementById('filterSidebarOverlay').addEventListener('click', closeFilters)
-    // Live-применение при выборе внутри окна (для удобства)
-    document.getElementById('categoryFilter').addEventListener('change', applyFilters)
-    document.getElementById('brandFilter').addEventListener('change', applyFilters)
-    document.getElementById('priceFrom').addEventListener('input', debounce(applyFilters, 500))
-    document.getElementById('priceTo').addEventListener('input', debounce(applyFilters, 500))
-    document.getElementById('sortFilter').addEventListener('change', applyFilters)
-
-    // Bottom navigation
-    const bottomNav = document.getElementById('bottomNav')
-    if (bottomNav) {
-        const navItems = bottomNav.querySelectorAll('.bottom-nav-item')
-        navItems.forEach(item => {
-            item.addEventListener('click', (e) => {
+    try {
+        const logo = document.getElementById('logoLink')
+        if (logo) {
+            logo.addEventListener('click', (e) => {
                 e.preventDefault()
-                const nav = item.dataset.nav
-                navItems.forEach(n => n.classList.remove('active'))
-                item.classList.add('active')
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+            })
+        }
 
-                if (nav === 'catalog') {
-                    window.scrollTo({ top: 0, behavior: 'smooth' })
-                } else if (nav === 'search') {
-                    toggleSearch()
-                } else if (nav === 'cart') {
-                    openCart()
-                } else if (nav === 'favorites') {
-                    toggleFavoritesView()
+        const themeToggle = document.getElementById('themeToggle')
+        if (themeToggle) themeToggle.addEventListener('click', toggleTheme)
+
+        const searchInput = document.getElementById('searchInput')
+        if (searchInput) searchInput.addEventListener('input', debounce(handleSearch, 300))
+
+        const searchClear = document.getElementById('searchClear')
+        if (searchClear) searchClear.addEventListener('click', clearSearch)
+
+        const barcodeToggle = document.getElementById('barcodeToggle')
+        if (barcodeToggle) barcodeToggle.addEventListener('click', toggleBarcodeScanner)
+
+        const filterToggle = document.getElementById('filterToggle')
+        if (filterToggle) filterToggle.addEventListener('click', openFilters)
+
+        const closeScannerX = document.getElementById('closeScannerX')
+        if (closeScannerX) closeScannerX.addEventListener('click', closeBarcodeScanner)
+
+        const flashToggle = document.getElementById('flashToggle')
+        if (flashToggle) flashToggle.addEventListener('click', toggleFlash)
+
+        const zoomToggle = document.getElementById('zoomToggle')
+        if (zoomToggle) zoomToggle.addEventListener('click', toggleZoom)
+
+        const scannerModeToggle = document.getElementById('scannerModeToggle')
+        if (scannerModeToggle) scannerModeToggle.addEventListener('click', toggleScannerMode)
+
+        const manualBarcodeInput = document.getElementById('manualBarcodeInput')
+        if (manualBarcodeInput) {
+            manualBarcodeInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') handleManualBarcode()
+            })
+        }
+
+        const manualBarcodeSubmit = document.getElementById('manualBarcodeSubmit')
+        if (manualBarcodeSubmit) manualBarcodeSubmit.addEventListener('click', handleManualBarcode)
+
+        const checkoutBtn = document.getElementById('checkoutBtn')
+        if (checkoutBtn) checkoutBtn.addEventListener('click', checkout)
+
+        const loadMoreBtn = document.getElementById('loadMoreBtn')
+        if (loadMoreBtn) loadMoreBtn.addEventListener('click', loadMoreProducts)
+
+        const applyFiltersBtn = document.getElementById('applyFilters')
+        if (applyFiltersBtn) {
+            applyFiltersBtn.addEventListener('click', () => {
+                applyFilters()
+                closeFilters()
+            })
+        }
+
+        const resetFiltersBtn = document.getElementById('resetFilters')
+        if (resetFiltersBtn) resetFiltersBtn.addEventListener('click', resetFilters)
+
+        const filterSidebarClose = document.getElementById('filterSidebarClose')
+        if (filterSidebarClose) filterSidebarClose.addEventListener('click', closeFilters)
+
+        const filterSidebarOverlay = document.getElementById('filterSidebarOverlay')
+        if (filterSidebarOverlay) filterSidebarOverlay.addEventListener('click', closeFilters)
+
+        const categoryFilter = document.getElementById('categoryFilter')
+        if (categoryFilter) categoryFilter.addEventListener('change', applyFilters)
+
+        const brandFilter = document.getElementById('brandFilter')
+        if (brandFilter) brandFilter.addEventListener('change', applyFilters)
+
+        const priceFrom = document.getElementById('priceFrom')
+        if (priceFrom) priceFrom.addEventListener('input', debounce(applyFilters, 500))
+
+        const priceTo = document.getElementById('priceTo')
+        if (priceTo) priceTo.addEventListener('input', debounce(applyFilters, 500))
+
+        const sortFilter = document.getElementById('sortFilter')
+        if (sortFilter) sortFilter.addEventListener('change', applyFilters)
+
+        const bottomNav = document.getElementById('bottomNav')
+        if (bottomNav) {
+            const navItems = bottomNav.querySelectorAll('.bottom-nav-item')
+            navItems.forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.preventDefault()
+                    const nav = item.dataset.nav
+                    navItems.forEach(n => n.classList.remove('active'))
+                    item.classList.add('active')
+
+                    if (nav === 'catalog') {
+                        window.scrollTo({ top: 0, behavior: 'smooth' })
+                    } else if (nav === 'search') {
+                        toggleSearch()
+                    } else if (nav === 'cart') {
+                        openCart()
+                    } else if (nav === 'favorites') {
+                        toggleFavoritesView()
+                    }
+                })
+            })
+        }
+
+        const modalClose = document.querySelector('#productModal .modal-close')
+        if (modalClose) modalClose.addEventListener('click', closeModal)
+
+        const productModal = document.getElementById('productModal')
+        if (productModal) {
+            productModal.addEventListener('click', (e) => {
+                if (e.target === e.currentTarget) closeModal()
+            })
+        }
+
+        const cartDrawerClose = document.getElementById('cartDrawerClose')
+        if (cartDrawerClose) cartDrawerClose.addEventListener('click', closeCart)
+
+        const cartDrawerOverlay = document.getElementById('cartDrawerOverlay')
+        if (cartDrawerOverlay) cartDrawerOverlay.addEventListener('click', closeCart)
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const drawer = document.getElementById('cartDrawer')
+                if (drawer && drawer.classList.contains('open')) closeCart()
+            }
+        })
+
+        const cartItemsEl = document.getElementById('cartItems')
+        if (cartItemsEl) {
+            cartItemsEl.addEventListener('click', (e) => {
+                const plusBtn = e.target.closest('.cart-plus')
+                if (plusBtn) {
+                    addToCart(plusBtn.dataset.id, 1)
+                    return
+                }
+                const minusBtn = e.target.closest('.cart-minus')
+                if (minusBtn) {
+                    addToCart(minusBtn.dataset.id, -1)
+                    return
+                }
+                const removeBtn = e.target.closest('.cart-item-remove')
+                if (removeBtn) {
+                    const productId = removeBtn.dataset.id
+                    cart = cart.filter(c => c.id !== productId)
+                    saveCart()
+                    updateCartCount()
+                    renderCart()
+                    updateProductCardCart(productId)
                 }
             })
-        })
-    }
-
-    document.querySelector('#productModal .modal-close').addEventListener('click', closeModal)
-    document.getElementById('productModal').addEventListener('click', (e) => {
-        if (e.target === e.currentTarget) closeModal()
-    })
-
-    // Cart drawer
-    document.getElementById('cartDrawerClose').addEventListener('click', closeCart)
-    document.getElementById('cartDrawerOverlay').addEventListener('click', closeCart)
-    document.getElementById('checkoutBtn').addEventListener('click', checkout)
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            const drawer = document.getElementById('cartDrawer')
-            if (drawer.classList.contains('open')) closeCart()
         }
-    })
 
-    // Cart drawer item buttons (event delegation)
-    const cartItemsEl = document.getElementById('cartItems')
-    if (cartItemsEl) {
-        cartItemsEl.addEventListener('click', (e) => {
-            const plusBtn = e.target.closest('.cart-plus')
-            if (plusBtn) {
-                addToCart(plusBtn.dataset.id, 1)
-                return
-            }
-            const minusBtn = e.target.closest('.cart-minus')
-            if (minusBtn) {
-                addToCart(minusBtn.dataset.id, -1)
-                return
-            }
-            const removeBtn = e.target.closest('.cart-item-remove')
-            if (removeBtn) {
-                const productId = removeBtn.dataset.id
-                cart = cart.filter(c => c.id !== productId)
-                saveCart()
-                updateCartCount()
-                renderCart()
-                updateProductCardCart(productId)
-            }
-        })
-    }
-
-    // Catalog delegation (single listener for card clicks + cart buttons)
-    const catalog = document.getElementById('catalog')
-    if (catalog) {
-        catalog.addEventListener('click', (e) => {
-            const addBtn = e.target.closest('.add-to-cart')
-            if (addBtn) {
-                addToCart(addBtn.dataset.id, 1)
-                return
-            }
-            const plusBtn = e.target.closest('.cart-plus')
-            if (plusBtn) {
-                addToCart(plusBtn.dataset.id, 1)
-                return
-            }
-            const minusBtn = e.target.closest('.cart-minus')
-            if (minusBtn) {
-                addToCart(minusBtn.dataset.id, -1)
-                return
-            }
-            const favBtn = e.target.closest('.favorite-btn')
-            if (favBtn) {
-                toggleFavorite(favBtn.dataset.id)
-                return
-            }
-            const card = e.target.closest('.product-card')
-            if (card) {
-                openProductModal(card.dataset.id)
-            }
-        })
+        const catalog = document.getElementById('catalog')
+        if (catalog) {
+            catalog.addEventListener('click', (e) => {
+                const addBtn = e.target.closest('.add-to-cart')
+                if (addBtn) {
+                    addToCart(addBtn.dataset.id, 1)
+                    return
+                }
+                const plusBtn = e.target.closest('.cart-plus')
+                if (plusBtn) {
+                    addToCart(plusBtn.dataset.id, 1)
+                    return
+                }
+                const minusBtn = e.target.closest('.cart-minus')
+                if (minusBtn) {
+                    addToCart(minusBtn.dataset.id, -1)
+                    return
+                }
+                const favBtn = e.target.closest('.favorite-btn')
+                if (favBtn) {
+                    toggleFavorite(favBtn.dataset.id)
+                    return
+                }
+                const card = e.target.closest('.product-card')
+                if (card) {
+                    openProductModal(card.dataset.id)
+                }
+            })
+        }
+    } catch (error) {
+        console.error('setupEventListeners error:', error)
     }
 }
 
@@ -1282,8 +1343,22 @@ function registerServiceWorker() {
     }
 }
 
+// Global error handler
+window.addEventListener('error', (event) => {
+    console.error('Global error:', event.error)
+})
+
+window.addEventListener('unhandledrejection', (event) => {
+    console.error('Unhandled promise rejection:', event.reason)
+})
+
 // Initialize
-document.addEventListener('DOMContentLoaded', () => {
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        init()
+        registerServiceWorker()
+    })
+} else {
     init()
     registerServiceWorker()
-})
+}
