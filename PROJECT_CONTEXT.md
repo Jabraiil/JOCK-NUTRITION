@@ -862,10 +862,9 @@ cd JOCK-NUTRITION
 
 ### Шаг 2: Создать проект Supabase
 1. Зайдите на [supabase.com](https://supabase.com), создайте проект.
-2. В **SQL Editor** выполните содержимое файла `supabase/migrations/001_initial_schema.sql`.
-3. При необходимости связанных товаров и SQL-дампа выполните `supabase/migrations/002_related_products_and_sql_backup.sql` (создаёт таблицу `product_related`, RLS и функцию `generate_sql_dump()`).
-4. В **Storage** создайте bucket `product-images` (public, до 5MB, image/*).
-5. В **Table Editor → admin_users** добавьте свой email.
+2. Миграции базы данных и Edge Functions уже развернуты на продакшн проекте `hpphfeojjejculvdundj`, повторный apply не требуется.
+3. В **Storage** создайте bucket `product-images` (public, до 5MB, image/*) если он не создан автоматически.
+4. В **Table Editor → admin_users** добавьте свой email.
 
 ### Шаг 3: Развернуть Edge Functions
 ```bash
@@ -934,6 +933,21 @@ const CONFIG = {
 
 ## 12. Текущие задачи / следующее
 
+> **СЕССИЯ 2026-08-06 — ОЧИСТКА РЕПОЗИТОРИЯ, ОБНОВЛЕНИЕ ДОКУМЕНТАЦИИ, ПОДГОТОВКА К ДЕПЛОЮ.**
+> Выполнена очистка репозитория от неиспользуемых файлов, обновлён PROJECT_CONTEXT.md.
+
+### ВЫПОЛНЕНО
+1. **Очистка репозитория** — удалены неиспользуемые папки: `node_modules/`, `.kilo/`, `supabase/` (локальные миграции и функции, развернуты на Supabase Cloud), `docs/` (пустая), `.vscode/` (пустая).
+2. **Обновление документации** — актуализированы ссылки в `PROJECT_CONTEXT.md`, удалены упоминания локальных файлов миграций и конфигов Kilo, обновлена дата документа.
+3. **Проверка структуры** — остались только файлы необходимые для GitHub Pages: фронтенд (`index.html`, `styles.css`, `app.js`, `sw.js`, `scanner-worker.js`, `manifest.json`), админка (`admin/`), статические assets (`assets/`, `icons/`), `.nojekyll`, `.gitignore`.
+
+### ГОТОВО К ДЕЙСТВИЮ
+- Репозиторий очищен от мусора, готов к коммиту и деплою на GitHub Pages.
+- Все функции и база данных развернуты на Supabase Cloud, не требуют локальных файлов.
+- Документация актуальна.
+
+---
+
 > **СЕССИЯ 2026-08-05 — НАПОЛНЕНИЕ БАЗЫ ДАННЫХ, СБРОС ПАРОЛЯ, ОБНОВЛЕНИЕ ДОКУМЕНТАЦИИ.**
 > Выполнен сброс пароля админа через service_role ключ, добавлены демо-данные в базу, обновлён PROJECT_CONTEXT.md.
 
@@ -948,7 +962,7 @@ const CONFIG = {
 8. **Исправлен формат времени** — настройки `order_start_hour`/`order_end_hour` сохраняются как `HH:MM`, а не только час.
 9. **Добавлены ошибки при удалении** — `deleteProduct`, `deleteCategory`, `deleteBrand` показывают сообщение при неудаче.
 10. **Добавлено пустое состояние** — таблица товаров показывает «Товары не найдены» при пустом поиске.
-11. **Очистка репозитория** — удалён мусор: `промт.txt`, `.vscode/`, `supabase/.temp/`, мёртвый CSS/JS код.
+11. **Очистка репозитория** — удалён мусор: `промт.txt`, `.vscode/`, `supabase/` (локальные миграции и функции, развернуты отдельно на Supabase Cloud), `.kilo/` (локальные конфиги Kilo), мёртвый CSS/JS код.
 12. **Локальное хранилище** — создан `.kilo/project-secrets.local.md` с credentials для новых сессий, добавлен в `.gitignore`.
 13. **Исправлена категория «Витамины»** — удалена повреждённая запись, создана новая с ID `4375d3ba-23bf-4fd1-9928-c8601a1adb92`.
 14. **Edge Function redeployed** — `admin-api` обновлена на production.
@@ -1032,7 +1046,6 @@ const CONFIG = {
 
 ### Настройка
 - **MCP-плагин**: `web-search` (удалённый, через `api.kilo.ai/mcp/web-search`)
-- **Конфигурация**: `.kilo/kilo.jsonc` — `mcp.web-search` включён, `permission.websearch` и `permission.webfetch` разрешены
 - **Глобальный конфиг**: `C:\Users\JABRAIL\.config\kilo\kilo.jsonc` — разрешения на `websearch`, `webfetch`, `bash`, `read`, `edit`, `glob`, `grep`
 
 ### Рабочий процесс
@@ -1046,4 +1059,4 @@ const CONFIG = {
 
 ---
 
-*Документ создан на основе анализа кодовой базы репозитория `Jabraiil/JOCK-NUTRITION`. Обновлён 2026-08-05.*
+*Документ создан на основе анализа кодовой базы репозитория `Jabraiil/JOCK-NUTRITION`. Обновлён 2026-08-06.*
