@@ -1368,33 +1368,6 @@ body {
     background: var(--bg);
 }
 
-.modal-favorite {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    background: var(--bg-elevated);
-    border: 1px solid var(--border);
-    color: var(--text-secondary);
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: background 0.2s, color 0.2s;
-    z-index: 2;
-}
-
-.modal-favorite:hover {
-    background: var(--bg);
-    color: var(--error);
-}
-
-.modal-favorite.active svg {
-    fill: currentColor;
-}
-
 #modalBody h2 {
     margin-bottom: 8px;
     font-size: clamp(1.3rem, 5vw, 1.75rem);
