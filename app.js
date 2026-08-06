@@ -115,6 +115,30 @@ function setupEventListeners() {
     document.getElementById('priceTo').addEventListener('input', debounce(applyFilters, 500))
     document.getElementById('sortFilter').addEventListener('change', applyFilters)
 
+    // Bottom navigation
+    const bottomNav = document.getElementById('bottomNav')
+    if (bottomNav) {
+        const navItems = bottomNav.querySelectorAll('.bottom-nav-item')
+        navItems.forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault()
+                const nav = item.dataset.nav
+                navItems.forEach(n => n.classList.remove('active'))
+                item.classList.add('active')
+
+                if (nav === 'catalog') {
+                    window.scrollTo({ top: 0, behavior: 'smooth' })
+                } else if (nav === 'filters') {
+                    openFilters()
+                } else if (nav === 'cart') {
+                    openCart()
+                } else if (nav === 'favorites') {
+                    toggleFavoritesView()
+                }
+            })
+        })
+    }
+
     document.querySelector('#productModal .modal-close').addEventListener('click', closeModal)
     document.getElementById('productModal').addEventListener('click', (e) => {
         if (e.target === e.currentTarget) closeModal()
@@ -713,6 +737,15 @@ function saveCart() {
 function updateCartCount() {
     const count = cart.reduce((sum, c) => sum + c.quantity, 0)
     document.getElementById('cartCount').textContent = count
+    const badge = document.getElementById('bottomCartCount')
+    if (badge) {
+        if (count > 0) {
+            badge.textContent = count > 99 ? '99+' : count
+            badge.classList.remove('hidden')
+        } else {
+            badge.classList.add('hidden')
+        }
+    }
 }
 
 function saveFavorites() {

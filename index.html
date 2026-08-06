@@ -196,5 +196,39 @@
     </div>
 
     <script src="app.js"></script>
+
+<!-- Bottom Navigation Bar (mobile) -->
+<nav class="bottom-nav" id="bottomNav">
+    <a href="/" class="bottom-nav-item" data-nav="catalog">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+        </svg>
+        <span>Каталог</span>
+    </a>
+    <a href="#" class="bottom-nav-item" id="navFilters" data-nav="filters">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"></path>
+        </svg>
+        <span>Фильтры</span>
+    </a>
+    <a href="#" class="bottom-nav-item" id="navCart" data-nav="cart">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="9" cy="21" r="1"></circle>
+            <circle cx="20" cy="21" r="1"></circle>
+            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+        </svg>
+        <span>Корзина</span>
+        <span id="bottomCartCount" class="bottom-nav-badge hidden">0</span>
+    </a>
+    <a href="#" class="bottom-nav-item" id="navFavorites" data-nav="favorites">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78a5.5 5.5 0 0 0 0-7.78z"></path>
+        </svg>
+        <span>Избранное</span>
+    </a>
+</nav>
 </body>
 </html>
