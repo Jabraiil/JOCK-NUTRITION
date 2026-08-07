@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>JOCK NUTRITION</title>
-    <link rel="stylesheet" href="styles.css?v=27">
+    <link rel="stylesheet" href="styles.css?v=28">
     <link rel="manifest" href="./manifest.json">
     <link rel="icon" type="image/svg+xml" href="./icons/favicon.svg">
     <link rel="icon" type="image/png" sizes="16x16" href="./assets/icons/favicon-16x16.png">
@@ -239,7 +239,7 @@
         </div>
     </div>
 
-    <script src="app.js?v=27"></script>
+    <script src="app.js?v=28"></script>
 
 <!-- Bottom Navigation Bar (mobile) -->
 <nav class="bottom-nav" id="bottomNav">
@@ -258,7 +258,7 @@
         <span>Поиск</span>
     </a>
     <a href="javascript:void(0)" class="bottom-nav-item" id="navFavorites" data-nav="favorites" role="button" tabindex="0">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78a5.5 5.5 0 0 0 0-7.78z"></path>
         </svg>
         <span>Избранное</span>
@@ -274,7 +274,24 @@
     </a>
 </nav>
 
-<div id="a2hsBanner" class="a2hs-banner hidden">
+    <div id="a2hsModal" class="a2hs-modal hidden">
+        <div class="a2hs-modal-backdrop"></div>
+        <div class="a2hs-modal-content">
+            <button id="a2hsModalClose" class="a2hs-modal-close" aria-label="Закрыть">&times;</button>
+            <div class="a2hs-modal-icon">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 5v14M5 12h14"/>
+                </svg>
+            </div>
+            <h2>Добавить JACK NUTRITION на главный экран?</h2>
+            <div class="a2hs-modal-hint">
+                <p><strong>iOS Safari:</strong> Нажмите «Поделиться» → «Добавить на главный экран»</p>
+                <p><strong>Android:</strong> Откройте меню браузера → «Добавить на главный экран»</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="a2hsBanner" class="a2hs-banner hidden">
     <div class="a2hs-content">
         <div class="a2hs-icon">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

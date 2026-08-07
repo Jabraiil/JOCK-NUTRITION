@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Admin - JACK NUTRITION</title>
-    <link rel="stylesheet" href="styles.css?v=27">
+    <link rel="stylesheet" href="styles.css?v=28">
 </head>
 <body>
     <div id="authPage" class="auth-page">
@@ -213,6 +213,12 @@
                         </label>
                     </div>
                     <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="stockAvailabilityEnabled" checked>
+                            Показывать статус наличия товаров
+                        </label>
+                    </div>
+                    <div class="form-group">
                         <label>Начало рабочего дня</label>
                         <input type="time" id="orderStartHour" value="09:00">
                     </div>
@@ -327,6 +333,12 @@
                     <textarea id="prodUsage" rows="2"></textarea>
                 </div>
                 <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="showContraindications">
+                        Показать противопоказания
+                    </label>
+                </div>
+                <div class="form-group" id="contraindicationsGroup" style="display: none;">
                     <label>Противопоказания</label>
                     <textarea id="prodContraindications" rows="2"></textarea>
                 </div>
@@ -449,6 +461,6 @@
             })
         }
     </script>
-    <script src="app.js?v=27"></script>
+    <script src="app.js?v=28"></script>
 </body>
 </html>

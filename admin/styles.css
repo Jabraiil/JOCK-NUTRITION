@@ -738,6 +738,12 @@ body {
 }
 
 /* ---------- Buttons (match storefront) ---------- */
+.cart-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: clamp(6px, 1.5vw, 10px);
+}
+
 .btn {
     min-height: var(--touch);
     padding: 0 20px;

@@ -47,8 +47,20 @@ function cleanProductName(name, brand) {
 let allProducts = []
 let filteredProducts = []
 let relatedMap = []
-let cart = JSON.parse(localStorage.getItem('jack-cart') || '[]')
-let favorites = JSON.parse(localStorage.getItem('jack-favorites') || '[]')
+let cart = []
+let favorites = []
+try {
+    const cartRaw = localStorage.getItem('jack-cart')
+    if (cartRaw) cart = JSON.parse(cartRaw)
+} catch (e) {
+    console.error('Failed to parse cart from localStorage:', e)
+}
+try {
+    const favRaw = localStorage.getItem('jack-favorites')
+    if (favRaw) favorites = JSON.parse(favRaw)
+} catch (e) {
+    console.error('Failed to parse favorites from localStorage:', e)
+}
 let favoritesOnly = false
 let darkMode = localStorage.getItem('jack-theme') === 'dark'
 let barcodeStream = null
@@ -315,6 +327,19 @@ function setupEventListeners() {
                     addToCart(minusBtn.dataset.id, -1)
                     return
                 }
+                const cartRemoveBtn = e.target.closest('.cart-item-remove')
+                if (cartRemoveBtn) {
+                    const productId = cartRemoveBtn.dataset.id
+                    cart = cart.filter(c => c.id !== productId)
+                    saveCart()
+                    updateCartCount()
+                    const drawer = document.getElementById('cartDrawer')
+                    if (drawer && drawer.classList.contains('open')) {
+                        renderCart()
+                    }
+                    updateProductCardCart(productId)
+                    return
+                }
                 const favBtn = e.target.closest('.favorite-btn')
                 if (favBtn) {
                     toggleFavorite(favBtn.dataset.id)
@@ -372,6 +397,10 @@ function clearSearch() {
     const searchInput = document.getElementById('searchInput')
     if (searchInput) searchInput.value = ''
     applyFilters()
+    const searchBar = document.getElementById('searchBar')
+    if (searchBar && !searchBar.classList.contains('hidden')) {
+        toggleSearch()
+    }
 }
 
 async function loadSettings() {
@@ -500,12 +529,16 @@ async function loadFilters() {
         const brands = await brandsRes.json()
 
         const categorySelect = document.getElementById('categoryFilter')
-        categorySelect.innerHTML = '<option value="">Все</option>' +
-            categories.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('')
+        if (categorySelect) {
+            categorySelect.innerHTML = '<option value="">Все</option>' +
+                categories.map(c => `<option value="${escapeHtml(String(c.id))}">${escapeHtml(c.name)}</option>`).join('')
+        }
 
         const brandSelect = document.getElementById('brandFilter')
-        brandSelect.innerHTML = '<option value="">Все</option>' +
-            brands.map(b => `<option value="${b.id}">${escapeHtml(b.name)}</option>`).join('')
+        if (brandSelect) {
+            brandSelect.innerHTML = '<option value="">Все</option>' +
+                brands.map(b => `<option value="${escapeHtml(String(b.id))}">${escapeHtml(b.name)}</option>`).join('')
+        }
     } catch (error) {
         console.error('Error loading filters:', error)
         showError('Ошибка загрузки фильтров: ' + error.message)
@@ -595,10 +628,15 @@ function resetFilters() {
     if (searchInput) searchInput.value = ''
     if (favoritesOnly) {
         favoritesOnly = false
-        const btn = document.getElementById('favoritesToggle')
-        if (btn) btn.classList.remove('active')
+        const navFav = document.getElementById('navFavorites')
+        if (navFav) navFav.classList.remove('active')
     }
     applyFilters()
+}
+
+function isStockAvailable() {
+    const settings = window.__storeSettings || {}
+    return settings.stock_availability_enabled !== 'false'
 }
 
 function renderProducts(products) {
@@ -628,21 +666,21 @@ function createProductCard(product) {
     const displayName = cleanProductName(product.name, product.brands?.name)
 
     const badges = []
-    if (product.is_hit) badges.push(`<span class="badge-text badge-hit">ХИТ</span>`)
-    if (product.is_new) badges.push(`<span class="badge-text badge-new">НОВИНКА</span>`)
-    if (product.is_discount) badges.push(`<span class="badge-text badge-discount">СКИДКА</span>`)
+    if (product.is_hit) badges.push(`<span class="badge-text badge-hit">HIT</span>`)
+    if (product.is_new) badges.push(`<span class="badge-text badge-new">NEW</span>`)
+    if (product.is_discount) badges.push(`<span class="badge-text badge-discount">SALE</span>`)
 
     const discountPercent = product.old_price && product.price < product.old_price
         ? Math.round((1 - product.price / product.old_price) * 100)
         : 0
 
     return `
-        <div class="product-card" data-id="${product.id}">
+        <div class="product-card" data-id="${escapeHtml(String(product.id))}">
             <div class="product-image-wrap">
-                <img src="${imageUrl}" alt="${escapeHtml(product.name)}" class="product-image" loading="lazy">
+                <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(product.name)}" class="product-image" loading="lazy">
                 ${badges.length > 0 ? `<div class="product-badges-overlay">${badges.join('')}</div>` : ''}
-                <button class="favorite-btn ${favorited ? 'active' : ''}" data-id="${product.id}" aria-label="В избранное">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <button class="favorite-btn ${favorited ? 'active' : ''}" data-id="${escapeHtml(String(product.id))}" aria-label="В избранное">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
                         <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78a5.5 5.5 0 0 0 0-7.78z"></path>
                     </svg>
                 </button>
@@ -656,17 +694,18 @@ function createProductCard(product) {
                     ${product.old_price ? `<span class="product-old-price">${product.old_price} ₽</span>` : ''}
                     ${discountPercent > 0 ? `<span class="product-discount">-${discountPercent}%</span>` : ''}
                 </div>
-                <div class="product-stock ${product.stock > 0 ? 'in-stock' : 'out-of-stock'}">
-                    ${product.stock > 0 ? 'В наличии' : 'Нет в наличии'}
+                <div class="product-stock ${isStockAvailable() && product.stock > 0 ? 'in-stock' : 'out-of-stock'}">
+                    ${isStockAvailable() && product.stock > 0 ? 'В наличии' : 'Нет в наличии'}
                 </div>
                 <div class="product-footer">
                     ${inCart === 0 ? `
-                        <button class="add-to-cart btn-block" data-id="${product.id}">В корзину</button>
+                        <button class="add-to-cart btn-block" data-id="${escapeHtml(String(product.id))}">В корзину</button>
                     ` : `
                         <div class="cart-controls active">
-                            <button class="cart-minus" data-id="${product.id}">-</button>
+                            <button class="cart-minus" data-id="${escapeHtml(String(product.id))}">-</button>
                             <span class="cart-qty">${inCart}</span>
-                            <button class="cart-plus" data-id="${product.id}">+</button>
+                            <button class="cart-plus" data-id="${escapeHtml(String(product.id))}">+</button>
+                            <button class="cart-item-remove" data-id="${escapeHtml(String(product.id))}">&times;</button>
                         </div>
                     `}
                 </div>
@@ -689,22 +728,22 @@ function openProductModal(productId) {
         ? Math.round((1 - product.price / product.old_price) * 100)
         : 0
     modalBody.innerHTML = `
-        ${imageUrl ? '<img src="' + imageUrl + '" alt="' + escapeHtml(product.name) + '">' : ''}
+        ${imageUrl ? '<img src="' + escapeHtml(imageUrl) + '" alt="' + escapeHtml(product.name) + '">' : ''}
         <div class="modal-brand">${escapeHtml(product.brands?.name || '')}</div>
         <h2>${escapeHtml(cleanProductName(product.name, product.brands?.name))}</h2>
         <div class="modal-volume">${escapeHtml(product.volume || '')}</div>
         <div class="modal-badges">
-            ${product.is_hit ? '<span class="badge-text badge-hit">ХИТ</span>' : ''}
-            ${product.is_new ? '<span class="badge-text badge-new">НОВИНКА</span>' : ''}
-            ${product.is_discount ? '<span class="badge-text badge-discount">СКИДКА</span>' : ''}
+            ${product.is_hit ? '<span class="badge-text badge-hit">HIT</span>' : ''}
+            ${product.is_new ? '<span class="badge-text badge-new">NEW</span>' : ''}
+            ${product.is_discount ? '<span class="badge-text badge-discount">SALE</span>' : ''}
         </div>
         <div class="modal-price-block">
             <span class="product-price">${product.price} ₽</span>
             ${product.old_price ? `<span class="product-old-price">${product.old_price} ₽</span>` : ''}
             ${discountPercent > 0 ? `<span class="product-discount">-${discountPercent}%</span>` : ''}
         </div>
-        <div class="modal-stock ${product.stock > 0 ? 'in-stock' : 'out-of-stock'}">
-            ${product.stock > 0 ? 'В наличии' : 'Нет в наличии'}
+        <div class="modal-stock ${isStockAvailable() && product.stock > 0 ? 'in-stock' : 'out-of-stock'}">
+            ${isStockAvailable() && product.stock > 0 ? 'В наличии' : 'Нет в наличии'}
         </div>
         
         ${product.full_description ? `
@@ -718,13 +757,6 @@ function openProductModal(productId) {
             <div class="modal-section">
                 <h3>Состав</h3>
                 <p>${escapeHtml(product.composition)}</p>
-            </div>
-        ` : ''}
-        
-        ${product.dosage ? `
-            <div class="modal-section">
-                <h3>Дозировка</h3>
-                <p>${escapeHtml(product.dosage)}</p>
             </div>
         ` : ''}
         
@@ -776,8 +808,8 @@ function openProductModal(productId) {
                             const rImg = r.product_images?.find(i => i.is_main) || r.product_images?.[0]
                             const rUrl = rImg?.url || ''
                             return `
-                                <button class="related-card" data-id="${r.id}">
-                                    ${rUrl ? `<img src="${rUrl}" alt="${escapeHtml(r.name)}" loading="lazy">` : ''}
+                                <button class="related-card" data-id="${escapeHtml(String(r.id))}">
+                                    ${rUrl ? `<img src="${escapeHtml(rUrl)}" alt="${escapeHtml(r.name)}" loading="lazy">` : ''}
                                     <div class="related-name">${escapeHtml(r.name)}</div>
                                     <div class="related-price">${r.price} ₽</div>
                                 </button>
@@ -788,7 +820,7 @@ function openProductModal(productId) {
             `
         })()}
 
-        <button class="btn btn-primary btn-block add-to-cart-modal" data-id="${product.id}">
+        <button class="btn btn-primary btn-block add-to-cart-modal" data-id="${escapeHtml(String(product.id))}">
             В корзину
         </button>
     `
@@ -807,11 +839,13 @@ function openProductModal(productId) {
         })
     })
 
-    document.getElementById('productModal').classList.remove('hidden')
+    const productModal = document.getElementById('productModal')
+    if (productModal) productModal.classList.remove('hidden')
 }
 
 function closeModal() {
-    document.getElementById('productModal').classList.add('hidden')
+    const productModal = document.getElementById('productModal')
+    if (productModal) productModal.classList.add('hidden')
 }
 
 function addToCart(productId, quantity) {
@@ -828,6 +862,10 @@ function addToCart(productId, quantity) {
     saveCart()
     updateCartCount()
     updateProductCardCart(productId)
+    const drawer = document.getElementById('cartDrawer')
+    if (drawer && drawer.classList.contains('open')) {
+        renderCart()
+    }
 }
 
 function updateProductCardCart(productId) {
@@ -852,6 +890,7 @@ function updateProductCardCart(productId) {
                 <button class="cart-minus" data-id="${productId}">-</button>
                 <span class="cart-qty">${inCart}</span>
                 <button class="cart-plus" data-id="${productId}">+</button>
+                <button class="cart-item-remove" data-id="${productId}">&times;</button>
             </div>
         `}
     `
@@ -866,8 +905,8 @@ function updateProductCardCart(productId) {
         `
     }
     if (stockEl && product) {
-        stockEl.className = `product-stock ${product.stock > 0 ? 'in-stock' : 'out-of-stock'}`
-        stockEl.textContent = product.stock > 0 ? 'В наличии' : 'Нет в наличии'
+        stockEl.className = `product-stock ${isStockAvailable() && product.stock > 0 ? 'in-stock' : 'out-of-stock'}`
+        stockEl.textContent = isStockAvailable() && product.stock > 0 ? 'В наличии' : 'Нет в наличии'
     }
 }
 
@@ -925,8 +964,8 @@ function updateFavoritesCount() {
 
 function toggleFavoritesView() {
     favoritesOnly = !favoritesOnly
-    const btn = document.getElementById('favoritesToggle')
-    if (btn) btn.classList.toggle('active', favoritesOnly)
+    const navFav = document.getElementById('navFavorites')
+    if (navFav) navFav.classList.toggle('active', favoritesOnly)
     applyFilters()
 }
 
@@ -934,15 +973,15 @@ function openCart() {
     renderCart()
     const drawer = document.getElementById('cartDrawer')
     const overlay = document.getElementById('cartDrawerOverlay')
-    drawer.classList.add('open')
-    overlay.classList.add('open')
+    if (drawer) drawer.classList.add('open')
+    if (overlay) overlay.classList.add('open')
 }
 
 function closeCart() {
     const drawer = document.getElementById('cartDrawer')
     const overlay = document.getElementById('cartDrawerOverlay')
-    drawer.classList.remove('open')
-    overlay.classList.remove('open')
+    if (drawer) drawer.classList.remove('open')
+    if (overlay) overlay.classList.remove('open')
 }
 
 function renderCart() {
@@ -970,15 +1009,15 @@ function renderCart() {
 
         return `
             <div class="cart-item">
-                <img src="${product.product_images?.[0]?.url || ''}" alt="${escapeHtml(product.name)}" class="cart-item-image">
+                <img src="${escapeHtml(product.product_images?.[0]?.url || '')}" alt="${escapeHtml(product.name)}" class="cart-item-image">
                 <div class="cart-item-info">
                     <div class="cart-item-name">${escapeHtml(cleanProductName(product.name, product.brands?.name))}</div>
                     <div class="cart-item-price">${product.price} ₽ × ${cartItem.quantity} = ${itemTotal} ₽</div>
                     <div class="cart-item-controls">
-                        <button class="cart-minus" data-id="${product.id}">-</button>
+                        <button class="cart-minus" data-id="${escapeHtml(String(product.id))}">-</button>
                         <span>${cartItem.quantity}</span>
-                        <button class="cart-plus" data-id="${product.id}">+</button>
-                        <button class="cart-item-remove" data-id="${product.id}">&times;</button>
+                        <button class="cart-plus" data-id="${escapeHtml(String(product.id))}">+</button>
+                        <button class="cart-item-remove" data-id="${escapeHtml(String(product.id))}">&times;</button>
                     </div>
                 </div>
             </div>
@@ -1585,19 +1624,50 @@ function showA2HSBanner() {
     }
 }
 
+function showA2HSModal() {
+    if (sessionStorage.getItem('a2hs-modal-dismissed')) return
+    const modal = document.getElementById('a2hsModal')
+    if (!modal) return
+    modal.classList.remove('hidden')
+
+    const closeBtn = document.getElementById('a2hsModalClose')
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            modal.classList.add('hidden')
+            sessionStorage.setItem('a2hs-modal-dismissed', 'true')
+        })
+    }
+}
+
 function initA2HS() {
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true
     if (isStandalone) return
 
-    window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault()
-        deferredPrompt = e
-        setTimeout(showA2HSBanner, 3000)
-    })
+    let visitCount = parseInt(localStorage.getItem('jack-visit-count') || '0', 10)
+    visitCount++
+    localStorage.setItem('jack-visit-count', String(visitCount))
+    const isSecondVisit = visitCount >= 2
 
-    const isIOS = /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase()) && !window.MSStream
-    if (isIOS && /safari/i.test(navigator.userAgent) && !/crios|fxios|edgios/.test(navigator.userAgent)) {
-        setTimeout(showA2HSBanner, 5000)
+    if (isSecondVisit) {
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault()
+            deferredPrompt = e
+            setTimeout(showA2HSModal, 3000)
+        })
+        const isIOS = /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase()) && !window.MSStream
+        if (isIOS && /safari/i.test(navigator.userAgent) && !/crios|fxios|edgios/.test(navigator.userAgent)) {
+            setTimeout(showA2HSModal, 5000)
+        }
+    } else {
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault()
+            deferredPrompt = e
+            setTimeout(showA2HSBanner, 3000)
+        })
+        const isIOS = /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase()) && !window.MSStream
+        if (isIOS && /safari/i.test(navigator.userAgent) && !/crios|fxios|edgios/.test(navigator.userAgent)) {
+            setTimeout(showA2HSBanner, 5000)
+        }
     }
 }
 

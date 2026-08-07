@@ -14,6 +14,7 @@ async function fetchWithTimeout(url, options = {}, timeout = 15000) {
     const timer = setTimeout(() => controller.abort(), timeout)
     try {
         const isAuthEndpoint = url.includes('/auth/v1/')
+        const skipAuthRedirect = options.skipAuthRedirect === true
         const token = !isAuthEndpoint ? localStorage.getItem('admin-token') : null
         const headers = {
             ...(options.headers || {}),
@@ -21,7 +22,7 @@ async function fetchWithTimeout(url, options = {}, timeout = 15000) {
         }
         const response = await window.fetch(url, { ...options, headers, signal: controller.signal })
         clearTimeout(timer)
-        if (!isAuthEndpoint && response.status === 401) {
+        if (!isAuthEndpoint && !skipAuthRedirect && response.status === 401) {
             handleAuthError('Сессия истекла. Войдите снова.')
         }
         return response
@@ -42,6 +43,19 @@ function escapeHtml(str) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;')
+}
+
+function cleanProductName(name, brand) {
+    if (!name) return ''
+    let cleaned = name
+    if (brand) {
+        const brandUpper = brand.toUpperCase()
+        const nameUpper = cleaned.toUpperCase()
+        if (nameUpper.startsWith(brandUpper)) {
+            cleaned = cleaned.slice(brandUpper.length).trim()
+        }
+    }
+    return cleaned
 }
 
 let currentPage = 'products'
@@ -146,21 +160,25 @@ function setupEventListeners() {
     if (themeToggle) themeToggle.addEventListener('click', toggleTheme)
 
     // Login
-    document.getElementById('loginForm').addEventListener('submit', handleLogin)
-    document.getElementById('forgotPassword').addEventListener('click', handleForgotPassword)
-    document.getElementById('logoutBtn').addEventListener('click', handleLogout)
+    const loginForm = document.getElementById('loginForm')
+    if (loginForm) loginForm.addEventListener('submit', handleLogin)
+    const forgotPassword = document.getElementById('forgotPassword')
+    if (forgotPassword) forgotPassword.addEventListener('click', handleForgotPassword)
+    const logoutBtn = document.getElementById('logoutBtn')
+    if (logoutBtn) logoutBtn.addEventListener('click', handleLogout)
 
     // Mobile hamburger
     const sidebar = document.querySelector('.sidebar')
     const sidebarOverlay = document.getElementById('sidebarOverlay')
     const toggleSidebar = (open) => {
-        sidebar.classList.toggle('open', open)
-        sidebarOverlay.classList.toggle('open', open)
+        if (sidebar) sidebar.classList.toggle('open', open)
+        if (sidebarOverlay) sidebarOverlay.classList.toggle('open', open)
     }
-    document.getElementById('hamburgerBtn').addEventListener('click', () => {
-        toggleSidebar(!sidebar.classList.contains('open'))
+    const hamburgerBtn = document.getElementById('hamburgerBtn')
+    if (hamburgerBtn) hamburgerBtn.addEventListener('click', () => {
+        toggleSidebar(!sidebar?.classList.contains('open'))
     })
-    sidebarOverlay.addEventListener('click', () => toggleSidebar(false))
+    if (sidebarOverlay) sidebarOverlay.addEventListener('click', () => toggleSidebar(false))
 
     // Navigation
     document.querySelectorAll('.nav-item').forEach(item => {
@@ -172,60 +190,87 @@ function setupEventListeners() {
     })
 
     // Products table actions (event delegation)
-    document.getElementById('productsTable')?.addEventListener('click', (e) => {
-        const editBtn = e.target.closest('button[data-action="edit-product"]')
-        const dupBtn = e.target.closest('button[data-action="duplicate-product"]')
-        const delBtn = e.target.closest('button[data-action="delete-product"]')
-        if (editBtn) editProduct(editBtn.dataset.id)
-        if (dupBtn) duplicateProduct(dupBtn.dataset.id)
-        if (delBtn) deleteProduct(delBtn.dataset.id)
-    })
+    const productsTable = document.getElementById('productsTable')
+    if (productsTable) {
+        productsTable.addEventListener('click', (e) => {
+            const editBtn = e.target.closest('button[data-action="edit-product"]')
+            const dupBtn = e.target.closest('button[data-action="duplicate-product"]')
+            const delBtn = e.target.closest('button[data-action="delete-product"]')
+            if (editBtn) editProduct(editBtn.dataset.id)
+            if (dupBtn) duplicateProduct(dupBtn.dataset.id)
+            if (delBtn) deleteProduct(delBtn.dataset.id)
+        })
+    }
 
     // Categories table actions (event delegation)
-    document.getElementById('categoriesTable')?.addEventListener('click', (e) => {
-        const editBtn = e.target.closest('button[data-action="edit-category"]')
-        const delBtn = e.target.closest('button[data-action="delete-category"]')
-        if (editBtn) editCategory(editBtn.dataset.id)
-        if (delBtn) deleteCategory(delBtn.dataset.id)
-    })
+    const categoriesTable = document.getElementById('categoriesTable')
+    if (categoriesTable) {
+        categoriesTable.addEventListener('click', (e) => {
+            const editBtn = e.target.closest('button[data-action="edit-category"]')
+            const delBtn = e.target.closest('button[data-action="delete-category"]')
+            if (editBtn) editCategory(editBtn.dataset.id)
+            if (delBtn) deleteCategory(delBtn.dataset.id)
+        })
+    }
 
     // Brands table actions (event delegation)
-    document.getElementById('brandsTable')?.addEventListener('click', (e) => {
-        const editBtn = e.target.closest('button[data-action="edit-brand"]')
-        const delBtn = e.target.closest('button[data-action="delete-brand"]')
-        if (editBtn) editBrand(editBtn.dataset.id)
-        if (delBtn) deleteBrand(delBtn.dataset.id)
-    })
+    const brandsTable = document.getElementById('brandsTable')
+    if (brandsTable) {
+        brandsTable.addEventListener('click', (e) => {
+            const editBtn = e.target.closest('button[data-action="edit-brand"]')
+            const delBtn = e.target.closest('button[data-action="delete-brand"]')
+            if (editBtn) editBrand(editBtn.dataset.id)
+            if (delBtn) deleteBrand(delBtn.dataset.id)
+        })
+    }
 
     // Pagination (event delegation)
-    document.getElementById('productsPagination')?.addEventListener('click', (e) => {
-        const btn = e.target.closest('button')
-        if (!btn || btn.disabled) return
-        const page = btn.dataset.page
-        if (page) changeProductsPage(parseInt(page, 10))
-    })
+    const productsPagination = document.getElementById('productsPagination')
+    if (productsPagination) {
+        productsPagination.addEventListener('click', (e) => {
+            const btn = e.target.closest('button')
+            if (!btn || btn.disabled) return
+            const page = btn.dataset.page
+            if (page) changeProductsPage(parseInt(page, 10))
+        })
+    }
 
-    document.getElementById('ordersPagination')?.addEventListener('click', (e) => {
-        const btn = e.target.closest('button')
-        if (!btn || btn.disabled) return
-        const page = btn.dataset.page
-        if (page) changeOrdersPage(parseInt(page, 10))
-    })
+    const ordersPagination = document.getElementById('ordersPagination')
+    if (ordersPagination) {
+        ordersPagination.addEventListener('click', (e) => {
+            const btn = e.target.closest('button')
+            if (!btn || btn.disabled) return
+            const page = btn.dataset.page
+            if (page) changeOrdersPage(parseInt(page, 10))
+        })
+    }
 
     // Analytics
-    document.getElementById('analyticsPeriod').addEventListener('change', () => { ordersPage = 1; loadAnalytics() })
+    const analyticsPeriod = document.getElementById('analyticsPeriod')
+    if (analyticsPeriod) analyticsPeriod.addEventListener('change', () => { ordersPage = 1; loadAnalytics() })
 
     // Settings
-    document.getElementById('settingsForm').addEventListener('submit', handleSettingsSave)
-    document.getElementById('changePasswordForm').addEventListener('submit', handleChangePassword)
+    const settingsForm = document.getElementById('settingsForm')
+    if (settingsForm) settingsForm.addEventListener('submit', handleSettingsSave)
+    const changePasswordForm = document.getElementById('changePasswordForm')
+    if (changePasswordForm) changePasswordForm.addEventListener('submit', handleChangePassword)
 
     // Import/Export
-    document.getElementById('importFileBtn').addEventListener('click', () => document.getElementById('importFile').click())
-    document.getElementById('importFile').addEventListener('change', handleImportFileSelect)
-    document.getElementById('importBtn').addEventListener('click', handleImport)
-    document.getElementById('exportBtn').addEventListener('click', handleExport)
-    document.getElementById('backupBtn').addEventListener('click', handleBackup)
-    document.getElementById('backupSqlBtn').addEventListener('click', handleBackupSql)
+    const importFileBtn = document.getElementById('importFileBtn')
+    if (importFileBtn) importFileBtn.addEventListener('click', () => {
+        const importFile = document.getElementById('importFile')
+        if (importFile) importFile.click()
+    })
+    const importFile = document.getElementById('importFile')
+    if (importFile) importFile.addEventListener('change', handleImportFileSelect)
+    const importBtn = document.getElementById('importBtn')
+    if (importBtn) importBtn.addEventListener('click', handleImport)
+    const exportBtn = document.getElementById('exportBtn')
+    if (exportBtn) exportBtn.addEventListener('click', handleExport)
+    const backupBtn = document.getElementById('backupBtn')
+    if (backupBtn) backupBtn.addEventListener('click', handleBackup)
+    const backupSqlBtn = document.getElementById('backupSqlBtn')
+    if (backupSqlBtn) backupSqlBtn.addEventListener('click', handleBackupSql)
 
     // Generate descriptions
     const generateDescBtn = document.getElementById('generateDescBtn')
@@ -234,39 +279,65 @@ function setupEventListeners() {
     }
 
     // Modal
-    document.querySelector('#productModal .modal-close').addEventListener('click', closeProductModal)
-    document.getElementById('nameModalClose').addEventListener('click', closeNameModal)
-    document.getElementById('nameModalCancel').addEventListener('click', closeNameModal)
-    document.getElementById('nameModalForm').addEventListener('submit', async (e) => {
-        e.preventDefault()
-        const value = document.getElementById('nameModalInput').value.trim()
-        if (nameModalResolve) {
-            nameModalResolve(value)
-            nameModalResolve = null
-        }
-        document.getElementById('nameModal').classList.add('hidden')
-        document.getElementById('nameModalInput').value = ''
-    })
+    const productModalClose = document.querySelector('#productModal .modal-close')
+    if (productModalClose) productModalClose.addEventListener('click', closeProductModal)
+    const nameModalClose = document.getElementById('nameModalClose')
+    if (nameModalClose) nameModalClose.addEventListener('click', closeNameModal)
+    const nameModalCancel = document.getElementById('nameModalCancel')
+    if (nameModalCancel) nameModalCancel.addEventListener('click', closeNameModal)
+    const nameModalForm = document.getElementById('nameModalForm')
+    if (nameModalForm) {
+        nameModalForm.addEventListener('submit', async (e) => {
+            e.preventDefault()
+            const value = document.getElementById('nameModalInput')?.value.trim() || ''
+            if (nameModalResolve) {
+                nameModalResolve(value)
+                nameModalResolve = null
+            }
+            const nameModal = document.getElementById('nameModal')
+            if (nameModal) nameModal.classList.add('hidden')
+            const nameModalInput = document.getElementById('nameModalInput')
+            if (nameModalInput) nameModalInput.value = ''
+        })
+    }
+
+    const cancelProduct = document.getElementById('cancelProduct')
+    if (cancelProduct) cancelProduct.addEventListener('click', closeProductModal)
 
     // Product image removal
-    document.getElementById('imagePreview')?.addEventListener('click', (e) => {
-        if (e.target.classList.contains('remove-image')) {
-            const idx = parseInt(e.target.dataset.idx, 10)
-            productImages.splice(idx, 1)
-            const preview = document.getElementById('imagePreview')
-            preview.innerHTML = productImages.map((img, i) => `<span class="image-wrapper"><img src="${img.url}" alt=""><button type="button" class="remove-image" data-idx="${i}">&times;</button></span>`).join('')
-        }
-    })
+    const imagePreview = document.getElementById('imagePreview')
+    if (imagePreview) {
+        imagePreview.addEventListener('click', (e) => {
+            if (e.target.classList.contains('remove-image')) {
+                const idx = parseInt(e.target.dataset.idx, 10)
+                productImages.splice(idx, 1)
+                imagePreview.innerHTML = productImages.map((img, i) => `<span class="image-wrapper"><img src="${img.url}" alt=""><button type="button" class="remove-image" data-idx="${i}">&times;</button></span>`).join('')
+            }
+        })
+    }
+
+    const addProductBtn = document.getElementById('addProductBtn')
+    if (addProductBtn) addProductBtn.addEventListener('click', () => openProductModal())
+
+    const addCategoryBtn = document.getElementById('addCategoryBtn')
+    if (addCategoryBtn) addCategoryBtn.addEventListener('click', () => openCategoryModal())
+
+    const addBrandBtn = document.getElementById('addBrandBtn')
+    if (addBrandBtn) addBrandBtn.addEventListener('click', () => openBrandModal())
 }
 
 function showAuthPage() {
-    document.getElementById('authPage').classList.remove('hidden')
-    document.getElementById('adminPage').classList.add('hidden')
+    const authPage = document.getElementById('authPage')
+    const adminPage = document.getElementById('adminPage')
+    if (authPage) authPage.classList.remove('hidden')
+    if (adminPage) adminPage.classList.add('hidden')
 }
 
 function showAdminPage() {
-    document.getElementById('authPage').classList.add('hidden')
-    document.getElementById('adminPage').classList.remove('hidden')
+    const authPage = document.getElementById('authPage')
+    const adminPage = document.getElementById('adminPage')
+    if (authPage) authPage.classList.add('hidden')
+    if (adminPage) adminPage.classList.remove('hidden')
 }
 
 async function handleLogin(e) {
@@ -410,22 +481,22 @@ async function loadProducts() {
         } else {
             tbody.innerHTML = data.map(product => `
                 <tr>
-                    <td>${product.product_images?.[0]?.url ? `<img src="${product.product_images[0].url}" alt="">` : '<span style="color:var(--text-secondary)">—</span>'}</td>
-                    <td>${escapeHtml(product.name)}</td>
+                    <td>${product.product_images?.[0]?.url ? `<img src="${escapeHtml(product.product_images[0].url)}" alt="">` : '<span style="color:var(--text-secondary)">—</span>'}</td>
+                    <td>${escapeHtml(cleanProductName(product.name, product.brands?.name))}</td>
                     <td>${escapeHtml(product.categories?.name || '-')}</td>
                     <td>${escapeHtml(product.brands?.name || '-')}</td>
                     <td>${product.price} ₽</td>
                     <td>${product.stock}</td>
                     <td>${product.is_visible ? '✅' : '❌'}</td>
                 <td>
-                    ${product.is_hit ? '<span class="badge-text badge-hit">ХИТ</span>' : ''}
-                    ${product.is_new ? '<span class="badge-text badge-new">НОВИНКА</span>' : ''}
-                    ${product.is_discount ? '<span class="badge-text badge-discount">СКИДКА</span>' : ''}
+                    ${product.is_hit ? '<span class="badge-text badge-hit">HIT</span>' : ''}
+                    ${product.is_new ? '<span class="badge-text badge-new">NEW</span>' : ''}
+                    ${product.is_discount ? '<span class="badge-text badge-discount">SALE</span>' : ''}
                 </td>
                     <td>
-                        <button class="btn btn-sm btn-secondary" data-action="edit-product" data-id="${product.id}">✏️</button>
-                        <button class="btn btn-sm btn-primary" data-action="duplicate-product" data-id="${product.id}">⧉</button>
-                        <button class="btn btn-sm btn-danger" data-action="delete-product" data-id="${product.id}">🗑️</button>
+                        <button class="btn btn-sm btn-secondary" data-action="edit-product" data-id="${escapeHtml(String(product.id))}">✏️</button>
+                        <button class="btn btn-sm btn-primary" data-action="duplicate-product" data-id="${escapeHtml(String(product.id))}">⧉</button>
+                        <button class="btn btn-sm btn-danger" data-action="delete-product" data-id="${escapeHtml(String(product.id))}">🗑️</button>
                     </td>
                 </tr>
             `).join('')
@@ -464,11 +535,14 @@ function changeProductsPage(page) {
 
 async function openProductModal(productId = null) {
     editingProductId = productId
-    document.getElementById('modalTitle').textContent = productId ? 'Редактировать товар' : 'Добавить товар'
+    const modalTitle = document.getElementById('modalTitle')
+    if (modalTitle) modalTitle.textContent = productId ? 'Редактировать товар' : 'Добавить товар'
 
-    document.getElementById('productForm').reset()
+    const productForm = document.getElementById('productForm')
+    if (productForm) productForm.reset()
     productImages = []
-    document.getElementById('imagePreview').innerHTML = ''
+    const imagePreview = document.getElementById('imagePreview')
+    if (imagePreview) imagePreview.innerHTML = ''
 
     const loadOk = await loadFormOptions()
     if (!loadOk) {
@@ -515,13 +589,27 @@ async function openProductModal(productId = null) {
                 productImages = Array.isArray(product.images) ? product.images.map(img => ({ ...img })) : []
 
                 const preview = document.getElementById('imagePreview')
-                preview.innerHTML = productImages.map((img, idx) => `<span class="image-wrapper"><img src="${img.url}" alt=""><button type="button" class="remove-image" data-idx="${idx}">&times;</button></span>`).join('')
+                if (preview) {
+                    preview.innerHTML = productImages.map((img, idx) => `<span class="image-wrapper"><img src="${escapeHtml(img.url)}" alt=""><button type="button" class="remove-image" data-idx="${idx}">&times;</button></span>`).join('')
+                }
 
                 const relatedIds = Array.isArray(product.related) ? product.related : []
                 const relatedSelect = document.getElementById('prodRelated')
-                Array.from(relatedSelect.options).forEach(opt => {
-                    opt.selected = relatedIds.includes(opt.value)
-                })
+                if (relatedSelect) {
+                    Array.from(relatedSelect.options).forEach(opt => {
+                        opt.selected = relatedIds.includes(opt.value)
+                    })
+                }
+
+                const showContra = document.getElementById('showContraindications')
+                const contraGroup = document.getElementById('contraindicationsGroup')
+                if (showContra && contraGroup) {
+                    showContra.checked = !!product.contraindications
+                    contraGroup.style.display = showContra.checked ? 'block' : 'none'
+                    showContra.onchange = () => {
+                        contraGroup.style.display = showContra.checked ? 'block' : 'none'
+                    }
+                }
             }
         } catch (error) {
             console.error('Error loading product:', error)
@@ -562,11 +650,11 @@ async function loadFormOptions() {
         
         document.getElementById('prodCategory').innerHTML = 
             '<option value="">Не выбрана</option>' +
-            categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('')
+            categories.map(c => `<option value="${escapeHtml(String(c.id))}">${escapeHtml(c.name)}</option>`).join('')
         
         document.getElementById('prodBrand').innerHTML = 
             '<option value="">Не выбран</option>' +
-            brands.map(b => `<option value="${b.id}">${b.name}</option>`).join('')
+            brands.map(b => `<option value="${escapeHtml(String(b.id))}">${escapeHtml(b.name)}</option>`).join('')
 
         // Load all products for related select
         const allRes = await fetchWithTimeout(`${CONFIG.adminApiUrl}/products?limit=1000&page=1`, {
@@ -580,9 +668,12 @@ async function loadFormOptions() {
         
         const allData = await allRes.json()
         const productsList = allData.data || []
-        document.getElementById('prodRelated').innerHTML = productsList
-            .map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`)
-            .join('')
+        const prodRelated = document.getElementById('prodRelated')
+        if (prodRelated) {
+            prodRelated.innerHTML = productsList
+                .map(p => `<option value="${escapeHtml(String(p.id))}">${escapeHtml(p.name)}</option>`)
+                .join('')
+        }
 
         return true
     } catch (error) {
@@ -595,31 +686,38 @@ async function loadFormOptions() {
 async function handleProductSubmit(e) {
     e.preventDefault()
     const errorEl = document.getElementById('productError')
+    if (!errorEl) return
+
+    const prodName = document.getElementById('prodName')
+    const prodPrice = document.getElementById('prodPrice')
+    const prodStock = document.getElementById('prodStock')
+    if (!prodName || !prodPrice || !prodStock) return
+
     errorEl.classList.add('hidden')
 
     try {
         const productData = {
-        name: document.getElementById('prodName').value.trim(),
-        description: document.getElementById('prodDescription').value.trim(),
-        full_description: document.getElementById('prodFullDescription').value.trim(),
-        composition: document.getElementById('prodComposition').value.trim(),
-        dosage: document.getElementById('prodDosage').value.trim(),
-        usage: document.getElementById('prodUsage').value.trim(),
-        contraindications: document.getElementById('prodContraindications').value.trim(),
-        category_id: document.getElementById('prodCategory').value || null,
-        brand_id: document.getElementById('prodBrand').value || null,
-        price: parseFloat(document.getElementById('prodPrice').value) || 0,
-        old_price: document.getElementById('prodOldPrice').value ? parseFloat(document.getElementById('prodOldPrice').value) : null,
-        stock: parseInt(document.getElementById('prodStock').value, 10) || 0,
-        volume: document.getElementById('prodVolume').value.trim(),
-        sku: document.getElementById('prodSku').value.trim() || null,
-        barcode: document.getElementById('prodBarcode').value.trim() || null,
-        is_hit: document.getElementById('prodIsHit').checked,
-        is_new: document.getElementById('prodIsNew').checked,
-        is_discount: document.getElementById('prodIsDiscount').checked,
-        is_related_enabled: document.getElementById('prodIsRelated').checked,
-        shelf_life: document.getElementById('prodShelfLife').value.trim(),
-        is_visible: document.getElementById('prodIsVisible').value === 'true'
+        name: prodName.value.trim(),
+        description: document.getElementById('prodDescription')?.value.trim() || '',
+        full_description: document.getElementById('prodFullDescription')?.value.trim() || '',
+        composition: document.getElementById('prodComposition')?.value.trim() || '',
+        dosage: document.getElementById('prodDosage')?.value.trim() || '',
+        usage: document.getElementById('prodUsage')?.value.trim() || '',
+        contraindications: document.getElementById('prodContraindications')?.value.trim() || '',
+        category_id: document.getElementById('prodCategory')?.value || null,
+        brand_id: document.getElementById('prodBrand')?.value || null,
+        price: parseFloat(prodPrice.value) || 0,
+        old_price: document.getElementById('prodOldPrice')?.value ? parseFloat(document.getElementById('prodOldPrice').value) : null,
+        stock: parseInt(prodStock.value, 10) || 0,
+        volume: document.getElementById('prodVolume')?.value.trim() || '',
+        sku: document.getElementById('prodSku')?.value.trim() || null,
+        barcode: document.getElementById('prodBarcode')?.value.trim() || null,
+        is_hit: document.getElementById('prodIsHit')?.checked || false,
+        is_new: document.getElementById('prodIsNew')?.checked || false,
+        is_discount: document.getElementById('prodIsDiscount')?.checked || false,
+        is_related_enabled: document.getElementById('prodIsRelated')?.checked || false,
+        shelf_life: document.getElementById('prodShelfLife')?.value.trim() || '',
+        is_visible: document.getElementById('prodIsVisible')?.value === 'true'
     }
 
     if (!productData.name) {
@@ -711,17 +809,21 @@ async function handleProductSubmit(e) {
 
 async function deleteProduct(id) {
     if (!confirm('Удалить товар?')) return
-    
-    const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/products/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
-    })
-    
-    if (response.ok) {
-        loadProducts()
-    } else {
-        const result = await response.json().catch(() => ({}))
-        alert(translateError(result.error) || 'Ошибка удаления товара')
+    try {
+        const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/products/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
+        })
+        
+        if (response.ok) {
+            loadProducts()
+        } else {
+            const result = await response.json().catch(() => ({}))
+            alert(translateError(result.error) || 'Ошибка удаления товара')
+        }
+    } catch (error) {
+        console.error('Error deleting product:', error)
+        alert('Ошибка удаления товара: ' + error.message)
     }
 }
 
@@ -774,10 +876,26 @@ async function duplicateProduct(id) {
 
             productImages = Array.isArray(product.images) ? product.images.map(img => ({ ...img })) : []
 
-            document.getElementById('imagePreview').innerHTML = productImages.map((img, idx) => `<span class="image-wrapper"><img src="${img.url}" alt=""><button type="button" class="remove-image" data-idx="${idx}">&times;</button></span>`).join('')
+            const preview = document.getElementById('imagePreview')
+            if (preview) {
+                preview.innerHTML = productImages.map((img, idx) => `<span class="image-wrapper"><img src="${escapeHtml(img.url)}" alt=""><button type="button" class="remove-image" data-idx="${idx}">&times;</button></span>`).join('')
+            }
 
             // Связи при дублировании не копируем
-            Array.from(document.getElementById('prodRelated').options).forEach(opt => { opt.selected = false })
+            const relatedSelect = document.getElementById('prodRelated')
+            if (relatedSelect) {
+                Array.from(relatedSelect.options).forEach(opt => { opt.selected = false })
+            }
+
+            const showContra = document.getElementById('showContraindications')
+            const contraGroup = document.getElementById('contraindicationsGroup')
+            if (showContra && contraGroup) {
+                showContra.checked = !!product.contraindications
+                contraGroup.style.display = showContra.checked ? 'block' : 'none'
+                showContra.onchange = () => {
+                    contraGroup.style.display = showContra.checked ? 'block' : 'none'
+                }
+            }
         }
 
         document.getElementById('productModal').classList.remove('hidden')
@@ -809,8 +927,8 @@ async function loadCategories() {
             <tr>
                 <td>${escapeHtml(cat.name)}</td>
                 <td>
-                    <button class="btn btn-sm btn-secondary" data-action="edit-category" data-id="${cat.id}">✏️</button>
-                    <button class="btn btn-sm btn-danger" data-action="delete-category" data-id="${cat.id}">🗑️</button>
+                    <button class="btn btn-sm btn-secondary" data-action="edit-category" data-id="${escapeHtml(String(cat.id))}">✏️</button>
+                    <button class="btn btn-sm btn-danger" data-action="delete-category" data-id="${escapeHtml(String(cat.id))}">🗑️</button>
                 </td>
             </tr>
         `).join('')
@@ -896,17 +1014,21 @@ async function openCategoryModal(categoryId = null) {
 
 async function deleteCategory(id) {
     if (!confirm('Удалить категорию?')) return
+    try {
+        const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/categories/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
+        })
 
-    const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/categories/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
-    })
-
-    if (response.ok) {
-        loadCategories()
-    } else {
-        const result = await response.json().catch(() => ({}))
-        alert(translateError(result.error) || 'Ошибка удаления категории')
+        if (response.ok) {
+            loadCategories()
+        } else {
+            const result = await response.json().catch(() => ({}))
+            alert(translateError(result.error) || 'Ошибка удаления категории')
+        }
+    } catch (error) {
+        console.error('Error deleting category:', error)
+        alert('Ошибка удаления категории: ' + error.message)
     }
 }
 
@@ -936,8 +1058,8 @@ async function loadBrands() {
             <tr>
                 <td>${escapeHtml(brand.name)}</td>
                 <td>
-                    <button class="btn btn-sm btn-secondary" data-action="edit-brand" data-id="${brand.id}">✏️</button>
-                    <button class="btn btn-sm btn-danger" data-action="delete-brand" data-id="${brand.id}">🗑️</button>
+                    <button class="btn btn-sm btn-secondary" data-action="edit-brand" data-id="${escapeHtml(String(brand.id))}">✏️</button>
+                    <button class="btn btn-sm btn-danger" data-action="delete-brand" data-id="${escapeHtml(String(brand.id))}">🗑️</button>
                 </td>
             </tr>
         `).join('')
@@ -1000,17 +1122,21 @@ async function openBrandModal(brandId = null) {
 
 async function deleteBrand(id) {
     if (!confirm('Удалить бренд?')) return
+    try {
+        const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/brands/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
+        })
 
-    const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/brands/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
-    })
-
-    if (response.ok) {
-        loadBrands()
-    } else {
-        const result = await response.json().catch(() => ({}))
-        alert(translateError(result.error) || 'Ошибка удаления бренда')
+        if (response.ok) {
+            loadBrands()
+        } else {
+            const result = await response.json().catch(() => ({}))
+            alert(translateError(result.error) || 'Ошибка удаления бренда')
+        }
+    } catch (error) {
+        console.error('Error deleting brand:', error)
+        alert('Ошибка удаления бренда: ' + error.message)
     }
 }
 
@@ -1042,13 +1168,16 @@ async function loadAnalytics() {
         document.getElementById('totalOrders').textContent = data.totalOrders.toLocaleString()
         
         // Top products
-        document.getElementById('topProductsTable').innerHTML = data.topProducts.map(p => `
-            <tr>
-                <td>${escapeHtml(p.name)}</td>
-                <td>${p.quantity}</td>
-                <td>${p.total.toLocaleString()} ₽</td>
-            </tr>
-        `).join('')
+        const topProductsTable = document.getElementById('topProductsTable')
+        if (topProductsTable) {
+            topProductsTable.innerHTML = data.topProducts.map(p => `
+                <tr>
+                    <td>${escapeHtml(p.name)}</td>
+                    <td>${escapeHtml(String(p.quantity))}</td>
+                    <td>${escapeHtml(String(p.total))} ₽</td>
+                </tr>
+            `).join('')
+        }
         
         // Chart
         renderSalesChart(data.dailyStats)
@@ -1067,14 +1196,17 @@ async function loadAnalytics() {
         const ordersData = await ordersRes.json()
         ordersTotal = ordersData.total || 0
         
-        document.getElementById('ordersTable').innerHTML = ordersData.data.map(order => `
-            <tr>
-                <td>${order.order_number}</td>
-                <td>${order.items.map(i => `${i.name} (${i.quantity})`).join(', ')}</td>
-                <td>${order.total.toLocaleString()} ₽</td>
-                <td>${new Date(order.created_at).toLocaleString('ru-RU')}</td>
-            </tr>
-        `).join('')
+        const ordersTable = document.getElementById('ordersTable')
+        if (ordersTable) {
+            ordersTable.innerHTML = ordersData.data.map(order => `
+                <tr>
+                    <td>${escapeHtml(String(order.order_number))}</td>
+                    <td>${escapeHtml(order.items.map(i => `${i.name} (${i.quantity})`).join(', '))}</td>
+                    <td>${escapeHtml(String(order.total))} ₽</td>
+                    <td>${escapeHtml(new Date(order.created_at).toLocaleString('ru-RU'))}</td>
+                </tr>
+            `).join('')
+        }
         
         renderOrdersPagination()
     } catch (error) {
@@ -1169,6 +1301,7 @@ async function loadSettings() {
         document.getElementById('logoText').value = settings.logo_text || ''
         document.getElementById('timezone').value = settings.timezone || 'Europe/Moscow'
         document.getElementById('orderTimeLimitEnabled').checked = settings.order_time_limit_enabled === 'true'
+        document.getElementById('stockAvailabilityEnabled').checked = settings.stock_availability_enabled === 'true'
         document.getElementById('orderStartHour').value = settings.order_start_hour || '09:00'
         document.getElementById('orderEndHour').value = settings.order_end_hour || '20:00'
         document.getElementById('orderErrorCode').value = settings.order_error_code || '[!CHECK!]'
@@ -1191,6 +1324,7 @@ async function handleSettingsSave(e) {
         logo_text: document.getElementById('logoText').value,
         timezone: document.getElementById('timezone').value,
         order_time_limit_enabled: document.getElementById('orderTimeLimitEnabled').checked ? 'true' : 'false',
+        stock_availability_enabled: document.getElementById('stockAvailabilityEnabled').checked ? 'true' : 'false',
         order_start_hour: document.getElementById('orderStartHour').value,
         order_end_hour: document.getElementById('orderEndHour').value,
         order_error_code: document.getElementById('orderErrorCode').value,
@@ -1667,7 +1801,8 @@ async function startMonitor() {
 async function checkMonitor() {
     try {
         const response = await fetchWithTimeout(CONFIG.orderFunctionUrl + '/health', {
-            method: 'GET'
+            method: 'GET',
+            skipAuthRedirect: true
         })
         
         const dot = document.querySelector('.indicator-dot')
@@ -1696,7 +1831,8 @@ async function checkMonitor() {
 async function sendAlert(message) {
     try {
         const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/settings`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` },
+            skipAuthRedirect: true
         })
         
         if (!response.ok) return
