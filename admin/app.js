@@ -235,6 +235,14 @@ function setupEventListeners() {
         })
     }
 
+    const productSearch = document.getElementById('productSearch')
+    if (productSearch) {
+        productSearch.addEventListener('input', debounce(() => {
+            productsPage = 1
+            loadProducts()
+        }, 300))
+    }
+
     const ordersPagination = document.getElementById('ordersPagination')
     if (ordersPagination) {
         ordersPagination.addEventListener('click', (e) => {
@@ -267,6 +275,8 @@ function setupEventListeners() {
     if (importBtn) importBtn.addEventListener('click', handleImport)
     const exportBtn = document.getElementById('exportBtn')
     if (exportBtn) exportBtn.addEventListener('click', handleExport)
+    const exportTemplateBtn = document.getElementById('exportTemplateBtn')
+    if (exportTemplateBtn) exportTemplateBtn.addEventListener('click', handleExportTemplate)
     const backupBtn = document.getElementById('backupBtn')
     if (backupBtn) backupBtn.addEventListener('click', handleBackup)
     const backupSqlBtn = document.getElementById('backupSqlBtn')
@@ -795,6 +805,9 @@ async function handleProductSubmit(e) {
 
     if (response.ok) {
         closeProductModal()
+        const searchInput = document.getElementById('productSearch')
+        if (searchInput) searchInput.value = ''
+        productsPage = 1
         loadProducts()
     } else {
         errorEl.textContent = translateError(result.error) || 'Ошибка сохранения товара'
@@ -1504,6 +1517,61 @@ async function handleExport() {
         alert('Ошибка экспорта: ' + error.message)
     }
 }
+
+async function handleExportTemplate() {
+    try {
+        const headers = [
+            { key: 'name', label: 'Название *', required: true },
+            { key: 'category', label: 'Категория', required: false },
+            { key: 'brand', label: 'Бренд', required: false },
+            { key: 'price', label: 'Цена *', required: true },
+            { key: 'old_price', label: 'Старая цена', required: false },
+            { key: 'stock', label: 'Остаток *', required: true },
+            { key: 'volume', label: 'Объём', required: false },
+            { key: 'sku', label: 'Артикул', required: false },
+            { key: 'barcode', label: 'Штрих-код', required: false },
+            { key: 'composition', label: 'Состав', required: false },
+            { key: 'usage', label: 'Способ применения', required: false },
+            { key: 'contraindications', label: 'Противопоказания', required: false },
+            { key: 'shelf_life', label: 'Срок годности', required: false },
+            { key: 'is_hit', label: 'Бейдж: Хит (TRUE/FALSE)', required: false },
+            { key: 'is_new', label: 'Бейдж: Новинка (TRUE/FALSE)', required: false },
+            { key: 'is_discount', label: 'Бейдж: Скидка (TRUE/FALSE)', required: false },
+            { key: 'is_visible', label: 'Видимость (TRUE/FALSE)', required: false }
+        ]
+
+        const headerRow = headers.map(h => h.required ? h.label + ' *' : h.label)
+        const exampleRow = [
+            'Пример: Витамин C 1000 мг',
+            'Витамины',
+            'BrandX',
+            500,
+            650,
+            100,
+            '60 капсул',
+            'VC-1000',
+            '4601234567890',
+            'Аскорбиновая кислота...',
+            'По 1 капсуле в день',
+            'Индивидуальная непереносимость',
+            '24 месяца',
+            'TRUE',
+            'TRUE',
+            'FALSE',
+            'TRUE'
+        ]
+
+        const ws = XLSX.utils.aoa_to_sheet([headerRow, exampleRow])
+        const wb = XLSX.utils.book_new()
+        XLSX.utils.book_append_sheet(wb, ws, 'Products')
+        ws['!cols'] = headers.map(() => ({ wch: 22 }))
+        XLSX.writeFile(wb, 'jack-nutrition-template.xlsx')
+    } catch (error) {
+        console.error('Error exporting template:', error)
+        alert('Ошибка создания шаблона: ' + error.message)
+    }
+}
+
 
 async function handleBackup() {
     try {

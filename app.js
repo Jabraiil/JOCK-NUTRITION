@@ -552,7 +552,7 @@ function filterAndRenderProducts(filters = {}) {
         const query = filters.search.toLowerCase()
         filtered = filtered.filter(p => 
             p.name.toLowerCase().includes(query) ||
-            p.brands?.name?.toLowerCase().includes(query)
+            (p.brands?.name?.toLowerCase() || '').includes(query)
         )
     }
 
