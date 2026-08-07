@@ -7,6 +7,19 @@
     <link rel="stylesheet" href="styles.css?v=26">
 </head>
 <body>
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+        <symbol id="icon-hit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2c0 0-7 7-7 12a7 7 0 0 0 14 0c0-5-7-12-7-12z"/>
+        </symbol>
+        <symbol id="icon-new" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+        </symbol>
+        <symbol id="icon-discount" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="5" x2="5" y2="19"/>
+            <circle cx="6.5" cy="6.5" r="2.5"/>
+            <circle cx="17.5" cy="17.5" r="2.5"/>
+        </symbol>
+    </svg>
     <div id="authPage" class="auth-page">
         <div class="auth-container">
             <h1>JACK NUTRITION</h1>
@@ -404,11 +417,6 @@
                     <label>Фото (до 4)</label>
                     <input type="file" id="prodImages" accept="image/*" multiple>
                     <div id="imagePreview" class="image-preview"></div>
-                </div>
-                <div class="form-group">
-                    <label>Ссылки (до 4)</label>
-                    <div id="linksContainer"></div>
-                    <button type="button" id="addLinkBtn" class="btn btn-secondary">+ Добавить ссылку</button>
                 </div>
                 <div class="form-group">
                     <label>Связанные товары (явный список)</label>

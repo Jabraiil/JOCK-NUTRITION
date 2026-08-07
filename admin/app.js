@@ -47,7 +47,6 @@ function escapeHtml(str) {
 let currentPage = 'products'
 let editingProductId = null
 let productImages = []
-let productLinks = []
 let monitorInterval = null
 let salesChart = null
 let productsPage = 1
@@ -386,51 +385,56 @@ async function loadPageData(page) {
 // ============================================
 
 async function loadProducts() {
-    const search = document.getElementById('productSearch').value || ''
-    const params = new URLSearchParams({ limit: String(PRODUCTS_PER_PAGE), page: String(productsPage) })
-    if (search) params.set('search', search)
-    
-    const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/products?${params}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
-    })
-    
-    if (!response.ok) {
-        const result = await response.json().catch(() => ({}))
-        alert(translateError(result.error) || 'Ошибка загрузки товаров')
-        return
+    try {
+        const search = document.getElementById('productSearch').value || ''
+        const params = new URLSearchParams({ limit: String(PRODUCTS_PER_PAGE), page: String(productsPage) })
+        if (search) params.set('search', search)
+        
+        const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/products?${params}`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
+        })
+        
+        if (!response.ok) {
+            const result = await response.json().catch(() => ({}))
+            alert(translateError(result.error) || 'Ошибка загрузки товаров')
+            return
+        }
+        
+        const { data, total } = await response.json()
+        productsTotal = total || 0
+        
+        const tbody = document.getElementById('productsTable')
+        if (data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-secondary)">Товары не найдены</td></tr>'
+        } else {
+            tbody.innerHTML = data.map(product => `
+                <tr>
+                    <td>${product.product_images?.[0]?.url ? `<img src="${product.product_images[0].url}" alt="">` : '<span style="color:var(--text-secondary)">—</span>'}</td>
+                    <td>${escapeHtml(product.name)}</td>
+                    <td>${escapeHtml(product.categories?.name || '-')}</td>
+                    <td>${escapeHtml(product.brands?.name || '-')}</td>
+                    <td>${product.price} ₽</td>
+                    <td>${product.stock}</td>
+                    <td>${product.is_visible ? '✅' : '❌'}</td>
+                    <td>
+                        ${product.is_hit ? '<svg class="admin-badge-icon admin-badge-hit"><use href="#icon-hit"/></svg>' : ''}
+                        ${product.is_new ? '<svg class="admin-badge-icon admin-badge-new"><use href="#icon-new"/></svg>' : ''}
+                        ${product.is_discount ? '<svg class="admin-badge-icon admin-badge-discount"><use href="#icon-discount"/></svg>' : ''}
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-secondary" data-action="edit-product" data-id="${product.id}">✏️</button>
+                        <button class="btn btn-sm btn-primary" data-action="duplicate-product" data-id="${product.id}">⧉</button>
+                        <button class="btn btn-sm btn-danger" data-action="delete-product" data-id="${product.id}">🗑️</button>
+                    </td>
+                </tr>
+            `).join('')
+        }
+        
+        renderProductsPagination()
+    } catch (error) {
+        console.error('Error loading products:', error)
+        alert('Ошибка загрузки товаров: ' + error.message)
     }
-    
-    const { data, total } = await response.json()
-    productsTotal = total || 0
-    
-    const tbody = document.getElementById('productsTable')
-    if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-secondary)">Товары не найдены</td></tr>'
-    } else {
-        tbody.innerHTML = data.map(product => `
-            <tr>
-                <td>${product.product_images?.[0]?.url ? `<img src="${product.product_images[0].url}" alt="">` : '<span style="color:var(--text-secondary)">—</span>'}</td>
-                <td>${escapeHtml(product.name)}</td>
-                <td>${escapeHtml(product.categories?.name || '-')}</td>
-                <td>${escapeHtml(product.brands?.name || '-')}</td>
-                <td>${product.price} ₽</td>
-                <td>${product.stock}</td>
-                <td>${product.is_visible ? '✅' : '❌'}</td>
-                <td>
-                    ${product.is_hit ? '<span class="admin-badge admin-badge-hit">Хит</span>' : ''}
-                    ${product.is_new ? '<span class="admin-badge admin-badge-new">Новинка</span>' : ''}
-                    ${product.is_discount ? '<span class="admin-badge admin-badge-discount">Скидка</span>' : ''}
-                </td>
-                <td>
-                    <button class="btn btn-sm btn-secondary" data-action="edit-product" data-id="${product.id}">✏️</button>
-                    <button class="btn btn-sm btn-primary" data-action="duplicate-product" data-id="${product.id}">⧉</button>
-                    <button class="btn btn-sm btn-danger" data-action="delete-product" data-id="${product.id}">🗑️</button>
-                </td>
-            </tr>
-        `).join('')
-    }
-    
-    renderProductsPagination()
 }
 
 function renderProductsPagination() {
@@ -463,9 +467,7 @@ async function openProductModal(productId = null) {
 
     document.getElementById('productForm').reset()
     productImages = []
-    productLinks = []
     document.getElementById('imagePreview').innerHTML = ''
-    document.getElementById('linksContainer').innerHTML = ''
 
     const loadOk = await loadFormOptions()
     if (!loadOk) {
@@ -474,49 +476,57 @@ async function openProductModal(productId = null) {
     }
 
     if (productId) {
-        const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/products/${productId}`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
-        })
-        const product = await response.json()
-
-        if (product && product.id) {
-            document.getElementById('prodName').value = product.name || ''
-            document.getElementById('prodDescription').value = product.description || ''
-            document.getElementById('prodFullDescription').value = product.full_description || ''
-            document.getElementById('prodComposition').value = product.composition || ''
-            document.getElementById('prodDosage').value = product.dosage || ''
-            document.getElementById('prodUsage').value = product.usage || ''
-            document.getElementById('prodContraindications').value = product.contraindications || ''
-            document.getElementById('prodCategory').value = product.category_id || ''
-            document.getElementById('prodBrand').value = product.brand_id || ''
-            document.getElementById('prodPrice').value = product.price ?? ''
-            document.getElementById('prodOldPrice').value = product.old_price ?? ''
-            document.getElementById('prodStock').value = product.stock ?? ''
-            document.getElementById('prodVolume').value = product.volume || ''
-            document.getElementById('prodSku').value = product.sku || ''
-            document.getElementById('prodBarcode').value = product.barcode || ''
-            document.getElementById('prodIsHit').checked = Boolean(product.is_hit)
-            document.getElementById('prodIsNew').checked = Boolean(product.is_new)
-            document.getElementById('prodIsDiscount').checked = Boolean(product.is_discount)
-            document.getElementById('prodIsRelated').checked = Boolean(product.is_related_enabled)
-            document.getElementById('prodShelfLife').value = product.shelf_life || ''
-            document.getElementById('prodIsVisible').value = String(product.is_visible)
-
-            productImages = Array.isArray(product.images) ? product.images.map(img => ({ ...img })) : []
-            productLinks = Array.isArray(product.links) ? product.links.map(link => ({ ...link })) : []
-
-            const preview = document.getElementById('imagePreview')
-            preview.innerHTML = productImages.map((img, idx) => `<span class="image-wrapper"><img src="${img.url}" alt=""><button type="button" class="remove-image" data-idx="${idx}">&times;</button></span>`).join('')
-
-            const linksContainer = document.getElementById('linksContainer')
-            linksContainer.innerHTML = ''
-            productLinks.forEach(link => addLinkField(link.url, link.title))
-
-            const relatedIds = Array.isArray(product.related) ? product.related : []
-            const relatedSelect = document.getElementById('prodRelated')
-            Array.from(relatedSelect.options).forEach(opt => {
-                opt.selected = relatedIds.includes(opt.value)
+        try {
+            const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/products/${productId}`, {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
             })
+            if (!response.ok) {
+                const result = await response.json().catch(() => ({}))
+                alert(translateError(result.error) || 'Ошибка загрузки товара')
+                closeProductModal()
+                return
+            }
+            const product = await response.json()
+
+            if (product && product.id) {
+                document.getElementById('prodName').value = product.name || ''
+                document.getElementById('prodDescription').value = product.description || ''
+                document.getElementById('prodFullDescription').value = product.full_description || ''
+                document.getElementById('prodComposition').value = product.composition || ''
+                document.getElementById('prodDosage').value = product.dosage || ''
+                document.getElementById('prodUsage').value = product.usage || ''
+                document.getElementById('prodContraindications').value = product.contraindications || ''
+                document.getElementById('prodCategory').value = product.category_id || ''
+                document.getElementById('prodBrand').value = product.brand_id || ''
+                document.getElementById('prodPrice').value = product.price ?? ''
+                document.getElementById('prodOldPrice').value = product.old_price ?? ''
+                document.getElementById('prodStock').value = product.stock ?? ''
+                document.getElementById('prodVolume').value = product.volume || ''
+                document.getElementById('prodSku').value = product.sku || ''
+                document.getElementById('prodBarcode').value = product.barcode || ''
+                document.getElementById('prodIsHit').checked = Boolean(product.is_hit)
+                document.getElementById('prodIsNew').checked = Boolean(product.is_new)
+                document.getElementById('prodIsDiscount').checked = Boolean(product.is_discount)
+                document.getElementById('prodIsRelated').checked = Boolean(product.is_related_enabled)
+                document.getElementById('prodShelfLife').value = product.shelf_life || ''
+                document.getElementById('prodIsVisible').value = String(product.is_visible)
+
+                productImages = Array.isArray(product.images) ? product.images.map(img => ({ ...img })) : []
+
+                const preview = document.getElementById('imagePreview')
+                preview.innerHTML = productImages.map((img, idx) => `<span class="image-wrapper"><img src="${img.url}" alt=""><button type="button" class="remove-image" data-idx="${idx}">&times;</button></span>`).join('')
+
+                const relatedIds = Array.isArray(product.related) ? product.related : []
+                const relatedSelect = document.getElementById('prodRelated')
+                Array.from(relatedSelect.options).forEach(opt => {
+                    opt.selected = relatedIds.includes(opt.value)
+                })
+            }
+        } catch (error) {
+            console.error('Error loading product:', error)
+            alert('Ошибка загрузки товара: ' + error.message)
+            closeProductModal()
+            return
         }
     }
 
@@ -529,50 +539,56 @@ function closeProductModal() {
 }
 
 async function loadFormOptions() {
-    const categoriesRes = await fetchWithTimeout(`${CONFIG.adminApiUrl}/categories`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
-    })
-    if (!categoriesRes.ok) {
-        const text = await categoriesRes.text()
-        throw new Error(text || 'Ошибка загрузки категорий')
-    }
+    try {
+        const categoriesRes = await fetchWithTimeout(`${CONFIG.adminApiUrl}/categories`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
+        })
+        if (!categoriesRes.ok) {
+            const text = await categoriesRes.text()
+            throw new Error(text || 'Ошибка загрузки категорий')
+        }
 
-    const brandsRes = await fetchWithTimeout(`${CONFIG.adminApiUrl}/brands`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
-    })
-    if (!brandsRes.ok) {
-        const text = await brandsRes.text()
-        throw new Error(text || 'Ошибка загрузки брендов')
-    }
-    
-    const categories = await categoriesRes.json()
-    const brands = await brandsRes.json()
-    
-    document.getElementById('prodCategory').innerHTML = 
-        '<option value="">Не выбрана</option>' +
-        categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('')
-    
-    document.getElementById('prodBrand').innerHTML = 
-        '<option value="">Не выбран</option>' +
-        brands.map(b => `<option value="${b.id}">${b.name}</option>`).join('')
+        const brandsRes = await fetchWithTimeout(`${CONFIG.adminApiUrl}/brands`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
+        })
+        if (!brandsRes.ok) {
+            const text = await brandsRes.text()
+            throw new Error(text || 'Ошибка загрузки брендов')
+        }
+        
+        const categories = await categoriesRes.json()
+        const brands = await brandsRes.json()
+        
+        document.getElementById('prodCategory').innerHTML = 
+            '<option value="">Не выбрана</option>' +
+            categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('')
+        
+        document.getElementById('prodBrand').innerHTML = 
+            '<option value="">Не выбран</option>' +
+            brands.map(b => `<option value="${b.id}">${b.name}</option>`).join('')
 
-    // Load all products for related select
-    const allRes = await fetchWithTimeout(`${CONFIG.adminApiUrl}/products?limit=1000&page=1`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
-    })
-    
-    if (!allRes.ok) {
-        const text = await allRes.text()
-        throw new Error(text || 'Ошибка загрузки товаров')
-    }
-    
-    const allData = await allRes.json()
-    const productsList = allData.data || []
-    document.getElementById('prodRelated').innerHTML = productsList
-        .map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`)
-        .join('')
+        // Load all products for related select
+        const allRes = await fetchWithTimeout(`${CONFIG.adminApiUrl}/products?limit=1000&page=1`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
+        })
+        
+        if (!allRes.ok) {
+            const text = await allRes.text()
+            throw new Error(text || 'Ошибка загрузки товаров')
+        }
+        
+        const allData = await allRes.json()
+        const productsList = allData.data || []
+        document.getElementById('prodRelated').innerHTML = productsList
+            .map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`)
+            .join('')
 
-    return true
+        return true
+    } catch (error) {
+        console.error('Error loading form options:', error)
+        alert('Ошибка загрузки справочников: ' + error.message)
+        return false
+    }
 }
 
 async function handleProductSubmit(e) {
@@ -629,20 +645,6 @@ async function handleProductSubmit(e) {
         return
     }
 
-    const linkInputs = Array.from(document.querySelectorAll('.link-item input[type="url"]'))
-    const linkTitleInputs = Array.from(document.querySelectorAll('.link-item input.link-title'))
-    const urls = linkInputs.map(input => input.value.trim()).filter(Boolean)
-    const titles = linkTitleInputs.map(input => input.value.trim())
-    for (const url of urls) {
-        try {
-            new URL(url)
-        } catch {
-            errorEl.textContent = 'Некорректная ссылка: ' + url
-            errorEl.classList.remove('hidden')
-            return
-        }
-    }
-
     const imageInput = document.getElementById('prodImages')
     if (imageInput.files.length > 0) {
         for (const file of imageInput.files) {
@@ -669,15 +671,12 @@ async function handleProductSubmit(e) {
         }
     }
 
-    productLinks = urls.slice(0, 4).map((url, idx) => ({ url, title: titles[idx] || '' }))
-
     const relatedSelect = document.getElementById('prodRelated')
     const related = Array.from(relatedSelect.selectedOptions).map(opt => opt.value)
 
     const body = {
         ...productData,
         ...(productImages.length ? { images: productImages } : {}),
-        ...(productLinks.length ? { links: productLinks } : {}),
         ...(related.length ? { related } : {})
     }
 
@@ -709,18 +708,6 @@ async function handleProductSubmit(e) {
     }
 }
 
-function addLinkField(value = '', title = '') {
-    const container = document.getElementById('linksContainer')
-    const div = document.createElement('div')
-    div.className = 'link-item'
-    div.innerHTML = `<input type="url" placeholder="https://..." value="${value}" required><input type="text" placeholder="Заголовок" value="${title}" class="link-title"><button type="button" class="btn btn-sm btn-danger remove-link">×</button>`
-    container.appendChild(div)
-
-    div.querySelector('.remove-link').addEventListener('click', () => {
-        div.remove()
-    })
-}
-
 async function deleteProduct(id) {
     if (!confirm('Удалить товар?')) return
     
@@ -743,55 +730,60 @@ function editProduct(id) {
 }
 
 async function duplicateProduct(id) {
-    editingProductId = null
-    document.getElementById('modalTitle').textContent = 'Дублировать товар'
-    document.getElementById('productForm').reset()
-    productImages = []
-    productLinks = []
-    document.getElementById('imagePreview').innerHTML = ''
-    document.getElementById('linksContainer').innerHTML = ''
+    try {
+        editingProductId = null
+        document.getElementById('modalTitle').textContent = 'Дублировать товар'
+        document.getElementById('productForm').reset()
+        productImages = []
+        document.getElementById('imagePreview').innerHTML = ''
 
-    await loadFormOptions()
+        await loadFormOptions()
 
-    const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/products/${id}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
-    })
-    const product = await response.json()
+        const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/products/${id}`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
+        })
+        if (!response.ok) {
+            const result = await response.json().catch(() => ({}))
+            alert(translateError(result.error) || 'Ошибка загрузки товара')
+            return
+        }
+        const product = await response.json()
 
-    if (product && product.id) {
-        document.getElementById('prodName').value = product.name + ' (копия)'
-        document.getElementById('prodDescription').value = product.description || ''
-        document.getElementById('prodFullDescription').value = product.full_description || ''
-        document.getElementById('prodComposition').value = product.composition || ''
-        document.getElementById('prodDosage').value = product.dosage || ''
-        document.getElementById('prodUsage').value = product.usage || ''
-        document.getElementById('prodContraindications').value = product.contraindications || ''
-        document.getElementById('prodCategory').value = product.category_id || ''
-        document.getElementById('prodBrand').value = product.brand_id || ''
-        document.getElementById('prodPrice').value = product.price ?? ''
-        document.getElementById('prodOldPrice').value = product.old_price ?? ''
-        document.getElementById('prodStock').value = product.stock ?? ''
-        document.getElementById('prodVolume').value = product.volume || ''
-        document.getElementById('prodSku').value = ''
-        document.getElementById('prodBarcode').value = ''
-        document.getElementById('prodIsHit').checked = Boolean(product.is_hit)
-        document.getElementById('prodIsNew').checked = Boolean(product.is_new)
-        document.getElementById('prodIsDiscount').checked = Boolean(product.is_discount)
-        document.getElementById('prodIsRelated').checked = Boolean(product.is_related_enabled)
-        document.getElementById('prodShelfLife').value = product.shelf_life || ''
-        document.getElementById('prodIsVisible').value = String(product.is_visible)
+        if (product && product.id) {
+            document.getElementById('prodName').value = product.name + ' (копия)'
+            document.getElementById('prodDescription').value = product.description || ''
+            document.getElementById('prodFullDescription').value = product.full_description || ''
+            document.getElementById('prodComposition').value = product.composition || ''
+            document.getElementById('prodDosage').value = product.dosage || ''
+            document.getElementById('prodUsage').value = product.usage || ''
+            document.getElementById('prodContraindications').value = product.contraindications || ''
+            document.getElementById('prodCategory').value = product.category_id || ''
+            document.getElementById('prodBrand').value = product.brand_id || ''
+            document.getElementById('prodPrice').value = product.price ?? ''
+            document.getElementById('prodStock').value = product.stock ?? ''
+            document.getElementById('prodVolume').value = product.volume || ''
+            document.getElementById('prodSku').value = ''
+            document.getElementById('prodBarcode').value = ''
+            document.getElementById('prodIsHit').checked = Boolean(product.is_hit)
+            document.getElementById('prodIsNew').checked = Boolean(product.is_new)
+            document.getElementById('prodIsDiscount').checked = Boolean(product.is_discount)
+            document.getElementById('prodIsRelated').checked = Boolean(product.is_related_enabled)
+            document.getElementById('prodShelfLife').value = product.shelf_life || ''
+            document.getElementById('prodIsVisible').value = String(product.is_visible)
 
-        productImages = Array.isArray(product.images) ? product.images.map(img => ({ ...img })) : []
-        productLinks = Array.isArray(product.links) ? product.links.map(link => ({ ...link })) : []
+            productImages = Array.isArray(product.images) ? product.images.map(img => ({ ...img })) : []
 
-        document.getElementById('imagePreview').innerHTML = productImages.map((img, idx) => `<span class="image-wrapper"><img src="${img.url}" alt=""><button type="button" class="remove-image" data-idx="${idx}">&times;</button></span>`).join('')
-        productLinks.forEach(link => addLinkField(link.url, link.title))
+            document.getElementById('imagePreview').innerHTML = productImages.map((img, idx) => `<span class="image-wrapper"><img src="${img.url}" alt=""><button type="button" class="remove-image" data-idx="${idx}">&times;</button></span>`).join('')
 
-        // Связи при дублировании не копируем
-        Array.from(document.getElementById('prodRelated').options).forEach(opt => { opt.selected = false })
+            // Связи при дублировании не копируем
+            Array.from(document.getElementById('prodRelated').options).forEach(opt => { opt.selected = false })
+        }
+
+        document.getElementById('productModal').classList.remove('hidden')
+    } catch (error) {
+        console.error('Error duplicating product:', error)
+        alert('Ошибка дублирования товара: ' + error.message)
     }
-
-    document.getElementById('productModal').classList.remove('hidden')
 }
 
 // ============================================
@@ -799,27 +791,32 @@ async function duplicateProduct(id) {
 // ============================================
 
 async function loadCategories() {
-    const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/categories`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
-    })
-    
-    if (!response.ok) {
-        const result = await response.json().catch(() => ({}))
-        alert(translateError(result.error) || 'Ошибка загрузки категорий')
-        return
+    try {
+        const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/categories`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
+        })
+        
+        if (!response.ok) {
+            const result = await response.json().catch(() => ({}))
+            alert(translateError(result.error) || 'Ошибка загрузки категорий')
+            return
+        }
+        
+        const data = await response.json()
+        
+        document.getElementById('categoriesTable').innerHTML = data.map(cat => `
+            <tr>
+                <td>${escapeHtml(cat.name)}</td>
+                <td>
+                    <button class="btn btn-sm btn-secondary" data-action="edit-category" data-id="${cat.id}">✏️</button>
+                    <button class="btn btn-sm btn-danger" data-action="delete-category" data-id="${cat.id}">🗑️</button>
+                </td>
+            </tr>
+        `).join('')
+    } catch (error) {
+        console.error('Error loading categories:', error)
+        alert('Ошибка загрузки категорий: ' + error.message)
     }
-    
-    const data = await response.json()
-    
-    document.getElementById('categoriesTable').innerHTML = data.map(cat => `
-        <tr>
-            <td>${escapeHtml(cat.name)}</td>
-            <td>
-                <button class="btn btn-sm btn-secondary" data-action="edit-category" data-id="${cat.id}">✏️</button>
-                <button class="btn btn-sm btn-danger" data-action="delete-category" data-id="${cat.id}">🗑️</button>
-            </td>
-        </tr>
-    `).join('')
 }
 
 let nameModalResolve = null
@@ -912,27 +909,32 @@ function editCategory(id) {
 // ============================================
 
 async function loadBrands() {
-    const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/brands`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
-    })
+    try {
+        const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/brands`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
+        })
 
-    if (!response.ok) {
-        const result = await response.json().catch(() => ({}))
-        alert(translateError(result.error) || 'Ошибка загрузки брендов')
-        return
+        if (!response.ok) {
+            const result = await response.json().catch(() => ({}))
+            alert(translateError(result.error) || 'Ошибка загрузки брендов')
+            return
+        }
+
+        const data = await response.json()
+
+        document.getElementById('brandsTable').innerHTML = data.map(brand => `
+            <tr>
+                <td>${escapeHtml(brand.name)}</td>
+                <td>
+                    <button class="btn btn-sm btn-secondary" data-action="edit-brand" data-id="${brand.id}">✏️</button>
+                    <button class="btn btn-sm btn-danger" data-action="delete-brand" data-id="${brand.id}">🗑️</button>
+                </td>
+            </tr>
+        `).join('')
+    } catch (error) {
+        console.error('Error loading brands:', error)
+        alert('Ошибка загрузки брендов: ' + error.message)
     }
-
-    const data = await response.json()
-
-    document.getElementById('brandsTable').innerHTML = data.map(brand => `
-        <tr>
-            <td>${escapeHtml(brand.name)}</td>
-            <td>
-                <button class="btn btn-sm btn-secondary" data-action="edit-brand" data-id="${brand.id}">✏️</button>
-                <button class="btn btn-sm btn-danger" data-action="delete-brand" data-id="${brand.id}">🗑️</button>
-            </td>
-        </tr>
-    `).join('')
 }
 
 async function openBrandModal(brandId = null) {
@@ -1002,59 +1004,64 @@ function editBrand(id) {
 // ============================================
 
 async function loadAnalytics() {
-    const period = document.getElementById('analyticsPeriod').value
-    
-    const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/analytics?period=${period}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
-    })
-    
-    if (!response.ok) {
-        const result = await response.json().catch(() => ({}))
-        alert(translateError(result.error) || 'Ошибка загрузки статистики')
-        return
+    try {
+        const period = document.getElementById('analyticsPeriod').value
+        
+        const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/analytics?period=${period}`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
+        })
+        
+        if (!response.ok) {
+            const result = await response.json().catch(() => ({}))
+            alert(translateError(result.error) || 'Ошибка загрузки статистики')
+            return
+        }
+        
+        const data = await response.json()
+        
+        document.getElementById('totalRevenue').textContent = `${data.totalRevenue.toLocaleString()} ₽`
+        document.getElementById('totalOrders').textContent = data.totalOrders.toLocaleString()
+        
+        // Top products
+        document.getElementById('topProductsTable').innerHTML = data.topProducts.map(p => `
+            <tr>
+                <td>${escapeHtml(p.name)}</td>
+                <td>${p.quantity}</td>
+                <td>${p.total.toLocaleString()} ₽</td>
+            </tr>
+        `).join('')
+        
+        // Chart
+        renderSalesChart(data.dailyStats)
+        
+        // Orders
+        const ordersRes = await fetchWithTimeout(`${CONFIG.adminApiUrl}/orders?period=${period}&page=${ordersPage}&limit=${ORDERS_PER_PAGE}`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
+        })
+        
+        if (!ordersRes.ok) {
+            const result = await ordersRes.json().catch(() => ({}))
+            alert(translateError(result.error) || 'Ошибка загрузки заказов')
+            return
+        }
+        
+        const ordersData = await ordersRes.json()
+        ordersTotal = ordersData.total || 0
+        
+        document.getElementById('ordersTable').innerHTML = ordersData.data.map(order => `
+            <tr>
+                <td>${order.order_number}</td>
+                <td>${order.items.map(i => `${i.name} (${i.quantity})`).join(', ')}</td>
+                <td>${order.total.toLocaleString()} ₽</td>
+                <td>${new Date(order.created_at).toLocaleString('ru-RU')}</td>
+            </tr>
+        `).join('')
+        
+        renderOrdersPagination()
+    } catch (error) {
+        console.error('Error loading analytics:', error)
+        alert('Ошибка загрузки статистики: ' + error.message)
     }
-    
-    const data = await response.json()
-    
-    document.getElementById('totalRevenue').textContent = `${data.totalRevenue.toLocaleString()} ₽`
-    document.getElementById('totalOrders').textContent = data.totalOrders.toLocaleString()
-    
-    // Top products
-    document.getElementById('topProductsTable').innerHTML = data.topProducts.map(p => `
-        <tr>
-            <td>${escapeHtml(p.name)}</td>
-            <td>${p.quantity}</td>
-            <td>${p.total.toLocaleString()} ₽</td>
-        </tr>
-    `).join('')
-    
-    // Chart
-    renderSalesChart(data.dailyStats)
-    
-    // Orders
-    const ordersRes = await fetchWithTimeout(`${CONFIG.adminApiUrl}/orders?period=${period}&page=${ordersPage}&limit=${ORDERS_PER_PAGE}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
-    })
-    
-    if (!ordersRes.ok) {
-        const result = await ordersRes.json().catch(() => ({}))
-        alert(translateError(result.error) || 'Ошибка загрузки заказов')
-        return
-    }
-    
-    const ordersData = await ordersRes.json()
-    ordersTotal = ordersData.total || 0
-    
-    document.getElementById('ordersTable').innerHTML = ordersData.data.map(order => `
-        <tr>
-            <td>${order.order_number}</td>
-            <td>${order.items.map(i => `${i.name} (${i.quantity})`).join(', ')}</td>
-            <td>${order.total.toLocaleString()} ₽</td>
-            <td>${new Date(order.created_at).toLocaleString('ru-RU')}</td>
-        </tr>
-    `).join('')
-    
-    renderOrdersPagination()
 }
 
 function renderOrdersPagination() {
@@ -1123,29 +1130,34 @@ function renderSalesChart(dailyStats) {
 // ============================================
 
 async function loadSettings() {
-    const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/settings`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
-    })
-    
-    if (!response.ok) {
-        const result = await response.json().catch(() => ({}))
-        alert(translateError(result.error) || 'Ошибка загрузки настроек')
-        return
+    try {
+        const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/settings`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
+        })
+        
+        if (!response.ok) {
+            const result = await response.json().catch(() => ({}))
+            alert(translateError(result.error) || 'Ошибка загрузки настроек')
+            return
+        }
+        
+        const settings = await response.json()
+        
+        document.getElementById('whatsappNumber').value = settings.whatsapp_number || ''
+        document.getElementById('storeName').value = settings.store_name || ''
+        document.getElementById('logoText').value = settings.logo_text || ''
+        document.getElementById('timezone').value = settings.timezone || 'Europe/Moscow'
+        document.getElementById('orderTimeLimitEnabled').checked = settings.order_time_limit_enabled === 'true'
+        document.getElementById('orderStartHour').value = settings.order_start_hour || '09:00'
+        document.getElementById('orderEndHour').value = settings.order_end_hour || '20:00'
+        document.getElementById('orderErrorCode').value = settings.order_error_code || '[!CHECK!]'
+        document.getElementById('currency').value = settings.currency || '₽'
+        document.getElementById('orderTemplate').value = settings.order_template || ''
+        document.getElementById('geminiApiKey').value = settings.gemini_api_key || ''
+    } catch (error) {
+        console.error('Error loading settings:', error)
+        alert('Ошибка загрузки настроек: ' + error.message)
     }
-    
-    const settings = await response.json()
-    
-    document.getElementById('whatsappNumber').value = settings.whatsapp_number || ''
-    document.getElementById('storeName').value = settings.store_name || ''
-    document.getElementById('logoText').value = settings.logo_text || ''
-    document.getElementById('timezone').value = settings.timezone || 'Europe/Moscow'
-    document.getElementById('orderTimeLimitEnabled').checked = settings.order_time_limit_enabled === 'true'
-    document.getElementById('orderStartHour').value = settings.order_start_hour || '09:00'
-    document.getElementById('orderEndHour').value = settings.order_end_hour || '20:00'
-    document.getElementById('orderErrorCode').value = settings.order_error_code || '[!CHECK!]'
-    document.getElementById('currency').value = settings.currency || '₽'
-    document.getElementById('orderTemplate').value = settings.order_template || ''
-    document.getElementById('geminiApiKey').value = settings.gemini_api_key || ''
 }
 
 async function handleSettingsSave(e) {
@@ -1278,84 +1290,99 @@ async function handleImport() {
 }
 
 async function handleExport() {
-    const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/export`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
-    })
-    
-    if (!response.ok) {
-        const result = await response.json().catch(() => ({}))
-        alert(translateError(result.error) || 'Ошибка экспорта')
-        return
+    try {
+        const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/export`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
+        })
+        
+        if (!response.ok) {
+            const result = await response.json().catch(() => ({}))
+            alert(translateError(result.error) || 'Ошибка экспорта')
+            return
+        }
+        
+        const data = await response.json()
+        
+        const flatData = data.map(p => ({
+            name: p.name || '',
+            description: p.description || '',
+            full_description: p.full_description || '',
+            composition: p.composition || '',
+            dosage: p.dosage || '',
+            usage: p.usage || '',
+            contraindications: p.contraindications || '',
+            category: p.categories?.name || '',
+            brand: p.brands?.name || '',
+            price: p.price ?? '',
+            old_price: p.old_price ?? '',
+            stock: p.stock ?? '',
+            volume: p.volume || '',
+            sku: p.sku || '',
+            barcode: p.barcode || '',
+            is_hit: p.is_hit ? 'TRUE' : '',
+            is_new: p.is_new ? 'TRUE' : '',
+            is_discount: p.is_discount ? 'TRUE' : '',
+            is_visible: p.is_visible ? 'TRUE' : 'FALSE',
+            is_related_enabled: p.is_related_enabled ? 'TRUE' : '',
+            shelf_life: p.shelf_life || '',
+        }))
+        
+        const ws = XLSX.utils.json_to_sheet(flatData)
+        const wb = XLSX.utils.book_new()
+        XLSX.utils.book_append_sheet(wb, ws, 'Products')
+        XLSX.writeFile(wb, 'jack-nutrition-catalog.xlsx')
+    } catch (error) {
+        console.error('Error exporting:', error)
+        alert('Ошибка экспорта: ' + error.message)
     }
-    
-    const data = await response.json()
-    
-    const flatData = data.map(p => ({
-        name: p.name || '',
-        description: p.description || '',
-        full_description: p.full_description || '',
-        composition: p.composition || '',
-        dosage: p.dosage || '',
-        usage: p.usage || '',
-        contraindications: p.contraindications || '',
-        category: p.categories?.name || '',
-        brand: p.brands?.name || '',
-        price: p.price ?? '',
-        old_price: p.old_price ?? '',
-        stock: p.stock ?? '',
-        volume: p.volume || '',
-        sku: p.sku || '',
-        barcode: p.barcode || '',
-        is_hit: p.is_hit ? 'TRUE' : '',
-        is_new: p.is_new ? 'TRUE' : '',
-        is_discount: p.is_discount ? 'TRUE' : '',
-        is_visible: p.is_visible ? 'TRUE' : 'FALSE',
-        is_related_enabled: p.is_related_enabled ? 'TRUE' : '',
-        shelf_life: p.shelf_life || '',
-    }))
-    
-    const ws = XLSX.utils.json_to_sheet(flatData)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Products')
-    XLSX.writeFile(wb, 'jack-nutrition-catalog.xlsx')
 }
 
 async function handleBackup() {
-    const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/backup`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
-    })
-    
-    if (!response.ok) {
-        const result = await response.json().catch(() => ({}))
-        alert(translateError(result.error) || 'Ошибка резервного копирования')
-        return
+    try {
+        const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/backup`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
+        })
+        
+        if (!response.ok) {
+            const result = await response.json().catch(() => ({}))
+            alert(translateError(result.error) || 'Ошибка резервного копирования')
+            return
+        }
+        
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `jack-nutrition-backup-${new Date().toISOString().split('T')[0]}.json`
+        a.click()
+    } catch (error) {
+        console.error('Error backup:', error)
+        alert('Ошибка резервного копирования: ' + error.message)
     }
-    
-    const blob = await response.blob()
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `jack-nutrition-backup-${new Date().toISOString().split('T')[0]}.json`
-    a.click()
 }
 
 async function handleBackupSql() {
-    const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/backup-sql`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
-    })
+    try {
+        const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/backup-sql`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
+        })
 
-    if (!response.ok) {
-        const result = await response.json().catch(() => ({}))
-        alert(translateError(result.error) || 'Ошибка SQL-дампа')
-        return
+        if (!response.ok) {
+            const result = await response.json().catch(() => ({}))
+            alert(translateError(result.error) || 'Ошибка SQL-дампа')
+            return
+        }
+
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `jack-nutrition-backup-${new Date().toISOString().split('T')[0]}.sql`
+        a.click()
+    } catch (error) {
+        console.error('Error SQL backup:', error)
+        alert('Ошибка SQL-дампа: ' + error.message)
     }
-
-    const blob = await response.blob()
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `jack-nutrition-backup-${new Date().toISOString().split('T')[0]}.sql`
-    a.click()
 }
 
 // ============================================

@@ -546,20 +546,19 @@ body {
     min-height: auto;
 }
 
-.admin-badge {
-    display: inline-block;
-    padding: 3px 10px;
-    border-radius: 6px;
-    font-size: 0.75rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
+.admin-badge-icon {
+    width: 18px;
+    height: 18px;
+    padding: 2px;
+    border-radius: 4px;
+    color: #fff;
     margin-right: 4px;
+    vertical-align: middle;
 }
 
-.admin-badge-hit { background: var(--accent); color: #fff; }
-.admin-badge-new { background: var(--success); color: #fff; }
-.admin-badge-discount { background: var(--error); color: #fff; }
+.admin-badge-hit { background: var(--accent); }
+.admin-badge-new { background: var(--success); }
+.admin-badge-discount { background: var(--error); }
 
 .settings-section {
     max-width: 600px;

@@ -391,7 +391,7 @@ async function loadProducts(reset = true) {
         if (apiCache.products.data && now - apiCache.products.ts < apiCache.products.ttl) {
             products = apiCache.products.data
         } else {
-            const response = await fetchWithTimeout(`${CONFIG.supabaseUrl}/rest/v1/products?is_visible=eq.true&select=*,categories(name),brands(name),product_images(*),product_links(*)&order=created_at.desc&limit=1000`, {
+            const response = await fetchWithTimeout(`${CONFIG.supabaseUrl}/rest/v1/products?is_visible=eq.true&select=*,categories(name),brands(name),product_images(*)&order=created_at.desc&limit=1000`, {
                 headers: {
                     'apikey': CONFIG.supabaseAnonKey,
                     'Authorization': `Bearer ${CONFIG.supabaseAnonKey}`
@@ -597,13 +597,13 @@ function createProductCard(product) {
 
     const badges = []
     if (product.is_hit) {
-        badges.push(`<svg class="product-badge-icon badge-hit-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c0 0-7 7-7 12a7 7 0 0 0 14 0c0-5-7-12-7-12z"/></svg>`)
+        badges.push(`<svg class="product-badge-icon badge-hit-icon"><use href="#icon-hit"/></svg>`)
     }
     if (product.is_new) {
-        badges.push(`<svg class="product-badge-icon badge-new-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`)
+        badges.push(`<svg class="product-badge-icon badge-new-icon"><use href="#icon-new"/></svg>`)
     }
     if (product.is_discount) {
-        badges.push(`<svg class="product-badge-icon badge-discount-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>`)
+        badges.push(`<svg class="product-badge-icon badge-discount-icon"><use href="#icon-discount"/></svg>`)
     }
 
     return `
@@ -656,9 +656,9 @@ function openProductModal(productId) {
         <h2>${escapeHtml(cleanProductName(product.name, product.brands?.name))}</h2>
         <div class="modal-volume">${escapeHtml(product.volume || '')}</div>
         <div class="modal-badges">
-            ${product.is_hit ? '<span class="badge badge-hit">Хит</span>' : ''}
-            ${product.is_new ? '<span class="badge badge-new">Новинка</span>' : ''}
-            ${product.is_discount ? '<span class="badge badge-discount">Скидка</span>' : ''}
+            ${product.is_hit ? '<svg class="product-badge-icon badge-hit-icon"><use href="#icon-hit"/></svg>' : ''}
+            ${product.is_new ? '<svg class="product-badge-icon badge-new-icon"><use href="#icon-new"/></svg>' : ''}
+            ${product.is_discount ? '<svg class="product-badge-icon badge-discount-icon"><use href="#icon-discount"/></svg>' : ''}
         </div>
         <div class="modal-price">
             ${product.price} ₽
@@ -704,19 +704,6 @@ function openProductModal(productId) {
             <div class="modal-section">
                 <h3>Срок годности</h3>
                 <p>${escapeHtml(product.shelf_life)}</p>
-            </div>
-        ` : ''}
-
-        ${product.product_links?.length ? `
-            <div class="modal-section">
-                <h3>Ссылки</h3>
-                <div class="modal-links">
-                    ${product.product_links.map(link => `
-                        <a href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer" class="modal-link">
-                            ${escapeHtml(link.title || link.url)}
-                        </a>
-                    `).join('')}
-                </div>
             </div>
         ` : ''}
 

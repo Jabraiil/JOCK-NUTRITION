@@ -34,10 +34,10 @@
 - В проекте используется реальный `anon key`, он прописан в `app.js` и `admin/app.js`
 - Обе Edge Functions развёрнуты, `create-order` имеет рабочий эндпоинт `/health`
 - В репозитории есть `.nojekyll` для отключения Jekyll на GitHub Pages
-- Service Worker версия: `jack-nutrition-v27-2026-08-07-error-details`
-- `manifest.json` cache bust: `2026-08-06-v2`
+- Service Worker версия: `jack-nutrition-v29-2026-08-07-paths-fix`
+- `manifest.json` cache bust: `2026-08-07-v4`
 - `index.html` deploy marker: `2026-08-07-v1`
-- Версии статики в query params: `styles.css?v=25`, `app.js?v=25`
+- Версии статики в query params: `styles.css?v=26`, `app.js?v=26`
 
 ---
 
@@ -148,6 +148,8 @@
 | `title` | TEXT | заголовок |
 | `sort_order` | INTEGER | порядок |
 | `created_at` | TIMESTAMPTZ | |
+
+> **Примечание:** таблица существует в БД, но фронтенд и админка больше не отображают и не редактируют ссылки товаров.
 
 #### `product_related` — явные связанные товары
 | Поле | Тип | Описание |
@@ -345,8 +347,9 @@ products (1) ──< (N) product_related
 ├── styles.css        — стили (светлая/тёмная тема)
 ├── app.js            — вся логика фронтенда
 ├── scanner-worker.js — Web Worker для детекта штрих-кодов (OffscreenCanvas + BarcodeDetector)
-├── sw.js             — Service Worker (версионированный кеш статики, защита от кеша GitHub Pages)
-├── manifest.json     — PWA-манифест
+├── sw.js             — Service Worker (версионированный кеш статики, защита от кеша GitHub Pages, относительные пути)
+├── manifest.json     — PWA-манифест (относительные пути `./`)
+├── favicon.ico       — фавикон сайта
 ├── .nojekyll         — отключает Jekyll на GitHub Pages
 ├── .gitignore        — игнорируемые файлы
 ├── README.md         — описание проекта
@@ -356,7 +359,7 @@ products (1) ──< (N) product_related
     └── app.js        — логика админки
 ```
 
-> **Примечание:** `manifest.json` и папка `assets/icons/` существуют в репозитории. PWA-установка частично работает: манифест и PNG-иконки на месте, ссылки в `index.html` добавлены. `admin/index.html` не содержит тегов `<link rel="manifest">` и `<link rel="apple-touch-icon">` — PWA для админки не настроена.
+> **Примечание:** `manifest.json` и папка `assets/icons/` существуют в репозитории. PWA-установка работает: манифест и PNG-иконки на месте, ссылки в `index.html` добавлены. `admin/index.html` не содержит тегов `<link rel="manifest">` и `<link rel="apple-touch-icon">` — PWA для админки не настроена. Все пути в манифесте и HTML относительные (`./`) для корректной работы на GitHub Pages project site.
 
 ### Страницы
 - **Главная (`/`)** — каталог товаров.
@@ -382,7 +385,7 @@ products (1) ──< (N) product_related
   - Бренд (капсом, мелким шрифтом).
   - Название (2 строки, `-webkit-line-clamp`).
   - Объём/форма выпуска.
-  - Бейджи (Хит, Новинка, Скидка).
+  - Бейджи (Хит, Новинка, Скидка) — SVG-иконки через `<symbol>` sprite.
   - Цена слева, кнопка «В корзину» справа снизу.
   - После добавления: `– [количество] +`.
 
@@ -396,9 +399,8 @@ products (1) ──< (N) product_related
 
 #### Модальное окно товара (`#productModal`)
 - Открывается при клике на карточку (не на кнопки).
-- Фото, бренд, название, объём, бейджи, цена.
+- Фото, бренд, название, объём, бейджи (SVG-иконки), цена.
 - Секции: полное описание, состав, дозировка, способ применения, противопоказания, срок годности.
-- Ссылки (`product_links`) — до 4 внешних ссылок с заголовками.
 - Связанные товары — явный список (`product_related`) или автоматический по категории/бренду (если `is_related_enabled = true` и явный список пуст), до 4 шт.
 - Кнопка «В корзину».
 
@@ -485,10 +487,10 @@ admin/
 #### Функционал
 - **Авторизация**: форма логина через Supabase Auth (`/auth/v1/token?grant_type=password`), «Забыли пароль?» (`/auth/v1/recover`), смена пароля (`/auth/v1/user`).
 - **Обработка токенов сброса пароля**: если ссылка из письма ведёт на `localhost` или на корень `jabraiil.github.io` без пути `/admin/`, страница автоматически сохраняет токен в `localStorage` и перенаправляет на `https://jabraiil.github.io/JOCK-NUTRITION/admin/`.
-- **Автоматический разлогин при 401**: при истечении сессии сервер возвращает `401`, фронтенд очищает токен и возвращает на экран входа с сообщением «Сессия истекла. Войдите снова.».
+- **Автоматический разлогин при 401**: реализован в централизованном `fetchWithTimeout()` — при любом `401` на не-auth endpoint вызывается `handleAuthError()` и возврат на экран входа.
 - **Перевод ошибок на русский**: все ошибки от Supabase/PostgreSQL переводятся через `translateError()` перед показом пользователю.
 - **Навигация**: sidebar с разделами (Товары, Категории, Бренды, Статистика, Настройки, Импорт, Экспорт, Резерв).
-- **Товары**: таблица, поиск, модалка CRUD, загрузка фото (через Storage), добавление ссылок, редактирование существующих товаров с предзаполнением формы.
+- **Товары**: таблица, поиск, модалка CRUD, загрузка фото (через Storage), редактирование существующих товаров с предзаполнением формы. Бейджи в таблице и модалке — SVG-иконки через sprite. Поле «Ссылки» удалено из формы товара.
 - **Категории/Бренды**: таблица с редактированием названия через кастомное модальное окно `#nameModal`.
 - **Аналитика**: Chart.js график выручки, топ-10 товаров, список заказов.
 - **Настройки**: форма с полями магазина, часовой пояс, лимит времени, спецкод, валюта, шаблон текста заказа, Gemini API ключ; ошибки сохраняются явно.
@@ -756,7 +758,7 @@ CSS-переменные для цветов и шрифтов.
 - [x] Попап-защита для WhatsApp: открытие через программный клик по `<a>`, а не `window.open()`.
 - [x] Null-safe обработка `order.items` и `order.created_at` в аналитике бэкенда.
 - [x] Экранирование поискового запроса в PostgREST `.or()` фильтре (защита от инъекций).
-- [x] Полная замена images/links при PUT /products/:id, включая очистку при `null`/`[]`.
+- [x] Полная замена images при PUT /products/:id, включая очистку при `null`/`[]`.
 - [x] Убран мёртвый код: `allProductsList`, `CONFIG.whatsappNumber`, `CONFIG.storeName`, `CONFIG.currency`.
 - [x] Кеширование настроек: `loadSettings()` сохраняет в `window.__storeSettings`, `checkOrderTime()` не дублирует запрос.
 - [x] `parseInt` с radix `10` во всех местах.
@@ -839,7 +841,6 @@ CSS-переменные для цветов и шрифтов.
 - `is_visible = true`
 - `stock = 100`
 - 1 изображение (`product_images`) с `is_main = true` (placeholder через `placehold.co`)
-- 1 ссылка (`product_links`) на официальную страницу NOW Foods
 
 #### Админ
 - Email: `jamalovjabrail007@gmail.com`
@@ -854,12 +855,12 @@ CSS-переменные для цветов и шрифтов.
 ### Текущий статус: Частично реализовано
 
 В репозитории существуют:
-- `manifest.json` — PWA-манифест (PNG-иконки из `/assets/icons/`, `display: standalone`)
+- `manifest.json` — PWA-манифест (PNG-иконки из `./assets/icons/`, `display: standalone`, относительные пути)
 - `assets/icons/` — папка с PNG-иконками: `icon-192.png`, `icon-192-maskable.png`, `icon-512.png`, `icon-512-maskable.png`
 - `icons/` — папка с SVG-иконками: `icon-192.svg`, `icon-512.svg`, `apple-touch-icon.svg` (не используются в манифесте)
-- `index.html` — содержит `<link rel="manifest" href="/manifest.json">` и `<link rel="apple-touch-icon" href="/assets/icons/icon-192.png">`
+- `index.html` — содержит `<link rel="manifest" href=".../manifest.json">`, `<link rel="icon" href=".../assets/icons/icon-192.png">`, `<link rel="apple-touch-icon" href=".../assets/icons/icon-192.png">`, SVG sprite для бейджей
 
-`admin/index.html` **не содержит** тегов `<link rel="manifest">` и `<link rel="apple-touch-icon">` — PWA для админки не настроена.
+`admin/index.html` **не содержит** тегов `<link rel="manifest">` и `<link rel="apple-touch-icon">` — PWA для админки не настроена. Также содержит SVG sprite для бейджей.
 
 PWA-установка на главный экран **работает для витрины**, но не для админки. Для полной реализации необходимо добавить PWA-теги в `admin/index.html`.
 
@@ -867,11 +868,8 @@ PWA-установка на главный экран **работает для 
 1. `manifest.json` и PNG-иконки (`assets/icons/icon-192.png`, `assets/icons/icon-512.png`, `assets/icons/icon-192-maskable.png`, `assets/icons/icon-512-maskable.png`) уже существуют.
 2. Добавить в `admin/index.html` PWA-теги:
     ```html
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="JACK NUTRITION">
-    <link rel="apple-touch-icon" href="/assets/icons/icon-192.png">
-    <link rel="manifest" href="/manifest.json">
+    <link rel="manifest" href=".../manifest.json">
+    <link rel="apple-touch-icon" href=".../assets/icons/icon-192.png">
     ```
 3. Убедиться, что `sw.js` кеширует `manifest.json` и иконки (уже делается).
 
