@@ -546,6 +546,21 @@ body {
     min-height: auto;
 }
 
+.admin-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin-right: 4px;
+}
+
+.admin-badge-hit { background: var(--accent); color: #fff; }
+.admin-badge-new { background: var(--success); color: #fff; }
+.admin-badge-discount { background: var(--error); color: #fff; }
+
 .settings-section {
     max-width: 600px;
     margin-top: 40px;

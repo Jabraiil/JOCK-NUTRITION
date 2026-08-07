@@ -5,6 +5,22 @@ const CONFIG = {
     adminApiUrl: 'https://hpphfeojjejculvdundj.supabase.co/functions/v1/admin-api'
 }
 
+async function fetchWithTimeout(url, options = {}, timeout = 15000) {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), timeout)
+    try {
+        const response = await fetch(url, { ...options, signal: controller.signal })
+        clearTimeout(timer)
+        return response
+    } catch (error) {
+        clearTimeout(timer)
+        if (error.name === 'AbortError') {
+            throw new Error('Превышено время ожидания запроса (15 сек)')
+        }
+        throw error
+    }
+}
+
 function escapeHtml(str) {
     if (str == null) return ''
     return String(str)
@@ -13,6 +29,19 @@ function escapeHtml(str) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;')
+}
+
+function cleanProductName(name, brand) {
+    if (!name) return ''
+    let cleaned = name
+    if (brand) {
+        const brandUpper = brand.toUpperCase()
+        const nameUpper = cleaned.toUpperCase()
+        if (nameUpper.startsWith(brandUpper)) {
+            cleaned = cleaned.slice(brandUpper.length).trim()
+        }
+    }
+    return cleaned
 }
 
 let allProducts = []
@@ -327,7 +356,7 @@ function clearSearch() {
 
 async function loadSettings() {
     try {
-        const response = await fetch(`${CONFIG.supabaseUrl}/rest/v1/settings?select=key,value`, {
+        const response = await fetchWithTimeout(`${CONFIG.supabaseUrl}/rest/v1/settings?select=key,value`, {
             headers: {
                 'apikey': CONFIG.supabaseAnonKey,
                 'Authorization': `Bearer ${CONFIG.supabaseAnonKey}`
@@ -362,7 +391,7 @@ async function loadProducts(reset = true) {
         if (apiCache.products.data && now - apiCache.products.ts < apiCache.products.ttl) {
             products = apiCache.products.data
         } else {
-            const response = await fetch(`${CONFIG.supabaseUrl}/rest/v1/products?is_visible=eq.true&select=*,categories(name),brands(name),product_images(*),product_links(*)&order=created_at.desc&limit=1000`, {
+            const response = await fetchWithTimeout(`${CONFIG.supabaseUrl}/rest/v1/products?is_visible=eq.true&select=*,categories(name),brands(name),product_images(*),product_links(*)&order=created_at.desc&limit=1000`, {
                 headers: {
                     'apikey': CONFIG.supabaseAnonKey,
                     'Authorization': `Bearer ${CONFIG.supabaseAnonKey}`
@@ -379,7 +408,7 @@ async function loadProducts(reset = true) {
         // Load related products (cached)
         if (!apiCache.related.data || now - apiCache.related.ts >= apiCache.related.ttl) {
             try {
-                const relatedRes = await fetch(`${CONFIG.supabaseUrl}/rest/v1/product_related?select=product_id,related_id`, {
+                const relatedRes = await fetchWithTimeout(`${CONFIG.supabaseUrl}/rest/v1/product_related?select=product_id,related_id`, {
                     headers: {
                         'apikey': CONFIG.supabaseAnonKey,
                         'Authorization': `Bearer ${CONFIG.supabaseAnonKey}`
@@ -431,14 +460,21 @@ function loadMoreProducts() {
 
 async function loadFilters() {
     try {
-        const [categoriesRes, brandsRes] = await Promise.all([
-            fetch(`${CONFIG.supabaseUrl}/rest/v1/categories?select=*`, {
-                headers: { 'apikey': CONFIG.supabaseAnonKey, 'Authorization': `Bearer ${CONFIG.supabaseAnonKey}` }
-            }),
-            fetch(`${CONFIG.supabaseUrl}/rest/v1/brands?select=*`, {
-                headers: { 'apikey': CONFIG.supabaseAnonKey, 'Authorization': `Bearer ${CONFIG.supabaseAnonKey}` }
-            })
-        ])
+        const categoriesRes = await fetchWithTimeout(`${CONFIG.supabaseUrl}/rest/v1/categories?select=*`, {
+            headers: { 'apikey': CONFIG.supabaseAnonKey, 'Authorization': `Bearer ${CONFIG.supabaseAnonKey}` }
+        })
+        if (!categoriesRes.ok) {
+            const text = await categoriesRes.text()
+            throw new Error(text || 'Ошибка загрузки категорий')
+        }
+
+        const brandsRes = await fetchWithTimeout(`${CONFIG.supabaseUrl}/rest/v1/brands?select=*`, {
+            headers: { 'apikey': CONFIG.supabaseAnonKey, 'Authorization': `Bearer ${CONFIG.supabaseAnonKey}` }
+        })
+        if (!brandsRes.ok) {
+            const text = await brandsRes.text()
+            throw new Error(text || 'Ошибка загрузки брендов')
+        }
 
         const categories = await categoriesRes.json()
         const brands = await brandsRes.json()
@@ -452,6 +488,7 @@ async function loadFilters() {
             brands.map(b => `<option value="${b.id}">${escapeHtml(b.name)}</option>`).join('')
     } catch (error) {
         console.error('Error loading filters:', error)
+        showError('Ошибка загрузки фильтров: ' + error.message)
     }
 }
 
@@ -556,11 +593,24 @@ function createProductCard(product) {
     const cartItem = cart.find(c => c.id === product.id)
     const inCart = cartItem ? cartItem.quantity : 0
     const favorited = isFavorited(product.id)
+    const displayName = cleanProductName(product.name, product.brands?.name)
+
+    const badges = []
+    if (product.is_hit) {
+        badges.push(`<svg class="product-badge-icon badge-hit-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c0 0-7 7-7 12a7 7 0 0 0 14 0c0-5-7-12-7-12z"/></svg>`)
+    }
+    if (product.is_new) {
+        badges.push(`<svg class="product-badge-icon badge-new-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`)
+    }
+    if (product.is_discount) {
+        badges.push(`<svg class="product-badge-icon badge-discount-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>`)
+    }
 
     return `
         <div class="product-card" data-id="${product.id}">
             <div class="product-image-wrap">
                 <img src="${imageUrl}" alt="${escapeHtml(product.name)}" class="product-image" loading="lazy">
+                ${badges.length > 0 ? `<div class="product-badges-overlay">${badges.join('')}</div>` : ''}
                 <button class="favorite-btn ${favorited ? 'active' : ''}" data-id="${product.id}" aria-label="В избранное">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78a5.5 5.5 0 0 0 0-7.78z"></path>
@@ -569,13 +619,8 @@ function createProductCard(product) {
             </div>
             <div class="product-info">
                 <div class="product-brand">${escapeHtml(product.brands?.name || '')}</div>
-                <div class="product-name">${escapeHtml(product.name)}</div>
+                <div class="product-name">${escapeHtml(displayName)}</div>
                 <div class="product-volume">${escapeHtml(product.volume || '')}</div>
-                <div class="product-badges">
-                    ${product.is_hit ? '<span class="badge badge-hit">Хит</span>' : ''}
-                    ${product.is_new ? '<span class="badge badge-new">Новинка</span>' : ''}
-                    ${product.is_discount ? '<span class="badge badge-discount">Скидка</span>' : ''}
-                </div>
                 <div class="product-footer">
                     <div>
                         <span class="product-price">${product.price} ₽</span>
@@ -608,7 +653,7 @@ function openProductModal(productId) {
     modalBody.innerHTML = `
         ${imageUrl ? '<img src="' + imageUrl + '" alt="' + escapeHtml(product.name) + '">' : ''}
         <div class="modal-brand">${escapeHtml(product.brands?.name || '')}</div>
-        <h2>${escapeHtml(product.name)}</h2>
+        <h2>${escapeHtml(cleanProductName(product.name, product.brands?.name))}</h2>
         <div class="modal-volume">${escapeHtml(product.volume || '')}</div>
         <div class="modal-badges">
             ${product.is_hit ? '<span class="badge badge-hit">Хит</span>' : ''}
@@ -880,7 +925,7 @@ function renderCart() {
             <div class="cart-item">
                 <img src="${product.product_images?.[0]?.url || ''}" alt="${escapeHtml(product.name)}" class="cart-item-image">
                 <div class="cart-item-info">
-                    <div class="cart-item-name">${escapeHtml(product.name)}</div>
+                    <div class="cart-item-name">${escapeHtml(cleanProductName(product.name, product.brands?.name))}</div>
                     <div class="cart-item-price">${product.price} ₽ × ${cartItem.quantity} = ${itemTotal} ₽</div>
                     <div class="cart-item-controls">
                         <button class="cart-minus" data-id="${product.id}">-</button>
@@ -907,7 +952,7 @@ async function checkout() {
     checkoutBtn.textContent = 'Оформление...'
 
     try {
-        const response = await fetch(CONFIG.orderFunctionUrl, {
+        const response = await fetchWithTimeout(CONFIG.orderFunctionUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ cart })
@@ -1273,7 +1318,7 @@ function closeBarcodeScanner() {
 
 async function searchByBarcode(barcode) {
     try {
-        const response = await fetch(`${CONFIG.supabaseUrl}/rest/v1/products?barcode=eq.${encodeURIComponent(barcode)}&select=*`, {
+        const response = await fetchWithTimeout(`${CONFIG.supabaseUrl}/rest/v1/products?barcode=eq.${encodeURIComponent(barcode)}&select=*`, {
             headers: {
                 'apikey': CONFIG.supabaseAnonKey,
                 'Authorization': `Bearer ${CONFIG.supabaseAnonKey}`
@@ -1339,14 +1384,15 @@ function debounce(func, wait) {
 
 // Service Worker (обход кеша GitHub Pages)
 function registerServiceWorker() {
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js')
-            .then(() => {
+    if ('serviceWorker' in navigator && location.pathname.startsWith('/admin/')) {
+        navigator.serviceWorker.register('/sw.js', { scope: '/' })
+            .then(reg => {
                 if (navigator.serviceWorker.controller) {
                     navigator.serviceWorker.addEventListener('controllerchange', () => location.reload())
                 }
+                reg.update()
             })
-            .catch((error) => console.error('Service Worker registration failed:', error))
+            .catch(error => console.error('Service Worker registration failed:', error))
     }
 }
 

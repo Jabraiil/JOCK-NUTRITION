@@ -9,6 +9,22 @@ const CONFIG = {
     orderFunctionUrl: 'https://hpphfeojjejculvdundj.supabase.co/functions/v1/create-order'
 }
 
+async function fetchWithTimeout(url, options = {}, timeout = 15000) {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), timeout)
+    try {
+        const response = await fetchWithTimeout(url, { ...options, signal: controller.signal })
+        clearTimeout(timer)
+        return response
+    } catch (error) {
+        clearTimeout(timer)
+        if (error.name === 'AbortError') {
+            throw new Error('Превышено время ожидания запроса (15 сек)')
+        }
+        throw error
+    }
+}
+
 function escapeHtml(str) {
     if (str == null) return ''
     return String(str)
@@ -147,18 +163,46 @@ function setupEventListeners() {
         })
     })
 
-    // Products
-    document.getElementById('addProductBtn').addEventListener('click', () => openProductModal())
-    document.getElementById('productSearch').addEventListener('input', debounce(() => { productsPage = 1; loadProducts() }, 300))
-    document.getElementById('cancelProduct').addEventListener('click', closeProductModal)
-    document.getElementById('productForm').addEventListener('submit', handleProductSubmit)
-    document.getElementById('addLinkBtn').addEventListener('click', addLinkField)
+    // Products table actions (event delegation)
+    document.getElementById('productsTable')?.addEventListener('click', (e) => {
+        const editBtn = e.target.closest('button[data-action="edit-product"]')
+        const dupBtn = e.target.closest('button[data-action="duplicate-product"]')
+        const delBtn = e.target.closest('button[data-action="delete-product"]')
+        if (editBtn) editProduct(editBtn.dataset.id)
+        if (dupBtn) duplicateProduct(dupBtn.dataset.id)
+        if (delBtn) deleteProduct(delBtn.dataset.id)
+    })
 
-    // Categories
-    document.getElementById('addCategoryBtn').addEventListener('click', openCategoryModal)
+    // Categories table actions (event delegation)
+    document.getElementById('categoriesTable')?.addEventListener('click', (e) => {
+        const editBtn = e.target.closest('button[data-action="edit-category"]')
+        const delBtn = e.target.closest('button[data-action="delete-category"]')
+        if (editBtn) editCategory(editBtn.dataset.id)
+        if (delBtn) deleteCategory(delBtn.dataset.id)
+    })
 
-    // Brands
-    document.getElementById('addBrandBtn').addEventListener('click', openBrandModal)
+    // Brands table actions (event delegation)
+    document.getElementById('brandsTable')?.addEventListener('click', (e) => {
+        const editBtn = e.target.closest('button[data-action="edit-brand"]')
+        const delBtn = e.target.closest('button[data-action="delete-brand"]')
+        if (editBtn) editBrand(editBtn.dataset.id)
+        if (delBtn) deleteBrand(delBtn.dataset.id)
+    })
+
+    // Pagination (event delegation)
+    document.getElementById('productsPagination')?.addEventListener('click', (e) => {
+        const btn = e.target.closest('button')
+        if (!btn || btn.disabled) return
+        const page = btn.dataset.page
+        if (page) changeProductsPage(parseInt(page, 10))
+    })
+
+    document.getElementById('ordersPagination')?.addEventListener('click', (e) => {
+        const btn = e.target.closest('button')
+        if (!btn || btn.disabled) return
+        const page = btn.dataset.page
+        if (page) changeOrdersPage(parseInt(page, 10))
+    })
 
     // Analytics
     document.getElementById('analyticsPeriod').addEventListener('change', () => { ordersPage = 1; loadAnalytics() })
@@ -227,7 +271,7 @@ async function handleLogin(e) {
     errorEl.classList.add('hidden')
     
     try {
-        const response = await fetch(`${CONFIG.supabaseUrl}/auth/v1/token?grant_type=password`, {
+        const response = await fetchWithTimeout(`${CONFIG.supabaseUrl}/auth/v1/token?grant_type=password`, {
             method: 'POST',
             headers: {
                 'apikey': CONFIG.supabaseAnonKey,
@@ -257,7 +301,7 @@ async function handleForgotPassword() {
     if (!email) return
     
     try {
-        const response = await fetch(`${CONFIG.supabaseUrl}/auth/v1/recover`, {
+        const response = await fetchWithTimeout(`${CONFIG.supabaseUrl}/auth/v1/recover`, {
             method: 'POST',
             headers: {
                 'apikey': CONFIG.supabaseAnonKey,
@@ -337,7 +381,7 @@ async function loadProducts() {
     const params = new URLSearchParams({ limit: String(PRODUCTS_PER_PAGE), page: String(productsPage) })
     if (search) params.set('search', search)
     
-    const response = await fetch(`${CONFIG.adminApiUrl}/products?${params}`, {
+    const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/products?${params}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
     })
     
@@ -364,9 +408,14 @@ async function loadProducts() {
                 <td>${product.stock}</td>
                 <td>${product.is_visible ? '✅' : '❌'}</td>
                 <td>
-                    <button class="btn btn-sm btn-secondary" onclick="editProduct('${product.id}')">✏️</button>
-                    <button class="btn btn-sm btn-primary" onclick="duplicateProduct('${product.id}')">⧉</button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteProduct('${product.id}')">🗑️</button>
+                    ${product.is_hit ? '<span class="admin-badge admin-badge-hit">Хит</span>' : ''}
+                    ${product.is_new ? '<span class="admin-badge admin-badge-new">Новинка</span>' : ''}
+                    ${product.is_discount ? '<span class="admin-badge admin-badge-discount">Скидка</span>' : ''}
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-secondary" data-action="edit-product" data-id="${product.id}">✏️</button>
+                    <button class="btn btn-sm btn-primary" data-action="duplicate-product" data-id="${product.id}">⧉</button>
+                    <button class="btn btn-sm btn-danger" data-action="delete-product" data-id="${product.id}">🗑️</button>
                 </td>
             </tr>
         `).join('')
@@ -384,13 +433,13 @@ function renderProductsPagination() {
         return
     }
     
-    let html = `<button ${productsPage === 1 ? 'disabled' : ''} onclick="changeProductsPage(${productsPage - 1})">←</button>`
+    let html = `<button ${productsPage === 1 ? 'disabled' : ''} data-page="${productsPage - 1}">←</button>`
     
     for (let p = 1; p <= totalPages; p++) {
-        html += `<button class="${p === productsPage ? 'active' : ''}" onclick="changeProductsPage(${p})">${p}</button>`
+        html += `<button class="${p === productsPage ? 'active' : ''}" data-page="${p}">${p}</button>`
     }
     
-    html += `<button ${productsPage === totalPages ? 'disabled' : ''} onclick="changeProductsPage(${productsPage + 1})">→</button>`
+    html += `<button ${productsPage === totalPages ? 'disabled' : ''} data-page="${productsPage + 1}">→</button>`
     container.innerHTML = html
 }
 
@@ -416,7 +465,7 @@ async function openProductModal(productId = null) {
     }
 
     if (productId) {
-        const response = await fetch(`${CONFIG.adminApiUrl}/products/${productId}`, {
+        const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/products/${productId}`, {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
         })
         const product = await response.json()
@@ -471,19 +520,20 @@ function closeProductModal() {
 }
 
 async function loadFormOptions() {
-    const [categoriesRes, brandsRes] = await Promise.all([
-        fetch(`${CONFIG.adminApiUrl}/categories`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
-        }),
-        fetch(`${CONFIG.adminApiUrl}/brands`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
-        })
-    ])
-    
-    if (!categoriesRes.ok || !brandsRes.ok) {
-        const result = await categoriesRes.json().catch(() => ({}))
-        alert(translateError(result.error) || 'Ошибка загрузки справочников')
-        return false
+    const categoriesRes = await fetchWithTimeout(`${CONFIG.adminApiUrl}/categories`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
+    })
+    if (!categoriesRes.ok) {
+        const text = await categoriesRes.text()
+        throw new Error(text || 'Ошибка загрузки категорий')
+    }
+
+    const brandsRes = await fetchWithTimeout(`${CONFIG.adminApiUrl}/brands`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
+    })
+    if (!brandsRes.ok) {
+        const text = await brandsRes.text()
+        throw new Error(text || 'Ошибка загрузки брендов')
     }
     
     const categories = await categoriesRes.json()
@@ -498,14 +548,13 @@ async function loadFormOptions() {
         brands.map(b => `<option value="${b.id}">${b.name}</option>`).join('')
 
     // Load all products for related select
-    const allRes = await fetch(`${CONFIG.adminApiUrl}/products?limit=1000&page=1`, {
+    const allRes = await fetchWithTimeout(`${CONFIG.adminApiUrl}/products?limit=1000&page=1`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
     })
     
     if (!allRes.ok) {
-        const result = await allRes.json().catch(() => ({}))
-        alert(translateError(result.error) || 'Ошибка загрузки товаров')
-        return false
+        const text = await allRes.text()
+        throw new Error(text || 'Ошибка загрузки товаров')
     }
     
     const allData = await allRes.json()
@@ -592,7 +641,7 @@ async function handleProductSubmit(e) {
             formData.append('file', file)
 
             const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}-${file.name}`
-            const uploadRes = await fetch(`${CONFIG.supabaseUrl}/storage/v1/object/product-images/${fileName}`, {
+            const uploadRes = await fetchWithTimeout(`${CONFIG.supabaseUrl}/storage/v1/object/product-images/${fileName}`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('admin-token')}`,
@@ -629,7 +678,7 @@ async function handleProductSubmit(e) {
     const url = editingProductId ? `${CONFIG.adminApiUrl}/products/${editingProductId}` : `${CONFIG.adminApiUrl}/products`
     const method = editingProductId ? 'PUT' : 'POST'
 
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
         method,
         headers: {
             'Authorization': `Bearer ${localStorage.getItem('admin-token')}`,
@@ -652,10 +701,11 @@ async function handleProductSubmit(e) {
         }
     }
     } catch (err) {
+        console.error('Product save error:', err)
         if (err.message && (err.message.includes('Unauthorized') || err.message.includes('Сессия истекла'))) {
             handleAuthError('Сессия истекла. Войдите снова.')
         } else {
-            errorEl.textContent = translateError(err.message) || 'Неизвестная ошибка при сохранении'
+            errorEl.textContent = (translateError(err.message) || 'Неизвестная ошибка при сохранении') + ' (' + err.message + ')'
             errorEl.classList.remove('hidden')
         }
     }
@@ -676,7 +726,7 @@ function addLinkField(value = '', title = '') {
 async function deleteProduct(id) {
     if (!confirm('Удалить товар?')) return
     
-    const response = await fetch(`${CONFIG.adminApiUrl}/products/${id}`, {
+    const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/products/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
     })
@@ -705,7 +755,7 @@ async function duplicateProduct(id) {
 
     await loadFormOptions()
 
-    const response = await fetch(`${CONFIG.adminApiUrl}/products/${id}`, {
+    const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/products/${id}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
     })
     const product = await response.json()
@@ -751,7 +801,7 @@ async function duplicateProduct(id) {
 // ============================================
 
 async function loadCategories() {
-    const response = await fetch(`${CONFIG.adminApiUrl}/categories`, {
+    const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/categories`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
     })
     
@@ -767,8 +817,8 @@ async function loadCategories() {
         <tr>
             <td>${escapeHtml(cat.name)}</td>
             <td>
-                <button class="btn btn-sm btn-secondary" onclick="editCategory('${cat.id}')">✏️</button>
-                <button class="btn btn-sm btn-danger" onclick="deleteCategory('${cat.id}')">🗑️</button>
+                <button class="btn btn-sm btn-secondary" data-action="edit-category" data-id="${cat.id}">✏️</button>
+                <button class="btn btn-sm btn-danger" data-action="delete-category" data-id="${cat.id}">🗑️</button>
             </td>
         </tr>
     `).join('')
@@ -800,7 +850,7 @@ function closeNameModal() {
 async function openCategoryModal(categoryId = null) {
     let currentName = ''
     if (categoryId) {
-        const res = await fetch(`${CONFIG.adminApiUrl}/categories/${categoryId}`, {
+        const res = await fetchWithTimeout(`${CONFIG.adminApiUrl}/categories/${categoryId}`, {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
         })
         if (res.ok) {
@@ -822,7 +872,7 @@ async function openCategoryModal(categoryId = null) {
 
     const method = categoryId ? 'PUT' : 'POST'
 
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
         method,
         headers: {
             'Authorization': `Bearer ${localStorage.getItem('admin-token')}`,
@@ -842,7 +892,7 @@ async function openCategoryModal(categoryId = null) {
 async function deleteCategory(id) {
     if (!confirm('Удалить категорию?')) return
 
-    const response = await fetch(`${CONFIG.adminApiUrl}/categories/${id}`, {
+    const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/categories/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
     })
@@ -864,7 +914,7 @@ function editCategory(id) {
 // ============================================
 
 async function loadBrands() {
-    const response = await fetch(`${CONFIG.adminApiUrl}/brands`, {
+    const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/brands`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
     })
 
@@ -880,8 +930,8 @@ async function loadBrands() {
         <tr>
             <td>${escapeHtml(brand.name)}</td>
             <td>
-                <button class="btn btn-sm btn-secondary" onclick="editBrand('${brand.id}')">✏️</button>
-                <button class="btn btn-sm btn-danger" onclick="deleteBrand('${brand.id}')">🗑️</button>
+                <button class="btn btn-sm btn-secondary" data-action="edit-brand" data-id="${brand.id}">✏️</button>
+                <button class="btn btn-sm btn-danger" data-action="delete-brand" data-id="${brand.id}">🗑️</button>
             </td>
         </tr>
     `).join('')
@@ -890,7 +940,7 @@ async function loadBrands() {
 async function openBrandModal(brandId = null) {
     let currentName = ''
     if (brandId) {
-        const res = await fetch(`${CONFIG.adminApiUrl}/brands/${brandId}`, {
+        const res = await fetchWithTimeout(`${CONFIG.adminApiUrl}/brands/${brandId}`, {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
         })
         if (res.ok) {
@@ -912,7 +962,7 @@ async function openBrandModal(brandId = null) {
 
     const method = brandId ? 'PUT' : 'POST'
 
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
         method,
         headers: {
             'Authorization': `Bearer ${localStorage.getItem('admin-token')}`,
@@ -932,7 +982,7 @@ async function openBrandModal(brandId = null) {
 async function deleteBrand(id) {
     if (!confirm('Удалить бренд?')) return
 
-    const response = await fetch(`${CONFIG.adminApiUrl}/brands/${id}`, {
+    const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/brands/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
     })
@@ -956,7 +1006,7 @@ function editBrand(id) {
 async function loadAnalytics() {
     const period = document.getElementById('analyticsPeriod').value
     
-    const response = await fetch(`${CONFIG.adminApiUrl}/analytics?period=${period}`, {
+    const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/analytics?period=${period}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
     })
     
@@ -984,7 +1034,7 @@ async function loadAnalytics() {
     renderSalesChart(data.dailyStats)
     
     // Orders
-    const ordersRes = await fetch(`${CONFIG.adminApiUrl}/orders?period=${period}&page=${ordersPage}&limit=${ORDERS_PER_PAGE}`, {
+    const ordersRes = await fetchWithTimeout(`${CONFIG.adminApiUrl}/orders?period=${period}&page=${ordersPage}&limit=${ORDERS_PER_PAGE}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
     })
     
@@ -1018,13 +1068,13 @@ function renderOrdersPagination() {
         return
     }
     
-    let html = `<button ${ordersPage === 1 ? 'disabled' : ''} onclick="changeOrdersPage(${ordersPage - 1})">←</button>`
+    let html = `<button ${ordersPage === 1 ? 'disabled' : ''} data-page="${ordersPage - 1}">←</button>`
     
     for (let p = 1; p <= totalPages; p++) {
-        html += `<button class="${p === ordersPage ? 'active' : ''}" onclick="changeOrdersPage(${p})">${p}</button>`
+        html += `<button class="${p === ordersPage ? 'active' : ''}" data-page="${p}">${p}</button>`
     }
     
-    html += `<button ${ordersPage === totalPages ? 'disabled' : ''} onclick="changeOrdersPage(${ordersPage + 1})">→</button>`
+    html += `<button ${ordersPage === totalPages ? 'disabled' : ''} data-page="${ordersPage + 1}">→</button>`
     container.innerHTML = html
 }
 
@@ -1075,7 +1125,7 @@ function renderSalesChart(dailyStats) {
 // ============================================
 
 async function loadSettings() {
-    const response = await fetch(`${CONFIG.adminApiUrl}/settings`, {
+    const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/settings`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
     })
     
@@ -1117,7 +1167,7 @@ async function handleSettingsSave(e) {
         gemini_api_key: document.getElementById('geminiApiKey').value
     }
     
-    const response = await fetch(`${CONFIG.adminApiUrl}/settings`, {
+    const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/settings`, {
         method: 'PUT',
         headers: {
             'Authorization': `Bearer ${localStorage.getItem('admin-token')}`,
@@ -1148,7 +1198,7 @@ async function handleChangePassword(e) {
     }
     
     try {
-        const response = await fetch(`${CONFIG.supabaseUrl}/auth/v1/user`, {
+        const response = await fetchWithTimeout(`${CONFIG.supabaseUrl}/auth/v1/user`, {
             method: 'PUT',
             headers: {
                 'apikey': CONFIG.supabaseAnonKey,
@@ -1199,7 +1249,7 @@ async function handleImport() {
             const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
             const jsonData = XLSX.utils.sheet_to_json(firstSheet)
             
-            const response = await fetch(`${CONFIG.adminApiUrl}/import`, {
+            const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/import`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('admin-token')}`,
@@ -1219,8 +1269,10 @@ async function handleImport() {
                 statusEl.textContent = `Ошибки: ${result.results.errors.length}. Успешно: ${result.results.success}`
             }
         } catch (error) {
-            document.getElementById('importStatus').className = 'status-message error'
-            document.getElementById('importStatus').textContent = 'Ошибка чтения файла'
+            console.error('Import error:', error)
+            const statusEl = document.getElementById('importStatus')
+            statusEl.className = 'status-message error'
+            statusEl.textContent = 'Ошибка чтения файла: ' + error.message
         }
     }
     
@@ -1228,7 +1280,7 @@ async function handleImport() {
 }
 
 async function handleExport() {
-    const response = await fetch(`${CONFIG.adminApiUrl}/export`, {
+    const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/export`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
     })
     
@@ -1271,7 +1323,7 @@ async function handleExport() {
 }
 
 async function handleBackup() {
-    const response = await fetch(`${CONFIG.adminApiUrl}/backup`, {
+    const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/backup`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
     })
     
@@ -1290,7 +1342,7 @@ async function handleBackup() {
 }
 
 async function handleBackupSql() {
-    const response = await fetch(`${CONFIG.adminApiUrl}/backup-sql`, {
+    const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/backup-sql`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
     })
 
@@ -1315,7 +1367,7 @@ async function handleBackupSql() {
 async function handleGenerateDescriptions() {
     const apiKey = document.getElementById('geminiApiKey')?.value || localStorage.getItem('gemini-api-key') || ''
     if (!apiKey) {
-        alert('Введите Gemini API ключ в настройках')
+        alert('Введите DeepSeek API ключ в настройках')
         return
     }
 
@@ -1325,8 +1377,8 @@ async function handleGenerateDescriptions() {
     btn.textContent = '⏳ Генерация...'
 
     try {
-        const productsRes = await fetch(
-            `${CONFIG.supabaseUrl}/rest/v1/products?select=id,name,brands(name),brand_id,description,dosage,usage,contraindications,full_description&description=is.null&limit=100`,
+        const productsRes = await fetchWithTimeout(
+            `${CONFIG.supabaseUrl}/rest/v1/products?select=id,name,brands(name),brand_id,description,dosage,usage,contraindications,full_description&description=is.null&order=id`,
             {
                 headers: {
                     'apikey': CONFIG.supabaseAnonKey,
@@ -1346,51 +1398,65 @@ async function handleGenerateDescriptions() {
             return
         }
 
-        let successCount = 0
-        let errorCount = 0
+        const CHUNK_SIZE = 30
+        const chunks = []
+        for (let i = 0; i < products.length; i += CHUNK_SIZE) {
+            chunks.push(products.slice(i, i + CHUNK_SIZE))
+        }
 
-        for (const product of products) {
-            try {
-                const result = await generateAndValidateDescription(product, apiKey)
-                if (result) {
-                    const updateRes = await fetch(
-                        `${CONFIG.supabaseUrl}/rest/v1/products?id=eq.${product.id}`,
-                        {
-                            method: 'PATCH',
-                            headers: {
-                                'apikey': CONFIG.supabaseAnonKey,
-                                'Authorization': `Bearer ${CONFIG.supabaseAnonKey}`,
-                                'Content-Type': 'application/json',
-                                'Prefer': 'return=minimal'
-                            },
-                            body: JSON.stringify({
-                                description: result.description,
-                                dosage: result.dosage,
-                                usage: result.usage,
-                                contraindications: result.contraindications
-                            })
+        let totalSuccess = 0
+        let totalError = 0
+
+        for (let c = 0; c < chunks.length; c++) {
+            const chunk = chunks[c]
+            btn.textContent = `⏳ Генерация... ${c * CHUNK_SIZE}/${products.length}`
+
+            for (const product of chunk) {
+                try {
+                    const result = await generateAndValidateDescription(product, apiKey)
+                    if (result) {
+                        const updateRes = await fetchWithTimeout(
+                            `${CONFIG.supabaseUrl}/rest/v1/products?id=eq.${product.id}`,
+                            {
+                                method: 'PATCH',
+                                headers: {
+                                    'apikey': CONFIG.supabaseAnonKey,
+                                    'Authorization': `Bearer ${CONFIG.supabaseAnonKey}`,
+                                    'Content-Type': 'application/json',
+                                    'Prefer': 'return=minimal'
+                                },
+                                body: JSON.stringify({
+                                    description: result.description,
+                                    dosage: result.dosage,
+                                    usage: result.usage,
+                                    contraindications: result.contraindications
+                                })
+                            }
+                        )
+
+                        if (updateRes.ok) {
+                            totalSuccess++
+                        } else {
+                            totalError++
+                            console.error(`Failed to update product ${product.id}:`, await updateRes.text())
                         }
-                    )
-
-                    if (updateRes.ok) {
-                        successCount++
                     } else {
-                        errorCount++
-                        console.error(`Failed to update product ${product.id}:`, await updateRes.text())
+                        totalError++
                     }
-                } else {
-                    errorCount++
+                } catch (err) {
+                    totalError++
+                    console.error(`Error generating description for product ${product.id}:`, err)
                 }
 
-                // Small delay to avoid rate limiting
-                await new Promise(r => setTimeout(r, 500))
-            } catch (err) {
-                console.error(`Error generating description for product ${product.id}:`, err)
-                errorCount++
+                await new Promise(r => setTimeout(r, 300))
+            }
+
+            if (c < chunks.length - 1) {
+                await new Promise(r => setTimeout(r, 2000))
             }
         }
 
-        alert(`Генерация завершена: ${successCount} успешно, ${errorCount} ошибок`)
+        alert(`Генерация завершена: ${totalSuccess} успешно, ${totalError} ошибок`)
     } catch (error) {
         alert('Ошибка при генерации описаний: ' + error.message)
         console.error(error)
@@ -1404,82 +1470,77 @@ async function generateAndValidateDescription(product, apiKey) {
     const brandName = product.brands?.name || ''
     const productName = product.name || ''
 
-    const prompt = `На основе названия товара "${productName}" и бренда "${brandName}" сгенерируй структурированное описание БАДа. Строго следуй этому формату (JSON):
-{
-  "description": "2-3 предложения о пользе товара",
-  "dosage": "Количество капсул/таблеток извлечённое из названия (например '120 капсул')",
-  "usage": "Короткая инструкция приёма (например 'По 1 капсуле 2 раза в день во время еды')",
-  "contraindications": "Базовые противопоказания (индивидуальная непереносимость, беременность, кормление грудью)"
-}
-Ответ должен быть ТОЛЬКО валидным JSON без пояснений. Описание должно точно соответствовать названию товара "${productName}" и бренду "${brandName}". Не путай названия похожих товаров.`
-
-    const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+    const messages = [
         {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: {
-                    temperature: 0.3,
-                    maxOutputTokens: 500
-                }
-            })
+            role: 'system',
+            content: 'You are a professional copywriter for a dietary supplement e-commerce store. Always respond with valid JSON only, no markdown, no explanations.'
+        },
+        {
+            role: 'user',
+            content: `Generate a product description for a dietary supplement.
+
+Product name: "${productName}"
+Brand: "${brandName}"
+
+Return ONLY valid JSON with these exact fields:
+{
+  "description": "2-3 sentences about product benefits matching the name",
+  "dosage": "amount extracted from product name (e.g., '120 капсул')",
+  "usage": "short intake instruction (e.g., 'По 1 капсуле 2 раза в день во время еды')",
+  "contraindications": "basic contraindications (individual intolerance, pregnancy, breastfeeding)"
+}
+
+Rules:
+- description must exactly match "${productName}" and "${brandName}"
+- dosage must be extracted from the product name
+- usage: brief instruction
+- contraindications: standard list only
+- Do not confuse with similar products`
         }
-    )
+    ]
 
-    if (!response.ok) {
-        const errData = await response.json().catch(() => ({}))
-        throw new Error(errData.error?.message || 'Gemini API error')
-    }
+    const data = await callDeepSeekWithRetry(apiKey, messages, {
+        temperature: 0.3,
+        max_tokens: 500,
+        response_format: { type: 'json_object' }
+    })
 
-    const data = await response.json()
-    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
+    const rawText = data?.choices?.[0]?.message?.content?.trim()
 
-    if (!rawText) throw new Error('Empty response from Gemini')
+    if (!rawText) throw new Error('Empty response from AI')
 
     let parsed
     try {
-        const jsonMatch = rawText.match(/\{[\s\S]*\}/)
-        if (!jsonMatch) throw new Error('No JSON found in response')
-        parsed = JSON.parse(jsonMatch[0])
+        parsed = JSON.parse(rawText)
     } catch (e) {
-        console.error('Failed to parse Gemini response:', rawText)
+        console.error('Failed to parse AI response:', rawText)
         return null
     }
 
-    // Self-audit: verify description matches product name
-    const auditPrompt = `Проверь следующее описание БАДа на логическую ошибку и соответствие названию товара.
-
-Название товара: "${productName}"
-Бренд: "${brandName}"
-Сгенерированное описание: "${parsed.description || ''}"
-Дозировка: "${parsed.dosage || ''}"
-
-Ответь ТОЛЬКО "OK" если описание логически соответствует названию товара и бренду, или "ERROR: причина" если есть ошибка или путаница.`
-
-    const auditResponse = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+    const auditMessages = [
         {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: auditPrompt }] }],
-                generationConfig: {
-                    temperature: 0.1,
-                    maxOutputTokens: 100
-                }
-            })
+            role: 'system',
+            content: 'You are a quality checker. Respond with only "OK" or "ERROR: reason".'
+        },
+        {
+            role: 'user',
+            content: `Check if this supplement description matches the product.
+
+Product: "${productName}"
+Brand: "${brandName}"
+Description: "${parsed.description || ''}"
+Dosage: "${parsed.dosage || ''}"
+
+Answer ONLY "OK" if correct, or "ERROR: reason" if there is a mismatch or error.`
         }
-    )
+    ]
 
-    if (!auditResponse.ok) {
-        console.warn('Audit failed, skipping self-check')
-        return parsed
-    }
+    const auditData = await callDeepSeekWithRetry(apiKey, auditMessages, {
+        temperature: 0.1,
+        max_tokens: 100
+    })
 
-    const auditData = await auditResponse.json()
-    const auditResult = auditData.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || ''
+    const auditResult = auditData?.choices?.[0]?.message?.content?.trim() || ''
 
     if (auditResult.toLowerCase().includes('error:')) {
         console.warn('Self-audit failed for product:', productName, auditResult)
@@ -1487,6 +1548,52 @@ async function generateAndValidateDescription(product, apiKey) {
     }
 
     return parsed
+}
+
+async function callDeepSeekWithRetry(apiKey, messages, params, attempts = 3) {
+    for (let i = 0; i < attempts; i++) {
+        try {
+        const response = await fetchWithTimeout(
+            'https://api.deepseek.com/chat/completions',
+                {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: 'deepseek-v4-flash',
+                        messages: messages,
+                        stream: false,
+                        ...params
+                    })
+                }
+            )
+
+            if (response.ok) {
+                return await response.json()
+            }
+
+            const errData = await response.json().catch(() => ({}))
+            const errorMsg = errData.error?.message || errData.error || 'AI API error'
+
+            if ((response.status === 429 || response.status === 503) && i < attempts - 1) {
+                const delay = Math.pow(2, i) * 3000
+                console.warn(`DeepSeek rate limit/server busy, retrying in ${delay}ms...`)
+                await new Promise(r => setTimeout(r, delay))
+                continue
+            }
+
+            throw new Error(errorMsg)
+        } catch (err) {
+            if (i < attempts - 1) {
+                const delay = Math.pow(2, i) * 2000
+                await new Promise(r => setTimeout(r, delay))
+                continue
+            }
+            throw err
+        }
+    }
 }
 
 // ============================================
@@ -1500,7 +1607,7 @@ async function startMonitor() {
 
 async function checkMonitor() {
     try {
-        const response = await fetch(CONFIG.orderFunctionUrl + '/health', {
+        const response = await fetchWithTimeout(CONFIG.orderFunctionUrl + '/health', {
             method: 'GET'
         })
         
@@ -1522,13 +1629,14 @@ async function checkMonitor() {
         const text = document.querySelector('.indicator-text')
         if (!dot || !text) return
         dot.className = 'indicator-dot error'
-        text.textContent = 'Нет подключения'
+        text.textContent = 'Нет подключения: ' + error.message
+        console.error('Monitor error:', error)
     }
 }
 
 async function sendAlert(message) {
     try {
-        const response = await fetch(`${CONFIG.adminApiUrl}/settings`, {
+        const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/settings`, {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
         })
         
@@ -1569,14 +1677,15 @@ function debounce(func, wait) {
 
 // Service Worker (обход кеша GitHub Pages)
 function registerServiceWorker() {
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js')
-            .then(() => {
+    if ('serviceWorker' in navigator && location.pathname.startsWith('/admin/')) {
+        navigator.serviceWorker.register('/sw.js', { scope: '/' })
+            .then(reg => {
                 if (navigator.serviceWorker.controller) {
                     navigator.serviceWorker.addEventListener('controllerchange', () => location.reload())
                 }
+                reg.update()
             })
-            .catch((error) => console.error('Service Worker registration failed:', error))
+            .catch(error => console.error('Service Worker registration failed:', error))
     }
 }
 
