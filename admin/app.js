@@ -13,8 +13,17 @@ async function fetchWithTimeout(url, options = {}, timeout = 15000) {
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), timeout)
     try {
-        const response = await window.fetch(url, { ...options, signal: controller.signal })
+        const isAuthEndpoint = url.includes('/auth/v1/')
+        const token = !isAuthEndpoint ? localStorage.getItem('admin-token') : null
+        const headers = {
+            ...(options.headers || {}),
+            ...(token && !options.headers?.Authorization ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+        const response = await window.fetch(url, { ...options, headers, signal: controller.signal })
         clearTimeout(timer)
+        if (!isAuthEndpoint && response.status === 401) {
+            handleAuthError('Сессия истекла. Войдите снова.')
+        }
         return response
     } catch (error) {
         clearTimeout(timer)
@@ -655,9 +664,6 @@ async function handleProductSubmit(e) {
                 productImages.push({ url: imageUrl, is_main: productImages.length === 0 })
             } else {
                 const text = await uploadRes.text()
-                if (uploadRes.status === 401) {
-                    throw new Error('Unauthorized')
-                }
                 throw new Error(`Ошибка загрузки изображения: ${uploadRes.status} ${text}`)
             }
         }
@@ -693,21 +699,13 @@ async function handleProductSubmit(e) {
         closeProductModal()
         loadProducts()
     } else {
-        if (result.error === 'Unauthorized' || result.error === 'Сессия истекла. Войдите снова.') {
-            handleAuthError('Сессия истекла. Войдите снова.')
-        } else {
-            errorEl.textContent = translateError(result.error) || 'Ошибка сохранения товара'
-            errorEl.classList.remove('hidden')
-        }
+        errorEl.textContent = translateError(result.error) || 'Ошибка сохранения товара'
+        errorEl.classList.remove('hidden')
     }
     } catch (err) {
         console.error('Product save error:', err)
-        if (err.message && (err.message.includes('Unauthorized') || err.message.includes('Сессия истекла'))) {
-            handleAuthError('Сессия истекла. Войдите снова.')
-        } else {
-            errorEl.textContent = (translateError(err.message) || 'Неизвестная ошибка при сохранении') + ' (' + err.message + ')'
-            errorEl.classList.remove('hidden')
-        }
+        errorEl.textContent = (translateError(err.message) || 'Неизвестная ошибка при сохранении') + ' (' + err.message + ')'
+        errorEl.classList.remove('hidden')
     }
 }
 

@@ -1,16 +1,16 @@
-const CACHE_VERSION = 'jack-nutrition-v28-2026-08-07-fix'
+const CACHE_VERSION = 'jack-nutrition-v29-2026-08-07-paths-fix'
 const STATIC_ASSETS = [
-    '/styles.css',
-    '/app.js',
-    '/scanner-worker.js',
-    '/manifest.json',
-    '/assets/icons/icon-192.png',
-    '/assets/icons/icon-192-maskable.png',
-    '/assets/icons/icon-512.png',
-    '/assets/icons/icon-512-maskable.png',
-    '/icons/apple-touch-icon.svg',
-    '/admin/styles.css',
-    '/admin/app.js'
+    'styles.css',
+    'app.js',
+    'scanner-worker.js',
+    'manifest.json',
+    'assets/icons/icon-192.png',
+    'assets/icons/icon-192-maskable.png',
+    'assets/icons/icon-512.png',
+    'assets/icons/icon-512-maskable.png',
+    'icons/apple-touch-icon.svg',
+    'admin/styles.css',
+    'admin/app.js'
 ]
 
 self.addEventListener('install', (event) => {
