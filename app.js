@@ -1385,7 +1385,7 @@ function debounce(func, wait) {
 // Service Worker (обход кеша GitHub Pages)
 function registerServiceWorker() {
     if ('serviceWorker' in navigator && !location.pathname.startsWith('/admin/')) {
-        navigator.serviceWorker.register('/sw.js', { scope: '/' })
+        navigator.serviceWorker.register('./sw.js')
             .then(reg => {
                 if (navigator.serviceWorker.controller) {
                     navigator.serviceWorker.addEventListener('controllerchange', () => location.reload())
