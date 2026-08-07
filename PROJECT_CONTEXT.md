@@ -858,7 +858,7 @@ CSS-переменные для цветов и шрифтов.
 - `manifest.json` — PWA-манифест (PNG-иконки из `./assets/icons/`, `display: standalone`, относительные пути)
 - `assets/icons/` — папка с PNG-иконками: `icon-192.png`, `icon-192-maskable.png`, `icon-512.png`, `icon-512-maskable.png`
 - `icons/` — папка с SVG-иконками: `icon-192.svg`, `icon-512.svg`, `apple-touch-icon.svg` (не используются в манифесте)
-- `index.html` — содержит `<link rel="manifest" href=".../manifest.json">`, `<link rel="icon" href=".../assets/icons/icon-192.png">`, `<link rel="apple-touch-icon" href=".../assets/icons/icon-192.png">`, SVG sprite для бейджей
+- `index.html` — содержит `<link rel="manifest" href="./manifest.json">`, `<link rel="icon" href="./assets/icons/icon-192.png">`, `<link rel="apple-touch-icon" href="./assets/icons/icon-192.png">`, SVG sprite для бейджей
 
 `admin/index.html` **не содержит** тегов `<link rel="manifest">` и `<link rel="apple-touch-icon">` — PWA для админки не настроена. Также содержит SVG sprite для бейджей.
 
@@ -868,8 +868,8 @@ PWA-установка на главный экран **работает для 
 1. `manifest.json` и PNG-иконки (`assets/icons/icon-192.png`, `assets/icons/icon-512.png`, `assets/icons/icon-192-maskable.png`, `assets/icons/icon-512-maskable.png`) уже существуют.
 2. Добавить в `admin/index.html` PWA-теги:
     ```html
-    <link rel="manifest" href=".../manifest.json">
-    <link rel="apple-touch-icon" href=".../assets/icons/icon-192.png">
+    <link rel="manifest" href="./manifest.json">
+    <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
     ```
 3. Убедиться, что `sw.js` кеширует `manifest.json` и иконки (уже делается).
 

@@ -546,14 +546,17 @@ body {
     min-height: auto;
 }
 
-.admin-badge-icon {
-    width: 18px;
-    height: 18px;
-    padding: 2px;
-    border-radius: 4px;
+.admin-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
     color: #fff;
     margin-right: 4px;
-    vertical-align: middle;
 }
 
 .admin-badge-hit { background: var(--accent); }

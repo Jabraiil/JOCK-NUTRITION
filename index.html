@@ -5,31 +5,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>JOCK NUTRITION</title>
-    <link rel="stylesheet" href="styles.css?v=26">
+    <link rel="stylesheet" href="styles.css?v=27">
     <link rel="manifest" href="./manifest.json">
+    <link rel="icon" type="image/svg+xml" href="./icons/favicon.svg">
+    <link rel="icon" type="image/png" sizes="16x16" href="./assets/icons/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="./assets/icons/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="192x192" href="./assets/icons/icon-192.png">
     <meta name="theme-color" content="#34C759">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="JOCK">
-    <link rel="apple-touch-icon" sizes="180x180" href="./assets/icons/icon-192.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="./assets/icons/apple-touch-icon.png">
     <meta name="apple-mobile-web-app-title" content="JOCK NUTRITION">
 </head>
 <body>
-    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
-        <symbol id="icon-hit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 2c0 0-7 7-7 12a7 7 0 0 0 14 0c0-5-7-12-7-12z"/>
-        </symbol>
-        <symbol id="icon-new" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-        </symbol>
-        <symbol id="icon-discount" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="19" y1="5" x2="5" y2="19"/>
-            <circle cx="6.5" cy="6.5" r="2.5"/>
-            <circle cx="17.5" cy="17.5" r="2.5"/>
-        </symbol>
-    </svg>
     <script>
         (function() {
             const hash = window.location.hash;
@@ -59,6 +49,13 @@
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="12" cy="12" r="5"></circle>
                             <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path>
+                        </svg>
+                    </button>
+                    <button id="privacyToggle" class="icon-btn" aria-label="Политика конфиденциальности" title="Политика конфиденциальности">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <polyline points="9 15 11 13 13 15 17 11"></polyline>
                         </svg>
                     </button>
                 </div>
@@ -203,6 +200,45 @@
             })
         }
     </script>
+    <div id="cookieBanner" class="cookie-banner hidden">
+        <div class="cookie-banner-content">
+            <p>Мы используем технические файлы cookie и локальное хранилище для правильной работы приложения (например, сохранения корзины). Оставаясь на сайте, вы соглашаетесь с этим.</p>
+            <button id="cookieAccept" class="btn btn-primary">Понятно</button>
+        </div>
+    </div>
+
+    <div id="welcomeModal" class="welcome-modal hidden">
+        <div class="welcome-modal-backdrop"></div>
+        <div class="welcome-modal-content">
+            <button id="welcomeModalClose" class="welcome-modal-close" aria-label="Закрыть">&times;</button>
+            <div class="welcome-modal-icon">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+            </div>
+            <h2>Добро пожаловать!</h2>
+            <p>Мы заботимся о вашей приватности. Вся информация хранится только на вашем устройстве.</p>
+            <div class="welcome-hint">
+                <span>Ваши настройки и политика конфиденциальности всегда доступны здесь:</span>
+                <div class="welcome-arrow-wrap">
+                    <div class="welcome-arrow"></div>
+                </div>
+            </div>
+            <button id="welcomeStartBtn" class="btn btn-primary btn-block">Начать работу</button>
+        </div>
+    </div>
+
+    <div id="privacyModal" class="privacy-modal hidden">
+        <div class="privacy-modal-backdrop"></div>
+        <div class="privacy-modal-content">
+            <button id="privacyModalClose" class="privacy-modal-close" aria-label="Закрыть">&times;</button>
+            <h2>Политика конфиденциальности</h2>
+            <div class="privacy-modal-body" id="privacyModalBody"></div>
+            <button id="privacyModalCloseBtn" class="btn btn-secondary btn-block">Закрыть</button>
+        </div>
+    </div>
+
     <script src="app.js?v=26"></script>
 
 <!-- Bottom Navigation Bar (mobile) -->
@@ -237,5 +273,21 @@
         <span id="bottomCartCount" class="bottom-nav-badge hidden">0</span>
     </a>
 </nav>
+
+<div id="a2hsBanner" class="a2hs-banner hidden">
+    <div class="a2hs-content">
+        <div class="a2hs-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 5v14M5 12h14"/>
+            </svg>
+        </div>
+        <div class="a2hs-text">
+            <div class="a2hs-title">Добавить на главный экран</div>
+            <div class="a2hs-desc">Быстрый доступ к каталогу как приложение</div>
+        </div>
+        <button id="a2hsClose" class="a2hs-close" aria-label="Закрыть">&times;</button>
+    </div>
+</div>
+
 </body>
 </html>

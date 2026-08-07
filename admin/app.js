@@ -356,7 +356,8 @@ function switchPage(page) {
         backup: 'Резервное копирование'
     }
     
-    document.getElementById('pageTitle').textContent = titles[page] || page
+    const pageTitle = document.getElementById('pageTitle')
+    if (pageTitle) pageTitle.textContent = titles[page] || page
     loadPageData(page)
 }
 
@@ -416,11 +417,11 @@ async function loadProducts() {
                     <td>${product.price} ₽</td>
                     <td>${product.stock}</td>
                     <td>${product.is_visible ? '✅' : '❌'}</td>
-                    <td>
-                        ${product.is_hit ? '<svg class="admin-badge-icon admin-badge-hit"><use href="#icon-hit"/></svg>' : ''}
-                        ${product.is_new ? '<svg class="admin-badge-icon admin-badge-new"><use href="#icon-new"/></svg>' : ''}
-                        ${product.is_discount ? '<svg class="admin-badge-icon admin-badge-discount"><use href="#icon-discount"/></svg>' : ''}
-                    </td>
+                <td>
+                    ${product.is_hit ? '<span class="badge-text badge-hit">ХИТ</span>' : ''}
+                    ${product.is_new ? '<span class="badge-text badge-new">НОВИНКА</span>' : ''}
+                    ${product.is_discount ? '<span class="badge-text badge-discount">СКИДКА</span>' : ''}
+                </td>
                     <td>
                         <button class="btn btn-sm btn-secondary" data-action="edit-product" data-id="${product.id}">✏️</button>
                         <button class="btn btn-sm btn-primary" data-action="duplicate-product" data-id="${product.id}">⧉</button>
@@ -845,12 +846,16 @@ function closeNameModal() {
 async function openCategoryModal(categoryId = null) {
     let currentName = ''
     if (categoryId) {
-        const res = await fetchWithTimeout(`${CONFIG.adminApiUrl}/categories/${categoryId}`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
-        })
-        if (res.ok) {
-            const cat = await res.json()
-            if (cat) currentName = cat.name
+        try {
+            const res = await fetchWithTimeout(`${CONFIG.adminApiUrl}/categories/${categoryId}`, {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
+            })
+            if (res.ok) {
+                const cat = await res.json()
+                if (cat) currentName = cat.name
+            }
+        } catch (e) {
+            console.error('Error loading category:', e)
         }
     }
 
@@ -861,26 +866,31 @@ async function openCategoryModal(categoryId = null) {
     )
     if (!name) return
 
-    const url = categoryId
-        ? `${CONFIG.adminApiUrl}/categories/${categoryId}`
-        : `${CONFIG.adminApiUrl}/categories`
+    try {
+        const url = categoryId
+            ? `${CONFIG.adminApiUrl}/categories/${categoryId}`
+            : `${CONFIG.adminApiUrl}/categories`
 
-    const method = categoryId ? 'PUT' : 'POST'
+        const method = categoryId ? 'PUT' : 'POST'
 
-    const response = await fetchWithTimeout(url, {
-        method,
-        headers: {
-            'Authorization': `Bearer ${localStorage.getItem('admin-token')}`,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ name })
-    })
+        const response = await fetchWithTimeout(url, {
+            method,
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('admin-token')}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ name })
+        })
 
-    if (response.ok) {
-        loadCategories()
-    } else {
-        const result = await response.json().catch(() => ({}))
-        alert(translateError(result.error) || 'Ошибка сохранения категории')
+        if (response.ok) {
+            loadCategories()
+        } else {
+            const result = await response.json().catch(() => ({}))
+            alert(translateError(result.error) || 'Ошибка сохранения категории')
+        }
+    } catch (error) {
+        console.error('Error saving category:', error)
+        alert('Ошибка сохранения категории: ' + error.message)
     }
 }
 
@@ -940,12 +950,16 @@ async function loadBrands() {
 async function openBrandModal(brandId = null) {
     let currentName = ''
     if (brandId) {
-        const res = await fetchWithTimeout(`${CONFIG.adminApiUrl}/brands/${brandId}`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
-        })
-        if (res.ok) {
-            const brand = await res.json()
-            if (brand) currentName = brand.name
+        try {
+            const res = await fetchWithTimeout(`${CONFIG.adminApiUrl}/brands/${brandId}`, {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
+            })
+            if (res.ok) {
+                const brand = await res.json()
+                if (brand) currentName = brand.name
+            }
+        } catch (e) {
+            console.error('Error loading brand:', e)
         }
     }
 
@@ -956,26 +970,31 @@ async function openBrandModal(brandId = null) {
     )
     if (!name) return
 
-    const url = brandId
-        ? `${CONFIG.adminApiUrl}/brands/${brandId}`
-        : `${CONFIG.adminApiUrl}/brands`
+    try {
+        const url = brandId
+            ? `${CONFIG.adminApiUrl}/brands/${brandId}`
+            : `${CONFIG.adminApiUrl}/brands`
 
-    const method = brandId ? 'PUT' : 'POST'
+        const method = brandId ? 'PUT' : 'POST'
 
-    const response = await fetchWithTimeout(url, {
-        method,
-        headers: {
-            'Authorization': `Bearer ${localStorage.getItem('admin-token')}`,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ name })
-    })
+        const response = await fetchWithTimeout(url, {
+            method,
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('admin-token')}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ name })
+        })
 
-    if (response.ok) {
-        loadBrands()
-    } else {
-        const result = await response.json().catch(() => ({}))
-        alert(translateError(result.error) || 'Ошибка сохранения бренда')
+        if (response.ok) {
+            loadBrands()
+        } else {
+            const result = await response.json().catch(() => ({}))
+            alert(translateError(result.error) || 'Ошибка сохранения бренда')
+        }
+    } catch (error) {
+        console.error('Error saving brand:', error)
+        alert('Ошибка сохранения бренда: ' + error.message)
     }
 }
 
@@ -1089,7 +1108,9 @@ function changeOrdersPage(page) {
 }
 
 function renderSalesChart(dailyStats) {
-    const ctx = document.getElementById('salesChart').getContext('2d')
+    const canvas = document.getElementById('salesChart')
+    if (!canvas || !dailyStats || !dailyStats.length) return
+    const ctx = canvas.getContext('2d')
     
     if (salesChart) {
         salesChart.destroy()
@@ -1163,6 +1184,7 @@ async function loadSettings() {
 async function handleSettingsSave(e) {
     e.preventDefault()
     
+    try {
     const settings = {
         whatsapp_number: document.getElementById('whatsappNumber').value,
         store_name: document.getElementById('storeName').value,
@@ -1192,6 +1214,10 @@ async function handleSettingsSave(e) {
     } else {
         const result = await response.json().catch(() => ({}))
         alert(translateError(result.error) || 'Ошибка сохранения настроек')
+    }
+    } catch (err) {
+        console.error('Settings save error:', err)
+        alert('Ошибка сохранения настроек: ' + err.message)
     }
 }
 
@@ -1267,6 +1293,14 @@ async function handleImport() {
                 },
                 body: JSON.stringify({ products: jsonData })
             })
+            
+            if (!response.ok) {
+                const result = await response.json().catch(() => ({}))
+                const statusEl = document.getElementById('importStatus')
+                statusEl.className = 'status-message error'
+                statusEl.textContent = translateError(result.error) || 'Ошибка импорта'
+                return
+            }
             
             const result = await response.json()
             const statusEl = document.getElementById('importStatus')

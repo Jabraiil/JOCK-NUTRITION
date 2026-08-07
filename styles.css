@@ -136,6 +136,17 @@ body {
     background: var(--border);
 }
 
+#privacyToggle.welcome-highlight {
+    background: var(--success);
+    color: #fff;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.12); }
+}
+
 .cart-btn {
     position: relative;
     border: none;
@@ -1015,17 +1026,22 @@ body {
     z-index: 2;
 }
 
-.product-badge-icon {
-    width: 22px;
-    height: 22px;
-    padding: 3px;
+.badge-text {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
     border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    line-height: 1;
+    text-transform: uppercase;
     color: #fff;
 }
 
-.product-badge-icon.badge-hit-icon { background: var(--accent); }
-.product-badge-icon.badge-new-icon { background: var(--success); }
-.product-badge-icon.badge-discount-icon { background: var(--error); }
+.badge-hit { background: var(--accent); }
+.badge-new { background: var(--success); }
+.badge-discount { background: var(--error); }
 
 .favorite-btn {
     position: absolute;
@@ -1575,4 +1591,321 @@ body {
     .container { padding: 0 8px; }
     .catalog { gap: 8px; }
     .logo { font-size: 1rem; }
+}
+
+/* ---------- Cookie Banner ---------- */
+.cookie-banner {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--bg-elevated);
+    border-top: 1px solid var(--border);
+    padding: 16px clamp(12px, 4vw, 32px) calc(16px + env(safe-area-inset-bottom));
+    z-index: 900;
+    box-shadow: 0 -4px 24px var(--shadow);
+    animation: slide-up 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.cookie-banner-content {
+    max-width: var(--container-max);
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.cookie-banner p {
+    flex: 1 1 280px;
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--text);
+    line-height: 1.5;
+}
+
+.cookie-banner .btn {
+    flex-shrink: 0;
+}
+
+/* ---------- Welcome Modal ---------- */
+.welcome-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    animation: fade-in 0.3s ease;
+}
+
+.welcome-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+}
+
+.welcome-modal-content {
+    position: relative;
+    background: var(--bg-elevated);
+    border-radius: var(--radius-lg);
+    padding: 32px 24px 24px;
+    max-width: 420px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 24px 48px var(--shadow);
+    animation: welcome-pop 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@keyframes welcome-pop {
+    from { opacity: 0; transform: scale(0.92) translateY(20px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.welcome-modal-icon {
+    margin-bottom: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: rgba(52, 199, 89, 0.1);
+}
+
+.welcome-modal-content h2 {
+    margin: 0 0 8px;
+    font-size: 1.4rem;
+}
+
+.welcome-modal-content p {
+    margin: 0 0 20px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    font-size: 0.95rem;
+}
+
+.welcome-hint {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 20px;
+    padding: 12px;
+    background: var(--bg);
+    border-radius: var(--radius-sm);
+    border: 1px dashed var(--border);
+}
+
+.welcome-hint span {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.welcome-arrow-wrap {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.welcome-arrow {
+    width: 0;
+    height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-bottom: 10px solid var(--primary);
+    animation: bounce-up 1.2s ease-in-out infinite;
+}
+
+@keyframes bounce-up {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+}
+
+.welcome-modal-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    font-size: 1.3rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    width: var(--touch);
+    height: var(--touch);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background 0.2s;
+}
+
+.welcome-modal-close:hover {
+    background: var(--border);
+}
+
+/* ---------- Privacy Modal ---------- */
+.privacy-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    animation: fade-in 0.2s ease;
+}
+
+.privacy-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.privacy-modal-content {
+    position: relative;
+    background: var(--bg-elevated);
+    border-radius: var(--radius-lg);
+    padding: 24px clamp(16px, 5vw, 28px) calc(24px + env(safe-area-inset-bottom));
+    max-width: 600px;
+    width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 24px 48px var(--shadow);
+    animation: welcome-pop 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.privacy-modal-content h2 {
+    margin: 0 0 16px;
+    font-size: 1.3rem;
+}
+
+.privacy-modal-body {
+    font-size: 0.95rem;
+    line-height: 1.7;
+    color: var(--text);
+}
+
+.privacy-modal-body p {
+    margin: 0 0 12px;
+}
+
+.privacy-modal-body ul {
+    margin: 0 0 12px;
+    padding-left: 20px;
+}
+
+.privacy-modal-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    font-size: 1.4rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    width: var(--touch);
+    height: var(--touch);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background 0.2s;
+}
+
+.privacy-modal-close:hover {
+    background: var(--border);
+}
+
+/* ---------- Add to Home Screen Banner ---------- */
+.a2hs-banner {
+    position: fixed;
+    bottom: calc(var(--bottom-nav-height, 64px) + 8px);
+    left: 12px;
+    right: 12px;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    z-index: 9999;
+    animation: slideUp 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+@media (prefers-color-scheme: dark) {
+    .a2hs-banner {
+        background: rgba(30, 30, 30, 0.92);
+    }
+}
+
+.a2hs-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.a2hs-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 10px;
+    flex-shrink: 0;
+}
+
+.a2hs-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.a2hs-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.a2hs-desc {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+.a2hs-close {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.4rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    border-radius: 50%;
+}
+
+.a2hs-close:hover {
+    background: var(--border);
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
 }

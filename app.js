@@ -85,6 +85,7 @@ function init() {
         setupEventListeners()
         checkOrderTime()
         setInterval(checkOrderTime, 60000)
+        checkCookieConsent()
         window.addEventListener('resize', invalidateScanCropCache)
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
@@ -124,6 +125,30 @@ function setupEventListeners() {
 
         const themeToggle = document.getElementById('themeToggle')
         if (themeToggle) themeToggle.addEventListener('click', toggleTheme)
+
+        const privacyToggle = document.getElementById('privacyToggle')
+        if (privacyToggle) privacyToggle.addEventListener('click', openPrivacyModal)
+
+        const cookieAccept = document.getElementById('cookieAccept')
+        if (cookieAccept) cookieAccept.addEventListener('click', acceptCookies)
+
+        const welcomeModalClose = document.getElementById('welcomeModalClose')
+        if (welcomeModalClose) welcomeModalClose.addEventListener('click', hideWelcomeModal)
+
+        const welcomeStartBtn = document.getElementById('welcomeStartBtn')
+        if (welcomeStartBtn) welcomeStartBtn.addEventListener('click', hideWelcomeModal)
+
+        const privacyModalClose = document.getElementById('privacyModalClose')
+        if (privacyModalClose) privacyModalClose.addEventListener('click', closePrivacyModal)
+
+        const privacyModalCloseBtn = document.getElementById('privacyModalCloseBtn')
+        if (privacyModalCloseBtn) privacyModalCloseBtn.addEventListener('click', closePrivacyModal)
+
+        const welcomeBackdrop = document.querySelector('.welcome-modal-backdrop')
+        if (welcomeBackdrop) welcomeBackdrop.addEventListener('click', hideWelcomeModal)
+
+        const privacyBackdrop = document.querySelector('.privacy-modal-backdrop')
+        if (privacyBackdrop) privacyBackdrop.addEventListener('click', closePrivacyModal)
 
         const searchInput = document.getElementById('searchInput')
         if (searchInput) searchInput.addEventListener('input', debounce(handleSearch, 300))
@@ -240,6 +265,10 @@ function setupEventListeners() {
             if (e.key === 'Escape') {
                 const drawer = document.getElementById('cartDrawer')
                 if (drawer && drawer.classList.contains('open')) closeCart()
+                const welcome = document.getElementById('welcomeModal')
+                if (welcome && !welcome.classList.contains('hidden')) hideWelcomeModal()
+                const privacy = document.getElementById('privacyModal')
+                if (privacy && !privacy.classList.contains('hidden')) closePrivacyModal()
             }
         })
 
@@ -305,6 +334,7 @@ function setupEventListeners() {
 function openFilters() {
     const sidebar = document.getElementById('filterSidebar')
     const overlay = document.getElementById('filterSidebarOverlay')
+    if (!sidebar || !overlay) return
     sidebar.classList.add('open')
     overlay.classList.add('open')
 }
@@ -312,24 +342,11 @@ function openFilters() {
 function closeFilters() {
     const sidebar = document.getElementById('filterSidebar')
     const overlay = document.getElementById('filterSidebarOverlay')
+    if (!sidebar || !overlay) return
     sidebar.classList.remove('open')
     overlay.classList.remove('open')
 }
 
-function openCart() {
-    renderCart()
-    const drawer = document.getElementById('cartDrawer')
-    const overlay = document.getElementById('cartDrawerOverlay')
-    drawer.classList.add('open')
-    overlay.classList.add('open')
-}
-
-function closeCart() {
-    const drawer = document.getElementById('cartDrawer')
-    const overlay = document.getElementById('cartDrawerOverlay')
-    drawer.classList.remove('open')
-    overlay.classList.remove('open')
-}
 
 function toggleTheme() {
     darkMode = !darkMode
@@ -339,9 +356,11 @@ function toggleTheme() {
 
 function toggleSearch() {
     const searchBar = document.getElementById('searchBar')
+    if (!searchBar) return
     searchBar.classList.toggle('hidden')
     if (!searchBar.classList.contains('hidden')) {
-        document.getElementById('searchInput').focus()
+        const searchInput = document.getElementById('searchInput')
+        if (searchInput) searchInput.focus()
     }
 }
 
@@ -350,7 +369,8 @@ function handleSearch(e) {
 }
 
 function clearSearch() {
-    document.getElementById('searchInput').value = ''
+    const searchInput = document.getElementById('searchInput')
+    if (searchInput) searchInput.value = ''
     applyFilters()
 }
 
@@ -542,25 +562,37 @@ function filterAndRenderProducts(filters = {}) {
 }
 
 function applyFilters() {
+    const searchInput = document.getElementById('searchInput')
+    const categoryFilter = document.getElementById('categoryFilter')
+    const brandFilter = document.getElementById('brandFilter')
+    const priceFrom = document.getElementById('priceFrom')
+    const priceTo = document.getElementById('priceTo')
+    const sortFilter = document.getElementById('sortFilter')
     const filters = {
-        search: document.getElementById('searchInput').value,
-        category: document.getElementById('categoryFilter').value,
-        brand: document.getElementById('brandFilter').value,
-        priceFrom: document.getElementById('priceFrom').value,
-         priceTo: document.getElementById('priceTo').value,
-         sort: document.getElementById('sortFilter').value,
-         favoritesOnly: favoritesOnly
-     }
-     filterAndRenderProducts(filters)
+        search: searchInput ? searchInput.value : '',
+        category: categoryFilter ? categoryFilter.value : '',
+        brand: brandFilter ? brandFilter.value : '',
+        priceFrom: priceFrom ? priceFrom.value : '',
+        priceTo: priceTo ? priceTo.value : '',
+        sort: sortFilter ? sortFilter.value : 'newest',
+        favoritesOnly: favoritesOnly
+    }
+    filterAndRenderProducts(filters)
 }
 
 function resetFilters() {
-    document.getElementById('categoryFilter').value = ''
-    document.getElementById('brandFilter').value = ''
-    document.getElementById('priceFrom').value = ''
-    document.getElementById('priceTo').value = ''
-    document.getElementById('sortFilter').value = 'newest'
-    document.getElementById('searchInput').value = ''
+    const categoryFilter = document.getElementById('categoryFilter')
+    const brandFilter = document.getElementById('brandFilter')
+    const priceFrom = document.getElementById('priceFrom')
+    const priceTo = document.getElementById('priceTo')
+    const sortFilter = document.getElementById('sortFilter')
+    const searchInput = document.getElementById('searchInput')
+    if (categoryFilter) categoryFilter.value = ''
+    if (brandFilter) brandFilter.value = ''
+    if (priceFrom) priceFrom.value = ''
+    if (priceTo) priceTo.value = ''
+    if (sortFilter) sortFilter.value = 'newest'
+    if (searchInput) searchInput.value = ''
     if (favoritesOnly) {
         favoritesOnly = false
         const btn = document.getElementById('favoritesToggle')
@@ -571,17 +603,17 @@ function resetFilters() {
 
 function renderProducts(products) {
     const catalog = document.getElementById('catalog')
-    
+    if (!catalog) return
     if (products.length === 0) {
         catalog.innerHTML = '<div class="loading">Товары не найдены</div>'
         return
     }
-
     catalog.innerHTML = products.map(product => createProductCard(product)).join('')
 }
 
 function appendProducts(products) {
     const catalog = document.getElementById('catalog')
+    if (!catalog) return
     const html = products.map(product => createProductCard(product)).join('')
     catalog.insertAdjacentHTML('beforeend', html)
 }
@@ -597,13 +629,13 @@ function createProductCard(product) {
 
     const badges = []
     if (product.is_hit) {
-        badges.push(`<svg class="product-badge-icon badge-hit-icon"><use href="#icon-hit"/></svg>`)
+        badges.push(`<span class="badge-text badge-hit">ХИТ</span>`)
     }
     if (product.is_new) {
-        badges.push(`<svg class="product-badge-icon badge-new-icon"><use href="#icon-new"/></svg>`)
+        badges.push(`<span class="badge-text badge-new">НОВИНКА</span>`)
     }
     if (product.is_discount) {
-        badges.push(`<svg class="product-badge-icon badge-discount-icon"><use href="#icon-discount"/></svg>`)
+        badges.push(`<span class="badge-text badge-discount">СКИДКА</span>`)
     }
 
     return `
@@ -638,8 +670,6 @@ function createProductCard(product) {
     `
 }
 
-function attachProductListeners() {
-}
 
 function openProductModal(productId) {
     const product = allProducts.find(p => p.id === productId)
@@ -656,9 +686,9 @@ function openProductModal(productId) {
         <h2>${escapeHtml(cleanProductName(product.name, product.brands?.name))}</h2>
         <div class="modal-volume">${escapeHtml(product.volume || '')}</div>
         <div class="modal-badges">
-            ${product.is_hit ? '<svg class="product-badge-icon badge-hit-icon"><use href="#icon-hit"/></svg>' : ''}
-            ${product.is_new ? '<svg class="product-badge-icon badge-new-icon"><use href="#icon-new"/></svg>' : ''}
-            ${product.is_discount ? '<svg class="product-badge-icon badge-discount-icon"><use href="#icon-discount"/></svg>' : ''}
+            ${product.is_hit ? '<span class="badge-text badge-hit">ХИТ</span>' : ''}
+            ${product.is_new ? '<span class="badge-text badge-new">НОВИНКА</span>' : ''}
+            ${product.is_discount ? '<span class="badge-text badge-discount">СКИДКА</span>' : ''}
         </div>
         <div class="modal-price">
             ${product.price} ₽
@@ -890,6 +920,7 @@ function renderCart() {
     const cartItems = document.getElementById('cartItems')
     const cartTotal = document.getElementById('cartTotal')
     const checkoutBtn = document.getElementById('checkoutBtn')
+    if (!cartItems || !cartTotal || !checkoutBtn) return
 
     if (cart.length === 0) {
         cartItems.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 20px;">Корзина пуста</p>'
@@ -935,8 +966,10 @@ async function checkout() {
     }
 
     const checkoutBtn = document.getElementById('checkoutBtn')
-    checkoutBtn.disabled = true
-    checkoutBtn.textContent = 'Оформление...'
+    if (checkoutBtn) {
+        checkoutBtn.disabled = true
+        checkoutBtn.textContent = 'Оформление...'
+    }
 
     try {
         const response = await fetchWithTimeout(CONFIG.orderFunctionUrl, {
@@ -946,11 +979,16 @@ async function checkout() {
         })
 
         const data = await response.json().catch(() => ({}))
+        const orderTimeMessage = document.getElementById('orderTimeMessage')
 
         if (!response.ok) {
-            if (data.time_restricted) {
-                document.getElementById('orderTimeMessage').textContent = data.error
-                document.getElementById('orderTimeMessage').classList.remove('hidden')
+            if (data.time_restricted && orderTimeMessage) {
+                orderTimeMessage.textContent = data.error
+                orderTimeMessage.classList.remove('hidden')
+                if (checkoutBtn) {
+                    checkoutBtn.disabled = false
+                    checkoutBtn.textContent = 'Оформить заказ'
+                }
                 return
             }
             throw new Error(data.error || 'Ошибка оформления заказа')
@@ -973,8 +1011,10 @@ async function checkout() {
     } catch (error) {
         alert(error.message)
     } finally {
-        checkoutBtn.disabled = false
-        checkoutBtn.textContent = 'Оформить заказ'
+        if (checkoutBtn) {
+            checkoutBtn.disabled = false
+            checkoutBtn.textContent = 'Оформить заказ'
+        }
     }
 }
 
@@ -1019,6 +1059,7 @@ async function checkOrderTime() {
 async function toggleBarcodeScanner() {
     const scanner = document.getElementById('barcodeScanner')
     const video = document.getElementById('scannerVideo')
+    if (!scanner || !video) return
 
     if (scanner.classList.contains('hidden')) {
         scanner.classList.remove('hidden')
@@ -1026,18 +1067,25 @@ async function toggleBarcodeScanner() {
         scannerMode = 'camera'
         lastVideoTime = -1
         workerBusy = false
-        document.getElementById('scannerManual').classList.add('hidden')
-        document.getElementById('scannerModeToggle').textContent = '⌨️'
-        document.getElementById('scannerModeToggle').classList.remove('active')
+        const scannerManual = document.getElementById('scannerManual')
+        const scannerModeToggle = document.getElementById('scannerModeToggle')
+        if (scannerManual) scannerManual.classList.add('hidden')
+        if (scannerModeToggle) {
+            scannerModeToggle.textContent = '⌨️'
+            scannerModeToggle.classList.remove('active')
+        }
         
         try {
             if (!('BarcodeDetector' in window)) {
                 console.warn('BarcodeDetector не поддерживается этим браузером')
                 scannerMode = 'manual'
-                document.getElementById('scannerManual').classList.remove('hidden')
-                document.getElementById('scannerModeToggle').textContent = '📷'
-                document.getElementById('scannerModeToggle').classList.add('active')
-                document.getElementById('manualBarcodeInput').focus()
+                if (scannerManual) scannerManual.classList.remove('hidden')
+                if (scannerModeToggle) {
+                    scannerModeToggle.textContent = '📷'
+                    scannerModeToggle.classList.add('active')
+                }
+                const manualInput = document.getElementById('manualBarcodeInput')
+                if (manualInput) manualInput.focus()
                 return
             }
 
@@ -1078,10 +1126,13 @@ async function toggleBarcodeScanner() {
         } catch (error) {
             console.error('Camera unavailable:', error)
             scannerMode = 'manual'
-            document.getElementById('scannerManual').classList.remove('hidden')
-            document.getElementById('scannerModeToggle').textContent = '📷'
-            document.getElementById('scannerModeToggle').classList.add('active')
-            document.getElementById('manualBarcodeInput').focus()
+            if (scannerManual) scannerManual.classList.remove('hidden')
+            if (scannerModeToggle) {
+                scannerModeToggle.textContent = '📷'
+                scannerModeToggle.classList.add('active')
+            }
+            const manualInput = document.getElementById('manualBarcodeInput')
+            if (manualInput) manualInput.focus()
         }
     } else {
         closeBarcodeScanner()
@@ -1109,6 +1160,7 @@ function getCachedScanCrop() {
 function getScanCrop() {
     const video = document.getElementById('scannerVideo')
     const frame = document.querySelector('.scanner-frame')
+    if (!video || !frame) return null
     const vRect = video.getBoundingClientRect()
     const fRect = frame.getBoundingClientRect()
     const vw = video.videoWidth
@@ -1139,6 +1191,7 @@ function scanLoop(timestamp) {
     if (!scannerWorker) return
 
     const video = document.getElementById('scannerVideo')
+    if (!video) return
 
     if (timestamp - scanLastTime < SCAN_INTERVAL_MS) {
         scanRafId = requestAnimationFrame(scanLoop)
@@ -1188,7 +1241,7 @@ function onWorkerMessage(e) {
         searchByBarcode(barcode).then(found => {
             if (found) {
                 closeBarcodeScanner()
-            } else {
+            } else if (scanner) {
                 scanner.classList.add('not-found')
                 setTimeout(() => scanner.classList.remove('not-found'), 900)
             }
@@ -1202,6 +1255,7 @@ function toggleScannerMode() {
     const manual = document.getElementById('scannerManual')
     const modeBtn = document.getElementById('scannerModeToggle')
     const video = document.getElementById('scannerVideo')
+    if (!manual || !modeBtn) return
     
     if (scannerMode === 'camera') {
         scannerMode = 'manual'
@@ -1212,21 +1266,25 @@ function toggleScannerMode() {
             barcodeStream.getTracks().forEach(track => track.stop())
             barcodeStream = null
         }
-        video.srcObject = null
-        document.getElementById('manualBarcodeInput').focus()
+        if (video) video.srcObject = null
+        const manualInput = document.getElementById('manualBarcodeInput')
+        if (manualInput) manualInput.focus()
     } else {
         scannerMode = 'camera'
         manual.classList.add('hidden')
         modeBtn.textContent = '⌨️'
         modeBtn.classList.remove('active')
         const scanner = document.getElementById('barcodeScanner')
-        scanner.classList.add('hidden')
-        toggleBarcodeScanner()
+        if (scanner) {
+            scanner.classList.add('hidden')
+            toggleBarcodeScanner()
+        }
     }
 }
 
 async function handleManualBarcode() {
     const input = document.getElementById('manualBarcodeInput')
+    if (!input) return
     const barcode = input.value.trim()
     if (!barcode) return
     
@@ -1237,9 +1295,11 @@ async function handleManualBarcode() {
         closeBarcodeScanner()
     } else {
         const scanner = document.getElementById('barcodeScanner')
-        scanner.classList.add('not-found')
-        input.value = ''
-        setTimeout(() => scanner.classList.remove('not-found'), 900)
+        if (scanner) {
+            scanner.classList.add('not-found')
+            input.value = ''
+            setTimeout(() => scanner.classList.remove('not-found'), 900)
+        }
     }
 }
 
@@ -1250,11 +1310,13 @@ async function toggleFlash() {
     try {
         scannerFlashOn = !scannerFlashOn
         await track.applyConstraints({ torch: scannerFlashOn })
-        document.getElementById('flashToggle').classList.toggle('active', scannerFlashOn)
+        const flashToggle = document.getElementById('flashToggle')
+        if (flashToggle) flashToggle.classList.toggle('active', scannerFlashOn)
     } catch (error) {
         console.error('Torch not supported:', error)
         scannerFlashOn = false
-        document.getElementById('flashToggle').classList.remove('active')
+        const flashToggle = document.getElementById('flashToggle')
+        if (flashToggle) flashToggle.classList.remove('active')
     }
 }
 
@@ -1267,11 +1329,13 @@ async function toggleZoom() {
     try {
         scannerZoom = scannerZoom === 1 ? 2 : 1
         await track.applyConstraints({ zoom: scannerZoom })
-        document.getElementById('zoomToggle').textContent = scannerZoom + '×'
+        const zoomToggle = document.getElementById('zoomToggle')
+        if (zoomToggle) zoomToggle.textContent = scannerZoom + '×'
     } catch (error) {
         console.error('Zoom not supported:', error)
         scannerZoom = 1
-        document.getElementById('zoomToggle').textContent = '1×'
+        const zoomToggle = document.getElementById('zoomToggle')
+        if (zoomToggle) zoomToggle.textContent = '1×'
     }
 }
 
@@ -1297,8 +1361,10 @@ function closeBarcodeScanner() {
     const zoomBtn = document.getElementById('zoomToggle')
     if (zoomBtn) zoomBtn.textContent = '1×'
     const scanner = document.getElementById('barcodeScanner')
-    scanner.classList.add('hidden')
-    scanner.classList.remove('not-found')
+    if (scanner) {
+        scanner.classList.add('hidden')
+        scanner.classList.remove('not-found')
+    }
     const manual = document.getElementById('scannerManual')
     if (manual) manual.classList.add('hidden')
 }
@@ -1311,6 +1377,11 @@ async function searchByBarcode(barcode) {
                 'Authorization': `Bearer ${CONFIG.supabaseAnonKey}`
             }
         })
+
+        if (!response.ok) {
+            console.error('Barcode search failed:', response.status)
+            return false
+        }
 
         const products = await response.json()
 
@@ -1328,12 +1399,13 @@ async function searchByBarcode(barcode) {
 function showLoading(show) {
     const loading = document.getElementById('loading')
     const catalog = document.getElementById('catalog')
+    if (!loading || !catalog) return
     if (!show) {
         loading.classList.add('hidden')
         catalog.classList.remove('skeleton-mode')
         return
     }
-    loading.classList.add('hidden')
+    loading.classList.remove('hidden')
     const count = PRODUCTS_PER_PAGE
     catalog.innerHTML = Array.from({ length: count }, () => `
         <div class="skeleton-card">
@@ -1350,10 +1422,9 @@ function showLoading(show) {
 
 function showError(message) {
     const errorEl = document.getElementById('error')
-    if (errorEl) {
-        errorEl.textContent = message
-        errorEl.classList.remove('hidden')
-    }
+    if (!errorEl) return
+    errorEl.textContent = message
+    errorEl.classList.remove('hidden')
     console.error('APP ERROR:', message)
 }
 
@@ -1369,6 +1440,90 @@ function debounce(func, wait) {
     }
 }
 
+/* ---------- Cookie Consent & Welcome ---------- */
+function checkCookieConsent() {
+    const banner = document.getElementById('cookieBanner')
+    if (!banner) return
+    const consent = localStorage.getItem('jack-cookie-consent')
+    if (!consent) {
+        banner.classList.remove('hidden')
+    }
+}
+
+function acceptCookies() {
+    localStorage.setItem('jack-cookie-consent', 'true')
+    const banner = document.getElementById('cookieBanner')
+    if (banner) banner.classList.add('hidden')
+
+    const welcomeShown = localStorage.getItem('jack-welcome-shown')
+    if (!welcomeShown) {
+        setTimeout(() => {
+            showWelcomeModal()
+        }, 2500)
+    }
+}
+
+function showWelcomeModal() {
+    const modal = document.getElementById('welcomeModal')
+    if (!modal) return
+    modal.classList.remove('hidden')
+    const privacyBtn = document.getElementById('privacyToggle')
+    if (privacyBtn) privacyBtn.classList.add('welcome-highlight')
+}
+
+function hideWelcomeModal() {
+    localStorage.setItem('jack-welcome-shown', 'true')
+    const modal = document.getElementById('welcomeModal')
+    if (modal) modal.classList.add('hidden')
+    const privacyBtn = document.getElementById('privacyToggle')
+    if (privacyBtn) privacyBtn.classList.remove('welcome-highlight')
+}
+
+/* ---------- Privacy Modal ---------- */
+async function openPrivacyModal() {
+    const modal = document.getElementById('privacyModal')
+    const body = document.getElementById('privacyModalBody')
+    if (!modal || !body) return
+
+    body.innerHTML = '<p style="text-align:center;color:var(--text-secondary);">Загрузка...</p>'
+    modal.classList.remove('hidden')
+
+    try {
+        const response = await fetchWithTimeout('privacy.html', {}, 5000)
+        if (response.ok) {
+            const html = await response.text()
+            const parser = new DOMParser()
+            const doc = parser.parseFromString(html, 'text/html')
+            const content = doc.querySelector('.privacy-content')
+            body.innerHTML = content ? content.innerHTML : html
+        } else {
+            throw new Error('Failed to load')
+        }
+    } catch (e) {
+        body.innerHTML = getPrivacyFallbackContent()
+    }
+}
+
+function closePrivacyModal() {
+    const modal = document.getElementById('privacyModal')
+    if (modal) modal.classList.add('hidden')
+}
+
+function getPrivacyFallbackContent() {
+    return `
+        <p><strong>JACK NUTRITION</strong> уважает вашу приватность.</p>
+        <p>Наше веб-приложение использует исключительно технические механизмы хранения данных на устройстве пользователя для обеспечения базовой функциональности:</p>
+        <ul>
+            <li><strong>localStorage:</strong> сохранение корзины покупок (<code>jack-cart</code>), списка избранного (<code>jack-favorites</code>), темы оформления (<code>jack-theme</code>), флагов согласия на cookies и приветственного окна (<code>jack-cookie-consent</code>, <code>jack-welcome-shown</code>).</li>
+            <li><strong>Service Worker / Cache API:</strong> временное кеширование статических ресурсов для ускорения загрузки приложения.</li>
+        </ul>
+        <p>Мы <strong>не собираем, не передаём и не продаём</strong> никакие персональные данные третьим лицам или на сторонние серверы. В приложении не запрашиваются ФИО, номера телефонов, адреса электронной почты или иные персональные идентификаторы.</p>
+        <p>Оформление заказа реализовано через отправку содержимого корзины на сервисный endpoint (Supabase Edge Function) исключительно для генерации номера заказа и формирования ссылки на WhatsApp. На этом endpoint не передаётся никакой информации кроме списка идентификаторов товаров и их количества.</p>
+        <p>Вы можете в любой момент очистить localStorage через настройки браузера, что приведёт к потере корзины и избранного, но не затронет работу приложения.</p>
+        <p>Если у вас есть вопросы, свяжитесь с нами через форму обратной связи на сайте.</p>
+    `
+}
+
 // Service Worker (обход кеша GitHub Pages)
 function registerServiceWorker() {
     if ('serviceWorker' in navigator && !location.pathname.startsWith('/admin/')) {
@@ -1380,6 +1535,40 @@ function registerServiceWorker() {
                 reg.update()
             })
             .catch(error => console.error('Service Worker registration failed:', error))
+    }
+}
+
+// Add to Home Screen prompt
+let deferredPrompt = null
+
+function showA2HSBanner() {
+    if (sessionStorage.getItem('a2hs-dismissed')) return
+    const banner = document.getElementById('a2hsBanner')
+    if (!banner) return
+    banner.classList.remove('hidden')
+
+    const closeBtn = document.getElementById('a2hsClose')
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            banner.classList.add('hidden')
+            sessionStorage.setItem('a2hs-dismissed', 'true')
+        })
+    }
+}
+
+function initA2HS() {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true
+    if (isStandalone) return
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault()
+        deferredPrompt = e
+        setTimeout(showA2HSBanner, 3000)
+    })
+
+    const isIOS = /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase()) && !window.MSStream
+    if (isIOS && /safari/i.test(navigator.userAgent) && !/crios|fxios|edgios/.test(navigator.userAgent)) {
+        setTimeout(showA2HSBanner, 5000)
     }
 }
 
@@ -1397,8 +1586,10 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         init()
         registerServiceWorker()
+        initA2HS()
     })
 } else {
     init()
     registerServiceWorker()
+    initA2HS()
 }
