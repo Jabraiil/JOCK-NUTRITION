@@ -1083,6 +1083,11 @@ async function checkout() {
 
         // Open WhatsApp
         if (data.whatsappUrl) {
+            cart = []
+            saveCart()
+            updateCartCount()
+            closeCart()
+            renderProducts(allProducts)
             location.href = data.whatsappUrl
             return
         }

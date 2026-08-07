@@ -376,11 +376,16 @@ function showAdminPage() {
 async function handleLogin(e) {
     e.preventDefault()
     
-    const email = document.getElementById('loginEmail').value
-    const password = document.getElementById('loginPassword').value
+    const emailInput = document.getElementById('loginEmail')
+    const passwordInput = document.getElementById('loginPassword')
     const errorEl = document.getElementById('loginError')
     
+    if (!emailInput || !passwordInput || !errorEl) return
+    
     errorEl.classList.add('hidden')
+    
+    const email = emailInput.value
+    const password = passwordInput.value
     
     try {
         const response = await fetchWithTimeout(`${CONFIG.supabaseUrl}/auth/v1/token?grant_type=password`, {
@@ -490,11 +495,12 @@ async function loadPageData(page) {
 // ============================================
 
 async function loadProducts() {
+    const searchInput = document.getElementById('productSearch')
+    const search = searchInput ? searchInput.value || '' : ''
+    const params = new URLSearchParams({ limit: String(PRODUCTS_PER_PAGE), page: String(productsPage) })
+    if (search) params.set('search', search)
+    
     try {
-        const search = document.getElementById('productSearch').value || ''
-        const params = new URLSearchParams({ limit: String(PRODUCTS_PER_PAGE), page: String(productsPage) })
-        if (search) params.set('search', search)
-        
         const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/products?${params}`, {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
         })
@@ -598,27 +604,49 @@ async function openProductModal(productId = null) {
             const product = await response.json()
 
             if (product && product.id) {
-                document.getElementById('prodName').value = product.name || ''
-                document.getElementById('prodDescription').value = product.description || ''
-                document.getElementById('prodFullDescription').value = product.full_description || ''
-                document.getElementById('prodComposition').value = product.composition || ''
-                document.getElementById('prodDosage').value = product.dosage || ''
-                document.getElementById('prodUsage').value = product.usage || ''
-                document.getElementById('prodContraindications').value = product.contraindications || ''
-                document.getElementById('prodCategory').value = product.category_id || ''
-                document.getElementById('prodBrand').value = product.brand_id || ''
-                document.getElementById('prodPrice').value = product.price ?? ''
-                document.getElementById('prodOldPrice').value = product.old_price ?? ''
-                document.getElementById('prodStock').value = product.stock ?? ''
-                document.getElementById('prodVolume').value = product.volume || ''
-                document.getElementById('prodSku').value = product.sku || ''
-                document.getElementById('prodBarcode').value = product.barcode || ''
-                document.getElementById('prodIsHit').checked = Boolean(product.is_hit)
-                document.getElementById('prodIsNew').checked = Boolean(product.is_new)
-                document.getElementById('prodIsDiscount').checked = Boolean(product.is_discount)
-                document.getElementById('prodIsRelated').checked = Boolean(product.is_related_enabled)
-                document.getElementById('prodShelfLife').value = product.shelf_life || ''
-                document.getElementById('prodIsVisible').value = String(product.is_visible)
+                const prodName = document.getElementById('prodName')
+                const prodDescription = document.getElementById('prodDescription')
+                const prodFullDescription = document.getElementById('prodFullDescription')
+                const prodComposition = document.getElementById('prodComposition')
+                const prodDosage = document.getElementById('prodDosage')
+                const prodUsage = document.getElementById('prodUsage')
+                const prodContraindications = document.getElementById('prodContraindications')
+                const prodCategory = document.getElementById('prodCategory')
+                const prodBrand = document.getElementById('prodBrand')
+                const prodPrice = document.getElementById('prodPrice')
+                const prodOldPrice = document.getElementById('prodOldPrice')
+                const prodStock = document.getElementById('prodStock')
+                const prodVolume = document.getElementById('prodVolume')
+                const prodSku = document.getElementById('prodSku')
+                const prodBarcode = document.getElementById('prodBarcode')
+                const prodIsHit = document.getElementById('prodIsHit')
+                const prodIsNew = document.getElementById('prodIsNew')
+                const prodIsDiscount = document.getElementById('prodIsDiscount')
+                const prodIsRelated = document.getElementById('prodIsRelated')
+                const prodShelfLife = document.getElementById('prodShelfLife')
+                const prodIsVisible = document.getElementById('prodIsVisible')
+
+                if (prodName) prodName.value = product.name || ''
+                if (prodDescription) prodDescription.value = product.description || ''
+                if (prodFullDescription) prodFullDescription.value = product.full_description || ''
+                if (prodComposition) prodComposition.value = product.composition || ''
+                if (prodDosage) prodDosage.value = product.dosage || ''
+                if (prodUsage) prodUsage.value = product.usage || ''
+                if (prodContraindications) prodContraindications.value = product.contraindications || ''
+                if (prodCategory) prodCategory.value = product.category_id || ''
+                if (prodBrand) prodBrand.value = product.brand_id || ''
+                if (prodPrice) prodPrice.value = product.price ?? ''
+                if (prodOldPrice) prodOldPrice.value = product.old_price ?? ''
+                if (prodStock) prodStock.value = product.stock ?? ''
+                if (prodVolume) prodVolume.value = product.volume || ''
+                if (prodSku) prodSku.value = product.sku || ''
+                if (prodBarcode) prodBarcode.value = product.barcode || ''
+                if (prodIsHit) prodIsHit.checked = Boolean(product.is_hit)
+                if (prodIsNew) prodIsNew.checked = Boolean(product.is_new)
+                if (prodIsDiscount) prodIsDiscount.checked = Boolean(product.is_discount)
+                if (prodIsRelated) prodIsRelated.checked = Boolean(product.is_related_enabled)
+                if (prodShelfLife) prodShelfLife.value = product.shelf_life || ''
+                if (prodIsVisible) prodIsVisible.value = String(product.is_visible)
 
                 productImages = Array.isArray(product.images) ? product.images.map(img => ({ ...img })) : []
 
@@ -653,7 +681,7 @@ async function openProductModal(productId = null) {
         }
     }
 
-    document.getElementById('productModal').classList.remove('hidden')
+    document.getElementById('productModal')?.classList.remove('hidden')
 }
 
 function closeProductModal() {
@@ -682,13 +710,19 @@ async function loadFormOptions() {
         const categories = await categoriesRes.json()
         const brands = await brandsRes.json()
         
-        document.getElementById('prodCategory').innerHTML = 
-            '<option value="">Не выбрана</option>' +
-            categories.map(c => `<option value="${escapeHtml(String(c.id))}">${escapeHtml(c.name)}</option>`).join('')
+        const prodCategoryEl = document.getElementById('prodCategory')
+        if (prodCategoryEl) {
+            prodCategoryEl.innerHTML = 
+                '<option value="">Не выбрана</option>' +
+                categories.map(c => `<option value="${escapeHtml(String(c.id))}">${escapeHtml(c.name)}</option>`).join('')
+        }
         
-        document.getElementById('prodBrand').innerHTML = 
-            '<option value="">Не выбран</option>' +
-            brands.map(b => `<option value="${escapeHtml(String(b.id))}">${escapeHtml(b.name)}</option>`).join('')
+        const prodBrandEl = document.getElementById('prodBrand')
+        if (prodBrandEl) {
+            prodBrandEl.innerHTML = 
+                '<option value="">Не выбран</option>' +
+                brands.map(b => `<option value="${escapeHtml(String(b.id))}">${escapeHtml(b.name)}</option>`).join('')
+        }
 
         // Load all products for related select
         const allRes = await fetchWithTimeout(`${CONFIG.adminApiUrl}/products?limit=1000&page=1`, {
@@ -779,7 +813,7 @@ async function handleProductSubmit(e) {
     }
 
     const imageInput = document.getElementById('prodImages')
-    if (imageInput.files.length > 0) {
+    if (imageInput && imageInput.files.length > 0) {
         for (const file of imageInput.files) {
             const formData = new FormData()
             formData.append('file', file)
@@ -805,7 +839,7 @@ async function handleProductSubmit(e) {
     }
 
     const relatedSelect = document.getElementById('prodRelated')
-    const related = Array.from(relatedSelect.selectedOptions).map(opt => opt.value)
+    const related = relatedSelect ? Array.from(relatedSelect.selectedOptions).map(opt => opt.value) : []
 
     const body = {
         ...productData,
@@ -872,10 +906,13 @@ function editProduct(id) {
 async function duplicateProduct(id) {
     try {
         editingProductId = null
-        document.getElementById('modalTitle').textContent = 'Дублировать товар'
-        document.getElementById('productForm').reset()
+        const modalTitle = document.getElementById('modalTitle')
+        const productForm = document.getElementById('productForm')
+        const imagePreview = document.getElementById('imagePreview')
+        if (modalTitle) modalTitle.textContent = 'Дублировать товар'
+        if (productForm) productForm.reset()
         productImages = []
-        document.getElementById('imagePreview').innerHTML = ''
+        if (imagePreview) imagePreview.innerHTML = ''
 
         await loadFormOptions()
 
@@ -890,26 +927,47 @@ async function duplicateProduct(id) {
         const product = await response.json()
 
         if (product && product.id) {
-            document.getElementById('prodName').value = product.name + ' (копия)'
-            document.getElementById('prodDescription').value = product.description || ''
-            document.getElementById('prodFullDescription').value = product.full_description || ''
-            document.getElementById('prodComposition').value = product.composition || ''
-            document.getElementById('prodDosage').value = product.dosage || ''
-            document.getElementById('prodUsage').value = product.usage || ''
-            document.getElementById('prodContraindications').value = product.contraindications || ''
-            document.getElementById('prodCategory').value = product.category_id || ''
-            document.getElementById('prodBrand').value = product.brand_id || ''
-            document.getElementById('prodPrice').value = product.price ?? ''
-            document.getElementById('prodStock').value = product.stock ?? ''
-            document.getElementById('prodVolume').value = product.volume || ''
-            document.getElementById('prodSku').value = ''
-            document.getElementById('prodBarcode').value = ''
-            document.getElementById('prodIsHit').checked = Boolean(product.is_hit)
-            document.getElementById('prodIsNew').checked = Boolean(product.is_new)
-            document.getElementById('prodIsDiscount').checked = Boolean(product.is_discount)
-            document.getElementById('prodIsRelated').checked = Boolean(product.is_related_enabled)
-            document.getElementById('prodShelfLife').value = product.shelf_life || ''
-            document.getElementById('prodIsVisible').value = String(product.is_visible)
+            const prodName = document.getElementById('prodName')
+            const prodDescription = document.getElementById('prodDescription')
+            const prodFullDescription = document.getElementById('prodFullDescription')
+            const prodComposition = document.getElementById('prodComposition')
+            const prodDosage = document.getElementById('prodDosage')
+            const prodUsage = document.getElementById('prodUsage')
+            const prodContraindications = document.getElementById('prodContraindications')
+            const prodCategory = document.getElementById('prodCategory')
+            const prodBrand = document.getElementById('prodBrand')
+            const prodPrice = document.getElementById('prodPrice')
+            const prodStock = document.getElementById('prodStock')
+            const prodVolume = document.getElementById('prodVolume')
+            const prodSku = document.getElementById('prodSku')
+            const prodBarcode = document.getElementById('prodBarcode')
+            const prodIsHit = document.getElementById('prodIsHit')
+            const prodIsNew = document.getElementById('prodIsNew')
+            const prodIsDiscount = document.getElementById('prodIsDiscount')
+            const prodIsRelated = document.getElementById('prodIsRelated')
+            const prodShelfLife = document.getElementById('prodShelfLife')
+            const prodIsVisible = document.getElementById('prodIsVisible')
+
+            if (prodName) prodName.value = product.name + ' (копия)'
+            if (prodDescription) prodDescription.value = product.description || ''
+            if (prodFullDescription) prodFullDescription.value = product.full_description || ''
+            if (prodComposition) prodComposition.value = product.composition || ''
+            if (prodDosage) prodDosage.value = product.dosage || ''
+            if (prodUsage) prodUsage.value = product.usage || ''
+            if (prodContraindications) prodContraindications.value = product.contraindications || ''
+            if (prodCategory) prodCategory.value = product.category_id || ''
+            if (prodBrand) prodBrand.value = product.brand_id || ''
+            if (prodPrice) prodPrice.value = product.price ?? ''
+            if (prodStock) prodStock.value = product.stock ?? ''
+            if (prodVolume) prodVolume.value = product.volume || ''
+            if (prodSku) prodSku.value = ''
+            if (prodBarcode) prodBarcode.value = ''
+            if (prodIsHit) prodIsHit.checked = Boolean(product.is_hit)
+            if (prodIsNew) prodIsNew.checked = Boolean(product.is_new)
+            if (prodIsDiscount) prodIsDiscount.checked = Boolean(product.is_discount)
+            if (prodIsRelated) prodIsRelated.checked = Boolean(product.is_related_enabled)
+            if (prodShelfLife) prodShelfLife.value = product.shelf_life || ''
+            if (prodIsVisible) prodIsVisible.value = String(product.is_visible)
 
             productImages = Array.isArray(product.images) ? product.images.map(img => ({ ...img })) : []
 
@@ -918,7 +976,6 @@ async function duplicateProduct(id) {
                 preview.innerHTML = productImages.map((img, idx) => `<span class="image-wrapper"><img src="${escapeHtml(img.url)}" alt=""><button type="button" class="remove-image" data-idx="${idx}">&times;</button></span>`).join('')
             }
 
-            // Связи при дублировании не копируем
             const relatedSelect = document.getElementById('prodRelated')
             if (relatedSelect) {
                 Array.from(relatedSelect.options).forEach(opt => { opt.selected = false })
@@ -960,15 +1017,18 @@ async function loadCategories() {
         
         const data = await response.json()
         
-        document.getElementById('categoriesTable').innerHTML = data.map(cat => `
-            <tr>
-                <td>${escapeHtml(cat.name)}</td>
-                <td>
-                    <button class="btn btn-sm btn-secondary" data-action="edit-category" data-id="${escapeHtml(String(cat.id))}">✏️</button>
-                    <button class="btn btn-sm btn-danger" data-action="delete-category" data-id="${escapeHtml(String(cat.id))}">🗑️</button>
-                </td>
-            </tr>
-        `).join('')
+        const categoriesTable = document.getElementById('categoriesTable')
+        if (categoriesTable) {
+            categoriesTable.innerHTML = data.map(cat => `
+                <tr>
+                    <td>${escapeHtml(cat.name)}</td>
+                    <td>
+                        <button class="btn btn-sm btn-secondary" data-action="edit-category" data-id="${escapeHtml(String(cat.id))}">✏️</button>
+                        <button class="btn btn-sm btn-danger" data-action="delete-category" data-id="${escapeHtml(String(cat.id))}">🗑️</button>
+                    </td>
+                </tr>
+            `).join('')
+        }
     } catch (error) {
         console.error('Error loading categories:', error)
         alert('Ошибка загрузки категорий: ' + error.message)
@@ -980,18 +1040,25 @@ let nameModalResolve = null
 function openNameModal(title, label, value = '') {
     return new Promise((resolve) => {
         nameModalResolve = resolve
-        document.getElementById('nameModalTitle').textContent = title
-        document.getElementById('nameModalLabel').textContent = label
+        const nameModalTitle = document.getElementById('nameModalTitle')
+        const nameModalLabel = document.getElementById('nameModalLabel')
         const input = document.getElementById('nameModalInput')
-        input.value = value
-        document.getElementById('nameModal').classList.remove('hidden')
-        setTimeout(() => input.focus(), 50)
+        const nameModal = document.getElementById('nameModal')
+        if (nameModalTitle) nameModalTitle.textContent = title
+        if (nameModalLabel) nameModalLabel.textContent = label
+        if (input) {
+            input.value = value
+            setTimeout(() => input.focus(), 50)
+        }
+        if (nameModal) nameModal.classList.remove('hidden')
     })
 }
 
 function closeNameModal() {
-    document.getElementById('nameModal').classList.add('hidden')
-    document.getElementById('nameModalInput').value = ''
+    const nameModal = document.getElementById('nameModal')
+    const nameModalInput = document.getElementById('nameModalInput')
+    if (nameModal) nameModal.classList.add('hidden')
+    if (nameModalInput) nameModalInput.value = ''
     if (nameModalResolve) {
         nameModalResolve(null)
         nameModalResolve = null
@@ -1091,7 +1158,9 @@ async function loadBrands() {
 
         const data = await response.json()
 
-        document.getElementById('brandsTable').innerHTML = data.map(brand => `
+        const brandsTable = document.getElementById('brandsTable')
+        if (brandsTable) {
+            brandsTable.innerHTML = data.map(brand => `
             <tr>
                 <td>${escapeHtml(brand.name)}</td>
                 <td>
@@ -1099,7 +1168,8 @@ async function loadBrands() {
                     <button class="btn btn-sm btn-danger" data-action="delete-brand" data-id="${escapeHtml(String(brand.id))}">🗑️</button>
                 </td>
             </tr>
-        `).join('')
+            `).join('')
+        }
     } catch (error) {
         console.error('Error loading brands:', error)
         alert('Ошибка загрузки брендов: ' + error.message)
@@ -1187,7 +1257,8 @@ function editBrand(id) {
 
 async function loadAnalytics() {
     try {
-        const period = document.getElementById('analyticsPeriod').value
+        const analyticsPeriodEl = document.getElementById('analyticsPeriod')
+        const period = analyticsPeriodEl ? analyticsPeriodEl.value : 'month'
         
         const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/analytics?period=${period}`, {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
@@ -1201,8 +1272,10 @@ async function loadAnalytics() {
         
         const data = await response.json()
         
-        document.getElementById('totalRevenue').textContent = `${data.totalRevenue.toLocaleString()} ₽`
-        document.getElementById('totalOrders').textContent = data.totalOrders.toLocaleString()
+        const totalRevenueEl = document.getElementById('totalRevenue')
+        const totalOrdersEl = document.getElementById('totalOrders')
+        if (totalRevenueEl) totalRevenueEl.textContent = `${(data.totalRevenue || 0).toLocaleString()} ₽`
+        if (totalOrdersEl) totalOrdersEl.textContent = (data.totalOrders || 0).toLocaleString()
         
         // Top products
         const topProductsTable = document.getElementById('topProductsTable')
@@ -1382,20 +1455,35 @@ async function loadSettings() {
         
         const settings = await response.json()
         
-        document.getElementById('whatsappNumber').value = settings.whatsapp_number || ''
-        document.getElementById('whatsappBusinessNumber').value = settings.whatsapp_business_number || ''
-        document.getElementById('whatsappAccountType').value = settings.whatsapp_account_type || 'personal'
-        document.getElementById('storeName').value = settings.store_name || ''
-        document.getElementById('logoText').value = settings.logo_text || ''
-        document.getElementById('timezone').value = settings.timezone || 'Europe/Moscow'
-        document.getElementById('orderTimeLimitEnabled').checked = settings.order_time_limit_enabled === 'true'
-        document.getElementById('stockAvailabilityEnabled').checked = settings.stock_availability_enabled === 'true'
-        document.getElementById('orderStartHour').value = settings.order_start_hour || '09:00'
-        document.getElementById('orderEndHour').value = settings.order_end_hour || '20:00'
-        document.getElementById('orderErrorCode').value = settings.order_error_code || '[!CHECK!]'
-        document.getElementById('currency').value = settings.currency || '₽'
-        document.getElementById('orderTemplate').value = settings.order_template || ''
-        document.getElementById('geminiApiKey').value = settings.gemini_api_key || ''
+        const whatsappNumberEl = document.getElementById('whatsappNumber')
+        const whatsappBusinessNumberEl = document.getElementById('whatsappBusinessNumber')
+        const whatsappAccountTypeEl = document.getElementById('whatsappAccountType')
+        const storeNameEl = document.getElementById('storeName')
+        const logoTextEl = document.getElementById('logoText')
+        const timezoneEl = document.getElementById('timezone')
+        const orderTimeLimitEnabledEl = document.getElementById('orderTimeLimitEnabled')
+        const stockAvailabilityEnabledEl = document.getElementById('stockAvailabilityEnabled')
+        const orderStartHourEl = document.getElementById('orderStartHour')
+        const orderEndHourEl = document.getElementById('orderEndHour')
+        const orderErrorCodeEl = document.getElementById('orderErrorCode')
+        const currencyEl = document.getElementById('currency')
+        const orderTemplateEl = document.getElementById('orderTemplate')
+        const geminiApiKeyEl = document.getElementById('geminiApiKey')
+
+        if (whatsappNumberEl) whatsappNumberEl.value = settings.whatsapp_number || ''
+        if (whatsappBusinessNumberEl) whatsappBusinessNumberEl.value = settings.whatsapp_business_number || ''
+        if (whatsappAccountTypeEl) whatsappAccountTypeEl.value = settings.whatsapp_account_type || 'personal'
+        if (storeNameEl) storeNameEl.value = settings.store_name || ''
+        if (logoTextEl) logoTextEl.value = settings.logo_text || ''
+        if (timezoneEl) timezoneEl.value = settings.timezone || 'Europe/Moscow'
+        if (orderTimeLimitEnabledEl) orderTimeLimitEnabledEl.checked = settings.order_time_limit_enabled === 'true'
+        if (stockAvailabilityEnabledEl) stockAvailabilityEnabledEl.checked = settings.stock_availability_enabled === 'true'
+        if (orderStartHourEl) orderStartHourEl.value = settings.order_start_hour || '09:00'
+        if (orderEndHourEl) orderEndHourEl.value = settings.order_end_hour || '20:00'
+        if (orderErrorCodeEl) orderErrorCodeEl.value = settings.order_error_code || '[!CHECK!]'
+        if (currencyEl) currencyEl.value = settings.currency || '₽'
+        if (orderTemplateEl) orderTemplateEl.value = settings.order_template || ''
+        if (geminiApiKeyEl) geminiApiKeyEl.value = settings.gemini_api_key || ''
     } catch (error) {
         console.error('Error loading settings:', error)
         alert('Ошибка загрузки настроек: ' + error.message)
@@ -1407,20 +1495,20 @@ async function handleSettingsSave(e) {
     
     try {
     const settings = {
-        whatsapp_number: document.getElementById('whatsappNumber').value,
-        whatsapp_business_number: document.getElementById('whatsappBusinessNumber').value,
-        whatsapp_account_type: document.getElementById('whatsappAccountType').value,
-        store_name: document.getElementById('storeName').value,
-        logo_text: document.getElementById('logoText').value,
-        timezone: document.getElementById('timezone').value,
-        order_time_limit_enabled: document.getElementById('orderTimeLimitEnabled').checked ? 'true' : 'false',
-        stock_availability_enabled: document.getElementById('stockAvailabilityEnabled').checked ? 'true' : 'false',
-        order_start_hour: document.getElementById('orderStartHour').value,
-        order_end_hour: document.getElementById('orderEndHour').value,
-        order_error_code: document.getElementById('orderErrorCode').value,
-        currency: document.getElementById('currency').value,
-        order_template: document.getElementById('orderTemplate').value,
-        gemini_api_key: document.getElementById('geminiApiKey').value
+        whatsapp_number: document.getElementById('whatsappNumber')?.value || '',
+        whatsapp_business_number: document.getElementById('whatsappBusinessNumber')?.value || '',
+        whatsapp_account_type: document.getElementById('whatsappAccountType')?.value || 'personal',
+        store_name: document.getElementById('storeName')?.value || '',
+        logo_text: document.getElementById('logoText')?.value || '',
+        timezone: document.getElementById('timezone')?.value || 'Europe/Moscow',
+        order_time_limit_enabled: document.getElementById('orderTimeLimitEnabled')?.checked ? 'true' : 'false',
+        stock_availability_enabled: document.getElementById('stockAvailabilityEnabled')?.checked ? 'true' : 'false',
+        order_start_hour: document.getElementById('orderStartHour')?.value || '09:00',
+        order_end_hour: document.getElementById('orderEndHour')?.value || '20:00',
+        order_error_code: document.getElementById('orderErrorCode')?.value || '[!CHECK!]',
+        currency: document.getElementById('currency')?.value || '₽',
+        order_template: document.getElementById('orderTemplate')?.value || '',
+        gemini_api_key: document.getElementById('geminiApiKey')?.value || ''
     }
     
     const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/settings`, {
@@ -1448,9 +1536,15 @@ async function handleSettingsSave(e) {
 async function handleChangePassword(e) {
     e.preventDefault()
     
-    const currentPassword = document.getElementById('currentPassword').value
-    const newPassword = document.getElementById('newPassword').value
-    const confirmPassword = document.getElementById('confirmPassword').value
+    const currentPasswordEl = document.getElementById('currentPassword')
+    const newPasswordEl = document.getElementById('newPassword')
+    const confirmPasswordEl = document.getElementById('confirmPassword')
+    
+    if (!currentPasswordEl || !newPasswordEl || !confirmPasswordEl) return
+    
+    const currentPassword = currentPasswordEl.value
+    const newPassword = newPasswordEl.value
+    const confirmPassword = confirmPasswordEl.value
     
     if (newPassword !== confirmPassword) {
         alert('Пароли не совпадают')
@@ -1473,7 +1567,8 @@ async function handleChangePassword(e) {
         
         if (response.ok) {
             alert('Пароль изменён')
-            document.getElementById('changePasswordForm').reset()
+            const changePasswordForm = document.getElementById('changePasswordForm')
+            if (changePasswordForm) changePasswordForm.reset()
         } else {
             const data = await response.json()
             alert(translateError(data.msg || data.error || data.error_description) || 'Ошибка изменения пароля')
@@ -1491,7 +1586,8 @@ let importFile = null
 
 function handleImportFileSelect(e) {
     importFile = e.target.files[0]
-    document.getElementById('importBtn').disabled = !importFile
+    const importBtn = document.getElementById('importBtn')
+    if (importBtn) importBtn.disabled = !importFile
 }
 
 async function handleImport() {
