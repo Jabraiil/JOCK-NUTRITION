@@ -705,7 +705,11 @@ serve(async (req) => {
 
               for (const field of fields) {
                 if (p[field] !== undefined && p[field] !== null && p[field] !== "") {
-                  updateData[field] = p[field]
+                  if (field === "is_visible" || field === "is_hit" || field === "is_new" || field === "is_discount") {
+                    updateData[field] = p[field] === true || p[field] === "TRUE" || p[field] === "true" || p[field] === 1 || p[field] === "1"
+                  } else {
+                    updateData[field] = p[field]
+                  }
                 }
               }
 
@@ -741,11 +745,11 @@ serve(async (req) => {
               volume: p.volume || "",
               sku: p.sku || null,
               barcode: p.barcode || null,
-              is_hit: p.is_hit || false,
-              is_new: p.is_new || false,
-              is_discount: p.is_discount || false,
+              is_hit: p.is_hit === true || p.is_hit === "TRUE" || p.is_hit === "true" || p.is_hit === 1 || p.is_hit === "1",
+              is_new: p.is_new === true || p.is_new === "TRUE" || p.is_new === "true" || p.is_new === 1 || p.is_new === "1",
+              is_discount: p.is_discount === true || p.is_discount === "TRUE" || p.is_discount === "true" || p.is_discount === 1 || p.is_discount === "1",
               shelf_life: p.shelf_life || "",
-              is_visible: p.is_visible !== false
+              is_visible: p.is_visible === true || p.is_visible === "TRUE" || p.is_visible === "true" || p.is_visible === 1 || p.is_visible === "1"
             })
 
           if (insertError) {

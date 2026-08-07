@@ -234,7 +234,7 @@ function setupEventListeners() {
     }
 
     // Modal
-    document.querySelector('.modal-close').addEventListener('click', closeProductModal)
+    document.querySelector('#productModal .modal-close').addEventListener('click', closeProductModal)
     document.getElementById('nameModalClose').addEventListener('click', closeNameModal)
     document.getElementById('nameModalCancel').addEventListener('click', closeNameModal)
     document.getElementById('nameModalForm').addEventListener('submit', async (e) => {

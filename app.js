@@ -621,22 +621,20 @@ function appendProducts(products) {
 function createProductCard(product) {
     const mainImage = product.product_images?.find(img => img.is_main) || product.product_images?.[0]
     const imageUrl = mainImage?.url || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect fill="%23f0f0f0" width="200" height="200"/><text fill="%23999" font-family="sans-serif" font-size="14" x="50%" y="50%" text-anchor="middle" dy=".3em">Нет фото</text></svg>'
-    
+
     const cartItem = cart.find(c => c.id === product.id)
     const inCart = cartItem ? cartItem.quantity : 0
     const favorited = isFavorited(product.id)
     const displayName = cleanProductName(product.name, product.brands?.name)
 
     const badges = []
-    if (product.is_hit) {
-        badges.push(`<span class="badge-text badge-hit">ХИТ</span>`)
-    }
-    if (product.is_new) {
-        badges.push(`<span class="badge-text badge-new">НОВИНКА</span>`)
-    }
-    if (product.is_discount) {
-        badges.push(`<span class="badge-text badge-discount">СКИДКА</span>`)
-    }
+    if (product.is_hit) badges.push(`<span class="badge-text badge-hit">ХИТ</span>`)
+    if (product.is_new) badges.push(`<span class="badge-text badge-new">НОВИНКА</span>`)
+    if (product.is_discount) badges.push(`<span class="badge-text badge-discount">СКИДКА</span>`)
+
+    const discountPercent = product.old_price && product.price < product.old_price
+        ? Math.round((1 - product.price / product.old_price) * 100)
+        : 0
 
     return `
         <div class="product-card" data-id="${product.id}">
@@ -653,17 +651,24 @@ function createProductCard(product) {
                 <div class="product-brand">${escapeHtml(product.brands?.name || '')}</div>
                 <div class="product-name">${escapeHtml(displayName)}</div>
                 <div class="product-volume">${escapeHtml(product.volume || '')}</div>
+                <div class="product-price-block">
+                    <span class="product-price">${product.price} ₽</span>
+                    ${product.old_price ? `<span class="product-old-price">${product.old_price} ₽</span>` : ''}
+                    ${discountPercent > 0 ? `<span class="product-discount">-${discountPercent}%</span>` : ''}
+                </div>
+                <div class="product-stock ${product.stock > 0 ? 'in-stock' : 'out-of-stock'}">
+                    ${product.stock > 0 ? 'В наличии' : 'Нет в наличии'}
+                </div>
                 <div class="product-footer">
-                    <div>
-                        <span class="product-price">${product.price} ₽</span>
-                        ${product.old_price ? `<span class="product-old-price">${product.old_price} ₽</span>` : ''}
-                    </div>
-                    <div class="cart-controls ${inCart > 0 ? 'active' : ''}">
-                        <button class="cart-minus" data-id="${product.id}" ${inCart === 0 ? 'disabled' : ''}>-</button>
-                        <span class="cart-qty">${inCart}</span>
-                        <button class="cart-plus" data-id="${product.id}">+</button>
-                    </div>
-                    ${inCart === 0 ? `<button class="add-to-cart" data-id="${product.id}">В корзину</button>` : ''}
+                    ${inCart === 0 ? `
+                        <button class="add-to-cart btn-block" data-id="${product.id}">В корзину</button>
+                    ` : `
+                        <div class="cart-controls active">
+                            <button class="cart-minus" data-id="${product.id}">-</button>
+                            <span class="cart-qty">${inCart}</span>
+                            <button class="cart-plus" data-id="${product.id}">+</button>
+                        </div>
+                    `}
                 </div>
             </div>
         </div>
@@ -680,6 +685,9 @@ function openProductModal(productId) {
 
     const modalBody = document.getElementById('modalBody')
     const favorited = isFavorited(productId)
+    const discountPercent = product.old_price && product.price < product.old_price
+        ? Math.round((1 - product.price / product.old_price) * 100)
+        : 0
     modalBody.innerHTML = `
         ${imageUrl ? '<img src="' + imageUrl + '" alt="' + escapeHtml(product.name) + '">' : ''}
         <div class="modal-brand">${escapeHtml(product.brands?.name || '')}</div>
@@ -690,9 +698,13 @@ function openProductModal(productId) {
             ${product.is_new ? '<span class="badge-text badge-new">НОВИНКА</span>' : ''}
             ${product.is_discount ? '<span class="badge-text badge-discount">СКИДКА</span>' : ''}
         </div>
-        <div class="modal-price">
-            ${product.price} ₽
-            ${product.old_price ? '<span class="product-old-price">' + product.old_price + ' ₽</span>' : ''}
+        <div class="modal-price-block">
+            <span class="product-price">${product.price} ₽</span>
+            ${product.old_price ? `<span class="product-old-price">${product.old_price} ₽</span>` : ''}
+            ${discountPercent > 0 ? `<span class="product-discount">-${discountPercent}%</span>` : ''}
+        </div>
+        <div class="modal-stock ${product.stock > 0 ? 'in-stock' : 'out-of-stock'}">
+            ${product.stock > 0 ? 'В наличии' : 'Нет в наличии'}
         </div>
         
         ${product.full_description ? `
@@ -821,25 +833,42 @@ function addToCart(productId, quantity) {
 function updateProductCardCart(productId) {
     const card = document.querySelector(`.product-card[data-id="${productId}"]`)
     if (!card) return
-    
+
     const cartItem = cart.find(c => c.id === productId)
     const inCart = cartItem ? cartItem.quantity : 0
     const product = allProducts.find(p => p.id === productId)
     const footer = card.querySelector('.product-footer')
     if (!footer) return
-    
+
+    const discountPercent = product?.old_price && product.price < product.old_price
+        ? Math.round((1 - product.price / product.old_price) * 100)
+        : 0
+
     footer.innerHTML = `
-        <div>
-            <span class="product-price">${product?.price || 0} ₽</span>
-             ${product.old_price ? `<span class="product-old-price">${product.old_price} ₽</span>` : ''}
-        </div>
-        <div class="cart-controls ${inCart > 0 ? 'active' : ''}">
-            <button class="cart-minus" data-id="${productId}" ${inCart === 0 ? 'disabled' : ''}>-</button>
-            <span class="cart-qty">${inCart}</span>
-            <button class="cart-plus" data-id="${productId}">+</button>
-        </div>
-        ${inCart === 0 ? `<button class="add-to-cart" data-id="${productId}">В корзину</button>` : ''}
+        ${inCart === 0 ? `
+            <button class="add-to-cart btn-block" data-id="${productId}">В корзину</button>
+        ` : `
+            <div class="cart-controls active">
+                <button class="cart-minus" data-id="${productId}">-</button>
+                <span class="cart-qty">${inCart}</span>
+                <button class="cart-plus" data-id="${productId}">+</button>
+            </div>
+        `}
     `
+
+    const priceBlock = card.querySelector('.product-price-block')
+    const stockEl = card.querySelector('.product-stock')
+    if (priceBlock && product) {
+        priceBlock.innerHTML = `
+            <span class="product-price">${product.price || 0} ₽</span>
+            ${product.old_price ? `<span class="product-old-price">${product.old_price} ₽</span>` : ''}
+            ${discountPercent > 0 ? `<span class="product-discount">-${discountPercent}%</span>` : ''}
+        `
+    }
+    if (stockEl && product) {
+        stockEl.className = `product-stock ${product.stock > 0 ? 'in-stock' : 'out-of-stock'}`
+        stockEl.textContent = product.stock > 0 ? 'В наличии' : 'Нет в наличии'
+    }
 }
 
 function saveCart() {
@@ -1112,7 +1141,7 @@ async function toggleBarcodeScanner() {
                 check()
             })
 
-            scannerWorker = new Worker('/scanner-worker.js')
+            scannerWorker = new Worker('./scanner-worker.js')
             scannerWorker.onmessage = onWorkerMessage
             scannerWorker.onerror = (err) => console.error('Scanner worker error:', err)
 
