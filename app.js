@@ -419,6 +419,11 @@ async function loadSettings() {
             }
             window.__storeSettings = settings
 
+            if (settings.logo_text) {
+                const logo = document.getElementById('logoLink')
+                if (logo) logo.textContent = settings.logo_text
+            }
+
             const cartWhatsAppType = document.getElementById('cartWhatsAppType')
             if (cartWhatsAppType) {
                 const hasBusiness = !!settings.whatsapp_business_number
