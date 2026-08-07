@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Admin - JACK NUTRITION</title>
-    <link rel="stylesheet" href="styles.css?v=29">
+    <link rel="stylesheet" href="styles.css?v=30">
 </head>
 <body>
     <div id="authPage" class="auth-page">
@@ -171,14 +171,19 @@
                     <table class="data-table">
                         <thead>
                             <tr>
+                                <th style="width: 40px;"><input type="checkbox" id="selectAllOrders" title="Выбрать все"></th>
                                 <th>Номер</th>
                                 <th>Товары</th>
                                 <th>Сумма</th>
                                 <th>Дата</th>
+                                <th>Действия</th>
                             </tr>
                         </thead>
                         <tbody id="ordersTable"></tbody>
                     </table>
+                </div>
+                <div class="page-actions">
+                    <button id="deleteSelectedOrdersBtn" class="btn btn-danger" disabled>Удалить выбранные</button>
                 </div>
                 <div class="pagination" id="ordersPagination"></div>
             </div>
@@ -186,8 +191,19 @@
             <div id="settingsPage" class="page">
                 <form id="settingsForm" class="settings-form">
                     <div class="form-group">
-                        <label>WhatsApp номер</label>
+                        <label>WhatsApp номер (обычный)</label>
                         <input type="text" id="whatsappNumber" placeholder="79991234567">
+                    </div>
+                    <div class="form-group">
+                        <label>WhatsApp Business номер</label>
+                        <input type="text" id="whatsappBusinessNumber" placeholder="79991234567">
+                    </div>
+                    <div class="form-group">
+                        <label>Тип WhatsApp по умолчанию</label>
+                        <select id="whatsappAccountType">
+                            <option value="personal">Обычный WhatsApp</option>
+                            <option value="business">WhatsApp Business</option>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label>Название магазина</label>
@@ -465,6 +481,6 @@
             })
         }
     </script>
-    <script src="app.js?v=29"></script>
+    <script src="app.js?v=30"></script>
 </body>
 </html>

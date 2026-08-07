@@ -418,7 +418,18 @@ async function loadSettings() {
                 settings[s.key] = s.value
             }
             window.__storeSettings = settings
-            // Re-run time check now that settings are loaded
+
+            const cartWhatsAppType = document.getElementById('cartWhatsAppType')
+            if (cartWhatsAppType) {
+                const hasBusiness = !!settings.whatsapp_business_number
+                cartWhatsAppType.classList.toggle('hidden', !hasBusiness)
+                if (hasBusiness) {
+                    const defaultType = settings.whatsapp_account_type || 'personal'
+                    const radio = cartWhatsAppType.querySelector(`input[value="${defaultType}"]`)
+                    if (radio) radio.checked = true
+                }
+            }
+
             checkOrderTime()
         }
     } catch (error) {
@@ -1040,10 +1051,13 @@ async function checkout() {
     }
 
     try {
+        const cartWhatsAppType = document.querySelector('input[name="whatsappAccountType"]:checked')
+        const whatsappAccountType = cartWhatsAppType ? cartWhatsAppType.value : 'personal'
+
         const response = await fetchWithTimeout(CONFIG.orderFunctionUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ cart })
+            body: JSON.stringify({ cart, whatsappAccountType })
         })
 
         const data = await response.json().catch(() => ({}))
@@ -1064,7 +1078,8 @@ async function checkout() {
 
         // Open WhatsApp
         if (data.whatsappUrl) {
-            window.open(data.whatsappUrl, '_blank', 'noopener,noreferrer')
+            location.href = data.whatsappUrl
+            return
         }
 
         // Clear cart
@@ -1073,8 +1088,6 @@ async function checkout() {
         updateCartCount()
         closeCart()
         renderProducts(allProducts)
-
-        alert(`Заказ ${data.orderNumber} оформлен!`)
 
     } catch (error) {
         alert(error.message)

@@ -47,7 +47,7 @@ serve(async (req) => {
       )
     }
     
-    const { cart } = body
+    const { cart, whatsappAccountType = 'personal' } = body
 
     if (!cart || !Array.isArray(cart) || cart.length === 0) {
       return new Response(
@@ -91,7 +91,7 @@ serve(async (req) => {
     const productIds = cart.map(item => item.id)
     const { data: products, error: productsError } = await supabase
       .from("products")
-      .select("id, name, price, stock, is_visible, volume")
+      .select("id, name, price, stock, is_visible, volume, dosage, brands(name)")
       .in("id", productIds)
 
     if (productsError) {
@@ -121,7 +121,11 @@ serve(async (req) => {
       }
       const quantity = Math.min(cartItem.quantity, product.stock)
       const itemTotal = product.price * quantity
-      orderItems.push({ name: product.name, volume: product.volume || "", quantity, price: product.price, total: itemTotal })
+      const brandName = product.brands?.name || ""
+      const nameLine = brandName
+        ? `${brandName} ${product.name}${product.dosage ? ` ${product.dosage}` : ""}${product.volume ? ` ${product.volume}` : ""}`
+        : `${product.name}${product.dosage ? ` ${product.dosage}` : ""}${product.volume ? ` ${product.volume}` : ""}`
+      orderItems.push({ name: nameLine, quantity, price: product.price, total: itemTotal })
       total += itemTotal
     }
 
@@ -166,15 +170,18 @@ serve(async (req) => {
     const timeFormatter = new Intl.DateTimeFormat("ru-RU", timeOpts)
     const formattedDate = timeFormatter.format(now)
 
-    let message = `_Новый заказ ${orderNumber}_\n\nМагазин: ${storeName}\n\n*Товары:*\n`
+    let message = `_Новый заказ ${orderNumber}_\n\n`
     for (const item of orderItems) {
-      message += `• ${item.name}${item.volume ? ` (${item.volume})` : ''}\n  ${item.quantity} шт. × ${item.price}${currency} = ${item.total}${currency}\n`
+      message += `• ${item.name}\n  ${item.quantity} шт. × ${item.price}${currency} = ${item.total}${currency}\n`
     }
     message += `\n*Итого: ${total}${currency}*\n\n`
     if (hasError) message += `${errorCode} - проверьте цены\n`
-    message += `\nДата: ${formattedDate}`
+    message += `Дата: ${formattedDate}`
 
-    const whatsappNumber = settingsMap.whatsapp_number?.replace(/\D/g, "") || ""
+    const accountType = whatsappAccountType === 'business' ? 'business' : 'personal'
+    const whatsappNumber = accountType === 'business'
+      ? settingsMap.whatsapp_business_number?.replace(/\D/g, "") || settingsMap.whatsapp_number?.replace(/\D/g, "") || ""
+      : settingsMap.whatsapp_number?.replace(/\D/g, "") || ""
     const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`
 
     return new Response(

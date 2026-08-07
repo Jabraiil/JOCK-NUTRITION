@@ -224,7 +224,30 @@ function setupEventListeners() {
         })
     }
 
-    // Pagination (event delegation)
+    // Orders table actions (event delegation)
+    const ordersTable = document.getElementById('ordersTable')
+    if (ordersTable) {
+        ordersTable.addEventListener('click', (e) => {
+            const delBtn = e.target.closest('button[data-action="delete-order"]')
+            if (delBtn) deleteOrder(delBtn.dataset.id)
+        })
+        ordersTable.addEventListener('change', (e) => {
+            if (e.target.type === 'checkbox' && e.target.id === 'selectAllOrders') {
+                ordersTable.querySelectorAll('input[type="checkbox"][data-order-id]').forEach(cb => {
+                    cb.checked = e.target.checked
+                })
+                updateDeleteSelectedBtn()
+            }
+            if (e.target.type === 'checkbox' && e.target.dataset.orderId) {
+                updateDeleteSelectedBtn()
+            }
+        })
+    }
+
+    const deleteSelectedOrdersBtn = document.getElementById('deleteSelectedOrdersBtn')
+    if (deleteSelectedOrdersBtn) {
+        deleteSelectedOrdersBtn.addEventListener('click', deleteSelectedOrders)
+    }
     const productsPagination = document.getElementById('productsPagination')
     if (productsPagination) {
         productsPagination.addEventListener('click', (e) => {
@@ -521,6 +544,7 @@ async function loadProducts() {
 
 function renderProductsPagination() {
     const container = document.getElementById('productsPagination')
+    if (!container) return
     const totalPages = Math.max(1, Math.ceil(productsTotal / PRODUCTS_PER_PAGE))
     
     if (totalPages <= 1) {
@@ -633,7 +657,7 @@ async function openProductModal(productId = null) {
 }
 
 function closeProductModal() {
-    document.getElementById('productModal').classList.add('hidden')
+    document.getElementById('productModal')?.classList.add('hidden')
     editingProductId = null
 }
 
@@ -911,7 +935,7 @@ async function duplicateProduct(id) {
             }
         }
 
-        document.getElementById('productModal').classList.remove('hidden')
+    document.getElementById('productModal')?.classList.remove('hidden')
     } catch (error) {
         console.error('Error duplicating product:', error)
         alert('Ошибка дублирования товара: ' + error.message)
@@ -1213,10 +1237,12 @@ async function loadAnalytics() {
         if (ordersTable) {
             ordersTable.innerHTML = ordersData.data.map(order => `
                 <tr>
+                    <td><input type="checkbox" data-order-id="${escapeHtml(String(order.id))}"></td>
                     <td>${escapeHtml(String(order.order_number))}</td>
-                    <td>${escapeHtml(order.items.map(i => `${i.name} (${i.quantity})`).join(', '))}</td>
+                    <td>${escapeHtml((order.items || []).map(i => `${i.name} (${i.quantity})`).join(', '))}</td>
                     <td>${escapeHtml(String(order.total))} ₽</td>
                     <td>${escapeHtml(new Date(order.created_at).toLocaleString('ru-RU'))}</td>
+                    <td><button class="btn btn-sm btn-danger" data-action="delete-order" data-id="${escapeHtml(String(order.id))}">🗑️</button></td>
                 </tr>
             `).join('')
         }
@@ -1230,6 +1256,7 @@ async function loadAnalytics() {
 
 function renderOrdersPagination() {
     const container = document.getElementById('ordersPagination')
+    if (!container) return
     const totalPages = Math.max(1, Math.ceil(ordersTotal / ORDERS_PER_PAGE))
     
     if (totalPages <= 1) {
@@ -1250,6 +1277,52 @@ function renderOrdersPagination() {
 function changeOrdersPage(page) {
     ordersPage = page
     loadAnalytics()
+}
+
+function updateDeleteSelectedBtn() {
+    const btn = document.getElementById('deleteSelectedOrdersBtn')
+    const checkboxes = document.querySelectorAll('#ordersTable input[type="checkbox"][data-order-id]:checked')
+    if (btn) btn.disabled = checkboxes.length === 0
+}
+
+async function deleteOrder(id) {
+    if (!confirm('Удалить заказ?')) return
+    try {
+        const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/orders/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
+        })
+
+        if (response.ok) {
+            loadAnalytics()
+        } else {
+            const result = await response.json().catch(() => ({}))
+            alert(translateError(result.error) || 'Ошибка удаления заказа')
+        }
+    } catch (error) {
+        console.error('Error deleting order:', error)
+        alert('Ошибка удаления заказа: ' + error.message)
+    }
+}
+
+async function deleteSelectedOrders() {
+    const checkboxes = document.querySelectorAll('#ordersTable input[type="checkbox"][data-order-id]:checked')
+    if (checkboxes.length === 0) return
+    if (!confirm(`Удалить ${checkboxes.length} заказов?`)) return
+
+    try {
+        const ids = Array.from(checkboxes).map(cb => cb.dataset.orderId)
+        await Promise.all(ids.map(id =>
+            fetchWithTimeout(`${CONFIG.adminApiUrl}/orders/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
+            })
+        ))
+        loadAnalytics()
+    } catch (error) {
+        console.error('Error deleting orders:', error)
+        alert('Ошибка удаления заказов: ' + error.message)
+    }
 }
 
 function renderSalesChart(dailyStats) {
@@ -1310,6 +1383,8 @@ async function loadSettings() {
         const settings = await response.json()
         
         document.getElementById('whatsappNumber').value = settings.whatsapp_number || ''
+        document.getElementById('whatsappBusinessNumber').value = settings.whatsapp_business_number || ''
+        document.getElementById('whatsappAccountType').value = settings.whatsapp_account_type || 'personal'
         document.getElementById('storeName').value = settings.store_name || ''
         document.getElementById('logoText').value = settings.logo_text || ''
         document.getElementById('timezone').value = settings.timezone || 'Europe/Moscow'
@@ -1333,6 +1408,8 @@ async function handleSettingsSave(e) {
     try {
     const settings = {
         whatsapp_number: document.getElementById('whatsappNumber').value,
+        whatsapp_business_number: document.getElementById('whatsappBusinessNumber').value,
+        whatsapp_account_type: document.getElementById('whatsappAccountType').value,
         store_name: document.getElementById('storeName').value,
         logo_text: document.getElementById('logoText').value,
         timezone: document.getElementById('timezone').value,

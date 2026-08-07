@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>JOCK NUTRITION</title>
-    <link rel="stylesheet" href="styles.css?v=29">
+    <link rel="stylesheet" href="styles.css?v=30">
     <link rel="manifest" href="./manifest.json">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%2334C759' width='100' height='100' rx='20'/><text x='50' y='68' text-anchor='middle' fill='white' font-size='60' font-family='system-ui'>J</text></svg>">
     <link rel="icon" type="image/png" sizes="16x16" href="./assets/icons/favicon-16x16.png">
@@ -163,6 +163,16 @@
                         <span>Итого:</span>
                         <span id="cartTotal">0 ₽</span>
                     </div>
+                    <div class="cart-whatsapp-type" id="cartWhatsAppType">
+                        <label class="radio-label">
+                            <input type="radio" name="whatsappAccountType" value="personal" checked>
+                            <span>Обычный WhatsApp</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="whatsappAccountType" value="business">
+                            <span>WhatsApp Business</span>
+                        </label>
+                    </div>
                     <button id="checkoutBtn" class="btn btn-primary btn-block">Оформить заказ</button>
                     <div id="orderTimeMessage" class="order-time-message hidden"></div>
                 </div>
@@ -239,7 +249,7 @@
         </div>
     </div>
 
-    <script src="app.js?v=29"></script>
+    <script src="app.js?v=30"></script>
 
 <!-- Bottom Navigation Bar (mobile) -->
 <nav class="bottom-nav" id="bottomNav">

@@ -632,6 +632,23 @@ serve(async (req) => {
       )
     }
 
+    // DELETE /orders/:id
+    if (req.method === "DELETE" && path.match(/^\/orders\/[^/]+$/)) {
+      const orderId = path.split("/")[2]
+
+      const { error } = await supabase
+        .from("orders_analytics")
+        .delete()
+        .eq("id", orderId)
+
+      if (error) throw error
+
+      return new Response(
+        JSON.stringify({ success: true }),
+        { headers: { "Content-Type": "application/json", ...corsHeaders } }
+      )
+    }
+
     // POST /import
     if (req.method === "POST" && path === "/import") {
       const body = await req.json()
