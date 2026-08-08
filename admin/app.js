@@ -518,7 +518,8 @@ async function loadProducts() {
         productsTotal = total || 0
         
         const tbody = document.getElementById('productsTable')
-        if (data.length === 0) {
+        const products = Array.isArray(data) ? data : []
+        if (products.length === 0) {
             tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-secondary)">Товары не найдены</td></tr>'
         } else {
             tbody.innerHTML = data.map(product => `
@@ -1283,7 +1284,8 @@ async function loadAnalytics() {
         // Top products
         const topProductsTable = document.getElementById('topProductsTable')
         if (topProductsTable) {
-            topProductsTable.innerHTML = data.topProducts.map(p => `
+            const topProducts = Array.isArray(data.topProducts) ? data.topProducts : []
+            topProductsTable.innerHTML = topProducts.map(p => `
                 <tr>
                     <td>${escapeHtml(p.name)}</td>
                     <td>${escapeHtml(String(p.quantity))}</td>
@@ -1311,7 +1313,8 @@ async function loadAnalytics() {
         
         const ordersTable = document.getElementById('ordersTable')
         if (ordersTable) {
-            ordersTable.innerHTML = ordersData.data.map(order => `
+            const orders = Array.isArray(ordersData.data) ? ordersData.data : []
+            ordersTable.innerHTML = orders.map(order => `
                 <tr>
                     <td><input type="checkbox" data-order-id="${escapeHtml(String(order.id))}"></td>
                     <td>${escapeHtml(String(order.order_number))}</td>
@@ -1404,6 +1407,10 @@ async function deleteSelectedOrders() {
 function renderSalesChart(dailyStats) {
     const canvas = document.getElementById('salesChart')
     if (!canvas || !dailyStats || !dailyStats.length) return
+    if (typeof Chart === 'undefined') {
+        console.warn('Chart.js не загружен')
+        return
+    }
     const ctx = canvas.getContext('2d')
     
     if (salesChart) {
@@ -1596,6 +1603,11 @@ function handleImportFileSelect(e) {
 async function handleImport() {
     if (!importFile) return
     
+    if (typeof XLSX === 'undefined') {
+        alert('Библиотека Excel не загружена. Проверьте подключение к интернету и обновите страницу.')
+        return
+    }
+    
     const reader = new FileReader()
     
     reader.onload = async (e) => {
@@ -1648,6 +1660,11 @@ async function handleImport() {
 
 async function handleExport() {
     try {
+        if (typeof XLSX === 'undefined') {
+            alert('Библиотека Excel не загружена. Проверьте подключение к интернету и обновите страницу.')
+            return
+        }
+        
         const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/export`, {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
         })
@@ -1660,7 +1677,8 @@ async function handleExport() {
         
         const data = await response.json()
         
-        const flatData = data.map(p => ({
+        const products = Array.isArray(data) ? data : []
+        const flatData = products.map(p => ({
             name: p.name || '',
             description: p.description || '',
             full_description: p.full_description || '',
@@ -1696,6 +1714,11 @@ async function handleExport() {
 
 async function handleExportTemplate() {
     try {
+        if (typeof XLSX === 'undefined') {
+            alert('Библиотека Excel не загружена. Проверьте подключение к интернету и обновите страницу.')
+            return
+        }
+
         const headers = [
             { key: 'name', label: 'Название *', required: true },
             { key: 'category', label: 'Категория', required: false },

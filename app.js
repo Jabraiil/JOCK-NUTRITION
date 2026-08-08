@@ -426,13 +426,7 @@ async function loadSettings() {
 
             const cartWhatsAppType = document.getElementById('cartWhatsAppType')
             if (cartWhatsAppType) {
-                const hasBusiness = !!settings.whatsapp_business_number
-                cartWhatsAppType.classList.toggle('hidden', !hasBusiness)
-                if (hasBusiness) {
-                    const defaultType = settings.whatsapp_account_type || 'personal'
-                    const radio = cartWhatsAppType.querySelector(`input[value="${defaultType}"]`)
-                    if (radio) radio.checked = true
-                }
+                cartWhatsAppType.classList.add('hidden')
             }
 
             checkOrderTime()
@@ -735,8 +729,11 @@ function openProductModal(productId) {
     const product = allProducts.find(p => p.id === productId)
     if (!product) return
 
-    const mainImage = product.product_images?.find(img => img.is_main) || product.product_images?.[0]
+    const images = product.product_images || []
+    const mainImage = images.find(img => img.is_main) || images[0]
     const imageUrl = mainImage?.url || ''
+    let currentImageIndex = images.findIndex(img => img.url === imageUrl)
+    if (currentImageIndex < 0) currentImageIndex = 0
 
     const modalBody = document.getElementById('modalBody')
     const favorited = isFavorited(productId)
@@ -744,7 +741,22 @@ function openProductModal(productId) {
         ? Math.round((1 - product.price / product.old_price) * 100)
         : 0
     modalBody.innerHTML = `
-        ${imageUrl ? '<img src="' + escapeHtml(imageUrl) + '" alt="' + escapeHtml(product.name) + '">' : ''}
+        ${(() => {
+            if (images.length <= 1) {
+                return imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(product.name)}">` : ''
+            }
+            return `
+                <div class="modal-image-gallery">
+                    <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(product.name)}" id="modalMainImage">
+                    <button class="modal-image-nav modal-image-prev" id="modalPrevImg" aria-label="Предыдущее фото">&lt;</button>
+                    <button class="modal-image-nav modal-image-next" id="modalNextImg" aria-label="Следующее фото">&gt;</button>
+                </div>
+                <div class="modal-image-dots" id="modalImageDots">
+                    ${images.map((_, idx) => `<button class="modal-image-dot${idx === currentImageIndex ? ' active' : ''}" data-index="${idx}" aria-label="Фото ${idx + 1}"></button>`).join('')}
+                </div>
+                <div class="modal-image-counter" id="modalImageCounter">${currentImageIndex + 1} / ${images.length}</div>
+            `
+        })()}
         <div class="modal-brand">${escapeHtml(product.brands?.name || '')}</div>
         <h2>${escapeHtml(cleanProductName(product.name, product.brands?.name))}</h2>
         <div class="modal-volume">${escapeHtml(product.volume || '')}</div>
@@ -854,6 +866,38 @@ function openProductModal(productId) {
             openProductModal(card.dataset.id)
         })
     })
+
+    if (images.length > 1) {
+        const mainImageEl = modalBody.querySelector('#modalMainImage')
+        const prevBtn = modalBody.querySelector('#modalPrevImg')
+        const nextBtn = modalBody.querySelector('#modalNextImg')
+        const dots = modalBody.querySelectorAll('.modal-image-dot')
+        const counter = modalBody.querySelector('#modalImageCounter')
+
+        const updateModalImage = (index) => {
+            if (index < 0 || index >= images.length) return
+            currentImageIndex = index
+            const img = images[index]
+            if (mainImageEl) mainImageEl.src = escapeHtml(img.url)
+            if (counter) counter.textContent = `${index + 1} / ${images.length}`
+            dots.forEach((dot, i) => {
+                dot.classList.toggle('active', i === index)
+            })
+        }
+
+        if (prevBtn) {
+            prevBtn.onclick = () => updateModalImage(currentImageIndex - 1)
+        }
+        if (nextBtn) {
+            nextBtn.onclick = () => updateModalImage(currentImageIndex + 1)
+        }
+        dots.forEach(dot => {
+            dot.onclick = () => {
+                const index = parseInt(dot.dataset.index, 10)
+                updateModalImage(index)
+            }
+        })
+    }
 
     const productModal = document.getElementById('productModal')
     if (productModal) productModal.classList.remove('hidden')
@@ -1056,13 +1100,10 @@ async function checkout() {
     }
 
     try {
-        const cartWhatsAppType = document.querySelector('input[name="whatsappAccountType"]:checked')
-        const whatsappAccountType = cartWhatsAppType ? cartWhatsAppType.value : 'personal'
-
         const response = await fetchWithTimeout(CONFIG.orderFunctionUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ cart, whatsappAccountType })
+            body: JSON.stringify({ cart, whatsappAccountType: 'personal' })
         })
 
         const data = await response.json().catch(() => ({}))

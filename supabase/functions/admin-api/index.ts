@@ -70,7 +70,13 @@ serve(async (req) => {
     }
 
     const url = new URL(req.url)
-    const path = url.pathname.replace("/admin-api", "")
+    let path = url.pathname
+
+    if (path.startsWith('/functions/v1/admin-api')) {
+        path = path.replace('/functions/v1/admin-api', '')
+    } else if (path.startsWith('/admin-api')) {
+        path = path.replace('/admin-api', '')
+    }
 
     // GET /settings
     if (req.method === "GET" && path === "/settings") {

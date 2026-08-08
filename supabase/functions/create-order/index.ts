@@ -15,7 +15,13 @@ serve(async (req) => {
   }
 
   const url = new URL(req.url)
-  const path = url.pathname.replace("/create-order", "")
+  let path = url.pathname
+
+  if (path.startsWith('/functions/v1/create-order')) {
+    path = path.replace('/functions/v1/create-order', '')
+  } else if (path.startsWith('/create-order')) {
+    path = path.replace('/create-order', '')
+  }
 
   if (req.method === "GET" && path === "/health") {
     return new Response(
