@@ -777,8 +777,8 @@ async function handleProductSubmit(e) {
         contraindications: document.getElementById('prodContraindications')?.value.trim() || '',
         category_id: document.getElementById('prodCategory')?.value || null,
         brand_id: document.getElementById('prodBrand')?.value || null,
-        price: parseFloat(prodPrice.value) || 0,
-        old_price: document.getElementById('prodOldPrice')?.value ? parseFloat(document.getElementById('prodOldPrice').value) : null,
+        price: parseInt(prodPrice.value, 10) || 0,
+        old_price: document.getElementById('prodOldPrice')?.value ? parseInt(document.getElementById('prodOldPrice').value, 10) : null,
         stock: parseInt(prodStock.value, 10) || 0,
         volume: document.getElementById('prodVolume')?.value.trim() || '',
         sku: document.getElementById('prodSku')?.value.trim() || null,
@@ -846,8 +846,8 @@ async function handleProductSubmit(e) {
 
     const body = {
         ...productData,
-        ...(productImages.length ? { images: productImages } : {}),
-        ...(related.length ? { related } : {})
+        images: productImages,
+        related: related
     }
 
     const url = editingProductId ? `${CONFIG.adminApiUrl}/products/${editingProductId}` : `${CONFIG.adminApiUrl}/products`
