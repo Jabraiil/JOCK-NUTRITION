@@ -1087,8 +1087,11 @@ async function checkout() {
             saveCart()
             updateCartCount()
             closeCart()
-            renderProducts(allProducts)
-            location.href = data.whatsappUrl
+            applyFilters()
+            const popup = window.open(data.whatsappUrl, '_blank', 'noopener,noreferrer')
+            if (!popup) {
+                location.href = data.whatsappUrl
+            }
             return
         }
 
@@ -1097,7 +1100,7 @@ async function checkout() {
         saveCart()
         updateCartCount()
         closeCart()
-        renderProducts(allProducts)
+        applyFilters()
 
     } catch (error) {
         alert(error.message)

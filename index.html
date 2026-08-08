@@ -1,13 +1,12 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<!-- DEPLOY-MARKER: 2026-08-07-v1 -->
+<!-- DEPLOY-MARKER: 2026-08-08-v1 -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>JACK NUTRITION</title>
-    <link rel="stylesheet" href="styles.css?v=30">
+    <link rel="stylesheet" href="styles.css?v=31">
     <link rel="manifest" href="./manifest.json">
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%2334C759' width='100' height='100' rx='20'/><text x='50' y='68' text-anchor='middle' fill='white' font-size='60' font-family='system-ui'>J</text></svg>">
     <link rel="icon" type="image/png" sizes="16x16" href="./assets/icons/favicon-16x16.png">
     <link rel="icon" type="image/png" sizes="32x32" href="./assets/icons/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="192x192" href="./assets/icons/icon-192.png">
@@ -15,7 +14,6 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="JACK">
     <link rel="apple-touch-icon" sizes="180x180" href="./assets/icons/apple-touch-icon.png">
     <meta name="apple-mobile-web-app-title" content="JACK NUTRITION">
 </head>
@@ -198,18 +196,8 @@
         </div>
     </div>
 
-    <script>
-        if ('caches' in window) {
-            caches.keys().then(keys => {
-                keys.forEach(key => caches.delete(key))
-            })
-        }
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(registrations => {
-                registrations.forEach(reg => reg.unregister())
-            })
-        }
-    </script>
+    <script src="app.js?v=31"></script>
+
     <div id="cookieBanner" class="cookie-banner hidden">
         <div class="cookie-banner-content">
             <p>Мы используем технические файлы cookie и локальное хранилище для правильной работы приложения (например, сохранения корзины). Оставаясь на сайте, вы соглашаетесь с этим.</p>
@@ -248,8 +236,6 @@
             <button id="privacyModalCloseBtn" class="btn btn-secondary btn-block">Закрыть</button>
         </div>
     </div>
-
-    <script src="app.js?v=30"></script>
 
 <!-- Bottom Navigation Bar (mobile) -->
 <nav class="bottom-nav" id="bottomNav">

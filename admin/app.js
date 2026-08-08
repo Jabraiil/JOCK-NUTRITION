@@ -337,6 +337,9 @@ function setupEventListeners() {
     const cancelProduct = document.getElementById('cancelProduct')
     if (cancelProduct) cancelProduct.addEventListener('click', closeProductModal)
 
+    const productForm = document.getElementById('productForm')
+    if (productForm) productForm.addEventListener('submit', handleProductSubmit)
+
     // Product image removal
     const imagePreview = document.getElementById('imagePreview')
     if (imagePreview) {
