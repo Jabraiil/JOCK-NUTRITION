@@ -101,42 +101,51 @@ function translateError(message) {
 }
 
 function init() {
-    const hash = window.location.hash
-    if (hash.includes('access_token=')) {
-        const params = new URLSearchParams(hash.substring(1))
-        const accessToken = params.get('access_token')
-        const refreshToken = params.get('refresh_token')
-        if (accessToken) {
-            localStorage.setItem('admin-token', accessToken)
-            if (refreshToken) {
-                localStorage.setItem('admin-refresh-token', refreshToken)
-            }
-            window.location.hash = ''
-            const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-            if (isLocalhost) {
-                window.location.href = 'https://jabraiil.github.io/JOCK-NUTRITION/admin/'
-                return
-            }
-            if (!window.location.pathname.includes('/admin/')) {
-                window.location.href = 'https://jabraiil.github.io/JOCK-NUTRITION/admin/'
-                return
+    try {
+        const hash = window.location.hash
+        if (hash.includes('access_token=')) {
+            const params = new URLSearchParams(hash.substring(1))
+            const accessToken = params.get('access_token')
+            const refreshToken = params.get('refresh_token')
+            if (accessToken) {
+                localStorage.setItem('admin-token', accessToken)
+                if (refreshToken) {
+                    localStorage.setItem('admin-refresh-token', refreshToken)
+                }
+                window.location.hash = ''
+                const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                if (isLocalhost) {
+                    window.location.href = 'https://jabraiil.github.io/JOCK-NUTRITION/admin/'
+                    return
+                }
+                if (!window.location.pathname.includes('/admin/')) {
+                    window.location.href = 'https://jabraiil.github.io/JOCK-NUTRITION/admin/'
+                    return
+                }
             }
         }
+
+        const token = localStorage.getItem('admin-token')
+        
+        applyTheme()
+
+        if (token) {
+            showAdminPage()
+            loadPageData(currentPage)
+            startMonitor()
+        } else {
+            showAuthPage()
+        }
+
+        setupEventListeners()
+    } catch (error) {
+        console.error('Init error:', error)
+        const errorEl = document.getElementById('loginError')
+        if (errorEl) {
+            errorEl.textContent = 'Ошибка инициализации: ' + (error.message || String(error))
+            errorEl.classList.remove('hidden')
+        }
     }
-
-    const token = localStorage.getItem('admin-token')
-    
-    applyTheme()
-
-    if (token) {
-        showAdminPage()
-        loadPageData(currentPage)
-    } else {
-        showAuthPage()
-    }
-
-    setupEventListeners()
-    startMonitor()
 }
 
 function applyTheme() {
@@ -1391,12 +1400,16 @@ async function deleteSelectedOrders() {
 
     try {
         const ids = Array.from(checkboxes).map(cb => cb.dataset.orderId)
-        await Promise.all(ids.map(id =>
+        const results = await Promise.allSettled(ids.map(id =>
             fetchWithTimeout(`${CONFIG.adminApiUrl}/orders/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
             })
         ))
+        const failed = results.filter(r => r.status === 'rejected')
+        if (failed.length > 0) {
+            alert(`Удалено: ${results.length - failed.length}. Ошибок: ${failed.length}`)
+        }
         loadAnalytics()
     } catch (error) {
         console.error('Error deleting orders:', error)
@@ -2146,11 +2159,14 @@ function debounce(func, wait) {
 }
 
 // Service Worker (обход кеша GitHub Pages)
+let swControllerListenerAdded = false
+
 function registerServiceWorker() {
     if ('serviceWorker' in navigator && location.pathname.startsWith('/admin/')) {
         navigator.serviceWorker.register('../sw.js')
             .then(reg => {
-                if (navigator.serviceWorker.controller) {
+                if (navigator.serviceWorker.controller && !swControllerListenerAdded) {
+                    swControllerListenerAdded = true
                     navigator.serviceWorker.addEventListener('controllerchange', () => location.reload())
                 }
                 reg.update()

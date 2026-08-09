@@ -1443,8 +1443,7 @@ function toggleScannerMode() {
         modeBtn.textContent = '⌨️'
         modeBtn.classList.remove('active')
         const scanner = document.getElementById('barcodeScanner')
-        if (scanner) {
-            scanner.classList.add('hidden')
+        if (scanner && scanner.classList.contains('hidden')) {
             toggleBarcodeScanner()
         }
     }
@@ -1693,11 +1692,14 @@ function getPrivacyFallbackContent() {
 }
 
 // Service Worker (обход кеша GitHub Pages)
+let swControllerListenerAdded = false
+
 function registerServiceWorker() {
     if ('serviceWorker' in navigator && !location.pathname.startsWith('/admin/')) {
         navigator.serviceWorker.register('./sw.js')
             .then(reg => {
-                if (navigator.serviceWorker.controller) {
+                if (navigator.serviceWorker.controller && !swControllerListenerAdded) {
+                    swControllerListenerAdded = true
                     navigator.serviceWorker.addEventListener('controllerchange', () => location.reload())
                 }
                 reg.update()
@@ -1716,7 +1718,8 @@ function showA2HSBanner() {
     banner.classList.remove('hidden')
 
     const closeBtn = document.getElementById('a2hsClose')
-    if (closeBtn) {
+    if (closeBtn && !closeBtn.dataset.a2hsListener) {
+        closeBtn.dataset.a2hsListener = 'true'
         closeBtn.addEventListener('click', () => {
             banner.classList.add('hidden')
             sessionStorage.setItem('a2hs-dismissed', 'true')
@@ -1731,7 +1734,8 @@ function showA2HSModal() {
     modal.classList.remove('hidden')
 
     const closeBtn = document.getElementById('a2hsModalClose')
-    if (closeBtn) {
+    if (closeBtn && !closeBtn.dataset.a2hsListener) {
+        closeBtn.dataset.a2hsListener = 'true'
         closeBtn.addEventListener('click', () => {
             modal.classList.add('hidden')
             sessionStorage.setItem('a2hs-modal-dismissed', 'true')
