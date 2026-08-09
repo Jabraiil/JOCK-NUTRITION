@@ -409,7 +409,7 @@ async function handleLogin(e) {
             body: JSON.stringify({ email, password })
         })
         
-        const data = await response.json()
+        const data = await response.json().catch(() => ({}))
         
         if (response.ok && data.access_token) {
             localStorage.setItem('admin-token', data.access_token)
@@ -1593,7 +1593,7 @@ async function handleChangePassword(e) {
             const changePasswordForm = document.getElementById('changePasswordForm')
             if (changePasswordForm) changePasswordForm.reset()
         } else {
-            const data = await response.json()
+            const data = await response.json().catch(() => ({}))
             alert(translateError(data.msg || data.error || data.error_description) || 'Ошибка изменения пароля')
         }
     } catch (error) {

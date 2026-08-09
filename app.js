@@ -818,6 +818,7 @@ function openProductModal(productId) {
                         ${images.map((_, idx) => `<button class="modal-slider-dot${idx === currentImageIndex ? ' active' : ''}" data-index="${idx}" aria-label="Фото ${idx + 1}"></button>`).join('')}
                     </div>
                 </div>
+                <div class="modal-image-counter" id="modalImageCounter">${currentImageIndex + 1} / ${images.length}</div>
             `
         })()}
         <div class="modal-brand">${escapeHtml(product.brands?.name || 'JOCK NUTRITION')}</div>
@@ -930,35 +931,44 @@ function openProductModal(productId) {
         })
     })
 
-    if (images.length > 1) {
-        const track = modalBody.querySelector('.modal-slider-track')
-        const dots = modalBody.querySelectorAll('.modal-slider-dot')
+    const track = modalBody.querySelector('.modal-slider-track')
+    const dots = modalBody.querySelectorAll('.modal-slider-dot')
+    const counter = modalBody.querySelector('#modalImageCounter')
 
-        if (!track || !dots.length) return
+    if (!track) return
 
-        const updateDots = () => {
-            const scrollLeft = track.scrollLeft
-            const width = track.clientWidth
-            if (width === 0) return
-            const index = Math.round(scrollLeft / width)
-            dots.forEach((dot, i) => {
-                dot.classList.toggle('active', i === index)
-            })
-        }
-
-        track.addEventListener('scroll', updateDots, { passive: true })
-
-        dots.forEach(dot => {
-            dot.addEventListener('click', (e) => {
-                e.stopPropagation()
-                const index = parseInt(dot.dataset.index, 10)
-                const width = track.clientWidth
-                if (width > 0) {
-                    track.scrollTo({ left: width * index, behavior: 'smooth' })
-                }
-            })
-        })
+    const count = parseInt(track.dataset.count || '1', 10)
+    if (count <= 1) {
+        track.style.overflowX = 'hidden'
+        if (counter) counter.textContent = '1 / 1'
+        return
     }
+
+    if (!dots.length) return
+
+    const updateDots = () => {
+        const scrollLeft = track.scrollLeft
+        const width = track.clientWidth
+        if (width === 0) return
+        const index = Math.round(scrollLeft / width)
+        dots.forEach((dot, i) => {
+            dot.classList.toggle('active', i === index)
+        })
+        if (counter) counter.textContent = `${index + 1} / ${count}`
+    }
+
+    track.addEventListener('scroll', updateDots, { passive: true })
+
+    dots.forEach(dot => {
+        dot.addEventListener('click', (e) => {
+            e.stopPropagation()
+            const index = parseInt(dot.dataset.index, 10)
+            const width = track.clientWidth
+            if (width > 0) {
+                track.scrollTo({ left: width * index, behavior: 'smooth' })
+            }
+        })
+    })
 
     const productModal = document.getElementById('productModal')
     if (productModal) productModal.classList.remove('hidden')
