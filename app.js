@@ -809,22 +809,18 @@ function openProductModal(productId) {
         : 0
     modalBody.innerHTML = `
         ${(() => {
-            if (images.length <= 1) {
-                return imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(product.name)}" decoding="async" width="800" height="1067" fetchpriority="high">` : ''
-            }
             return `
-                <div class="modal-image-gallery" id="modalImageGallery">
-                    <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(product.name)}" id="modalMainImage" decoding="async" width="800" height="1067" fetchpriority="high">
-                    <button class="modal-image-nav modal-image-prev" id="modalPrevImg" aria-label="Предыдущее фото">&lt;</button>
-                    <button class="modal-image-nav modal-image-next" id="modalNextImg" aria-label="Следующее фото">&gt;</button>
+                <div class="modal-image-wrap">
+                    <div class="modal-slider-track" data-count="${images.length}">
+                        ${images.map((img, idx) => `<img class="modal-slider-img" src="${escapeHtml(img.url)}" alt="${escapeHtml(product.name)}" loading="lazy" decoding="async" width="800" height="1067">`).join('')}
+                    </div>
+                    <div class="modal-slider-dots" data-count="${images.length}">
+                        ${images.map((_, idx) => `<button class="modal-slider-dot${idx === currentImageIndex ? ' active' : ''}" data-index="${idx}" aria-label="Фото ${idx + 1}"></button>`).join('')}
+                    </div>
                 </div>
-                <div class="modal-image-dots" id="modalImageDots">
-                    ${images.map((_, idx) => `<button class="modal-image-dot${idx === currentImageIndex ? ' active' : ''}" data-index="${idx}" aria-label="Фото ${idx + 1}"></button>`).join('')}
-                </div>
-                <div class="modal-image-counter" id="modalImageCounter">${currentImageIndex + 1} / ${images.length}</div>
             `
         })()}
-        <div class="modal-brand">${escapeHtml(product.brands?.name || '')}</div>
+        <div class="modal-brand">${escapeHtml(product.brands?.name || 'JOCK NUTRITION')}</div>
         <h2>${escapeHtml(cleanProductName(product.name, product.brands?.name))}</h2>
         <div class="modal-volume">${escapeHtml(product.volume || '')}</div>
         <div class="modal-badges">
@@ -935,66 +931,33 @@ function openProductModal(productId) {
     })
 
     if (images.length > 1) {
-        const mainImageEl = modalBody.querySelector('#modalMainImage')
-        const prevBtn = modalBody.querySelector('#modalPrevImg')
-        const nextBtn = modalBody.querySelector('#modalNextImg')
-        const dots = modalBody.querySelectorAll('.modal-image-dot')
-        const counter = modalBody.querySelector('#modalImageCounter')
-        const gallery = modalBody.querySelector('#modalImageGallery')
+        const track = modalBody.querySelector('.modal-slider-track')
+        const dots = modalBody.querySelectorAll('.modal-slider-dot')
 
-        let touchStartX = 0
-        let touchEndX = 0
-        const minSwipeDistance = 50
+        if (!track || !dots.length) return
 
-        const updateModalImage = (index) => {
-            if (index < 0 || index >= images.length) return
-            currentImageIndex = index
-            const img = images[index]
-            if (mainImageEl) {
-                mainImageEl.style.opacity = '0.5'
-                mainImageEl.onload = () => { mainImageEl.style.opacity = '1' }
-                mainImageEl.onerror = () => { mainImageEl.style.opacity = '1' }
-                mainImageEl.src = escapeHtml(img.url)
-            }
-            if (counter) counter.textContent = `${index + 1} / ${images.length}`
+        const updateDots = () => {
+            const scrollLeft = track.scrollLeft
+            const width = track.clientWidth
+            if (width === 0) return
+            const index = Math.round(scrollLeft / width)
             dots.forEach((dot, i) => {
                 dot.classList.toggle('active', i === index)
             })
         }
 
-        if (prevBtn) {
-            prevBtn.onclick = () => updateModalImage(currentImageIndex - 1)
-        }
-        if (nextBtn) {
-            nextBtn.onclick = () => updateModalImage(currentImageIndex + 1)
-        }
+        track.addEventListener('scroll', updateDots, { passive: true })
+
         dots.forEach(dot => {
-            dot.onclick = () => {
+            dot.addEventListener('click', (e) => {
+                e.stopPropagation()
                 const index = parseInt(dot.dataset.index, 10)
-                updateModalImage(index)
-            }
-        })
-
-        if (gallery) {
-            gallery.addEventListener('touchstart', (e) => {
-                touchStartX = e.changedTouches[0].screenX
-                touchStartY = e.changedTouches[0].screenY
-            }, { passive: true })
-
-            gallery.addEventListener('touchend', (e) => {
-                touchEndX = e.changedTouches[0].screenX
-                touchEndY = e.changedTouches[0].screenY
-                const distanceX = Math.abs(touchEndX - touchStartX)
-                const distanceY = Math.abs(touchEndY - touchStartY)
-                if (distanceX > minSwipeDistance && distanceX > distanceY) {
-                    if (touchEndX > touchStartX) {
-                        updateModalImage(currentImageIndex - 1)
-                    } else {
-                        updateModalImage(currentImageIndex + 1)
-                    }
+                const width = track.clientWidth
+                if (width > 0) {
+                    track.scrollTo({ left: width * index, behavior: 'smooth' })
                 }
-            }, { passive: true })
-        }
+            })
+        })
     }
 
     const productModal = document.getElementById('productModal')

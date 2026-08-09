@@ -1,13 +1,19 @@
 {
+  "id": "/",
   "name": "JACK NUTRITION",
   "short_name": "JACK",
   "description": "Интернет-магазин биологически активных добавок",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
+  "display_override": ["standalone", "fullscreen", "minimal-ui"],
   "background_color": "#F2F2F7",
   "theme_color": "#34C759",
   "orientation": "portrait-primary",
-  "scope": "./",
+  "lang": "ru",
+  "dir": "ltr",
+  "prefer_related_applications": false,
+  "categories": ["shopping", "health", "fitness"],
   "icons": [
     {
       "src": "./assets/icons/icon-192.png",
@@ -34,8 +40,19 @@
       "purpose": "maskable"
     }
   ],
-  "categories": ["shopping", "health", "fitness"],
-  "lang": "ru",
-  "dir": "ltr",
-  "_cacheBust": "2026-08-09-v2"
+  "screenshots": [
+    {
+      "src": "./assets/screenshots/home-desktop.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    },
+    {
+      "src": "./assets/screenshots/home-mobile.png",
+      "sizes": "720x1280",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ],
+  "_cacheBust": "2026-08-09-v3"
 }
