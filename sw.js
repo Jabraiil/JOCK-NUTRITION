@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'jack-nutrition-v34-2026-08-08'
+const CACHE_VERSION = 'jack-nutrition-v35-2026-08-09'
 const STATIC_ASSETS = [
     'styles.css',
     'app.js',
@@ -39,32 +39,37 @@ self.addEventListener('fetch', (event) => {
 
     const url = new URL(request.url)
     const isSameOrigin = url.origin === self.location.origin
-
     if (!isSameOrigin) return
 
     const isHTML = request.headers.get('accept')?.includes('text/html')
     const isStaticAsset = STATIC_ASSETS.some((asset) => url.pathname.endsWith(asset) || url.pathname.includes(asset.replace(/^\//, '')))
+    const isImage = url.pathname.match(/\.(png|jpg|jpeg|webp|avif|gif|svg)$/i)
 
     if (isHTML) {
         event.respondWith(
-            fetch(request)
-                .then((response) => {
-                    const copy = response.clone()
-                    caches.open(CACHE_VERSION).then((cache) => cache.put(request, copy))
-                    return response
+            caches.open(CACHE_VERSION).then((cache) => {
+                return cache.match(request).then((cached) => {
+                    const fetchPromise = fetch(request).then((response) => {
+                        if (response && response.status === 200) {
+                            cache.put(request, response.clone())
+                        }
+                        return response
+                    }).catch(() => cached || caches.match('/index.html'))
+                    return cached || fetchPromise
                 })
-                .catch(() => caches.match(request).then((cached) => cached || caches.match('/index.html')))
+            })
         )
-    } else if (isStaticAsset) {
+    } else if (isStaticAsset || isImage) {
         event.respondWith(
             caches.match(request).then((cached) => {
-                return cached || fetch(request).then((response) => {
+                if (cached) return cached
+                return fetch(request).then((response) => {
                     if (response && response.status === 200) {
                         const copy = response.clone()
                         caches.open(CACHE_VERSION).then((cache) => cache.put(request, copy))
                     }
                     return response
-                })
+                }).catch(() => new Response('Offline', { status: 503 }))
             })
         )
     }

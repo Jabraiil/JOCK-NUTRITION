@@ -347,7 +347,7 @@ function setupEventListeners() {
             if (e.target.classList.contains('remove-image')) {
                 const idx = parseInt(e.target.dataset.idx, 10)
                 productImages.splice(idx, 1)
-                imagePreview.innerHTML = productImages.map((img, i) => `<span class="image-wrapper"><img src="${img.url}" alt=""><button type="button" class="remove-image" data-idx="${i}">&times;</button></span>`).join('')
+                imagePreview.innerHTML = productImages.map((img, i) => `<span class="image-wrapper"><img src="${escapeHtml(img.url)}" alt="" decoding="async"><button type="button" class="remove-image" data-idx="${i}">&times;</button></span>`).join('')
             }
         })
     }
@@ -524,7 +524,7 @@ async function loadProducts() {
         } else {
             tbody.innerHTML = data.map(product => `
                 <tr>
-                    <td>${product.product_images?.[0]?.url ? `<img src="${escapeHtml(product.product_images[0].url)}" alt="">` : '<span style="color:var(--text-secondary)">—</span>'}</td>
+                    <td>${product.product_images?.[0]?.url ? `<img src="${escapeHtml(product.product_images[0].url)}" alt="" decoding="async" width="80" height="80">` : '<span style="color:var(--text-secondary)">—</span>'}</td>
                     <td>${escapeHtml(cleanProductName(product.name, product.brands?.name))}</td>
                     <td>${escapeHtml(product.categories?.name || '-')}</td>
                     <td>${escapeHtml(product.brands?.name || '-')}</td>
@@ -1632,8 +1632,10 @@ async function handleImport() {
             if (!response.ok) {
                 const result = await response.json().catch(() => ({}))
                 const statusEl = document.getElementById('importStatus')
-                statusEl.className = 'status-message error'
-                statusEl.textContent = translateError(result.error) || 'Ошибка импорта'
+                if (statusEl) {
+                    statusEl.className = 'status-message error'
+                    statusEl.textContent = translateError(result.error) || 'Ошибка импорта'
+                }
                 return
             }
             
@@ -1641,17 +1643,23 @@ async function handleImport() {
             const statusEl = document.getElementById('importStatus')
             
             if (result.success) {
-                statusEl.className = 'status-message success'
-                statusEl.textContent = `Импортировано: ${result.results.success} товаров`
+                if (statusEl) {
+                    statusEl.className = 'status-message success'
+                    statusEl.textContent = `Импортировано: ${result.results.success} товаров`
+                }
             } else {
-                statusEl.className = 'status-message error'
-                statusEl.textContent = `Ошибки: ${result.results.errors.length}. Успешно: ${result.results.success}`
+                if (statusEl) {
+                    statusEl.className = 'status-message error'
+                    statusEl.textContent = `Ошибки: ${result.results.errors.length}. Успешно: ${result.results.success}`
+                }
             }
         } catch (error) {
             console.error('Import error:', error)
             const statusEl = document.getElementById('importStatus')
-            statusEl.className = 'status-message error'
-            statusEl.textContent = 'Ошибка чтения файла: ' + error.message
+            if (statusEl) {
+                statusEl.className = 'status-message error'
+                statusEl.textContent = 'Ошибка чтения файла: ' + error.message
+            }
         }
     }
     

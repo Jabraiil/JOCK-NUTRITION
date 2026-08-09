@@ -1004,6 +1004,8 @@ body {
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     display: flex;
     flex-direction: column;
+    content-visibility: auto;
+    contain-intrinsic-size: auto 400px;
 }
 
 .product-card:hover {
@@ -1514,6 +1516,7 @@ body {
     object-fit: cover;
     border-radius: var(--radius-md);
     background: var(--bg);
+    transition: opacity 0.15s ease;
 }
 
 .modal-image-nav {

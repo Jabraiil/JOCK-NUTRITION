@@ -687,7 +687,7 @@ function createProductCard(product) {
     return `
         <div class="product-card" data-id="${escapeHtml(String(product.id))}">
             <div class="product-image-wrap">
-                <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(product.name)}" class="product-image" loading="lazy">
+                <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(product.name)}" class="product-image" loading="lazy" decoding="async" width="400" height="533" fetchpriority="low">
                 ${badges.length > 0 ? `<div class="product-badges-overlay">${badges.join('')}</div>` : ''}
                 <button class="favorite-btn ${favorited ? 'active' : ''}" data-id="${escapeHtml(String(product.id))}" aria-label="В избранное">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
@@ -743,11 +743,11 @@ function openProductModal(productId) {
     modalBody.innerHTML = `
         ${(() => {
             if (images.length <= 1) {
-                return imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(product.name)}">` : ''
+                return imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(product.name)}" decoding="async" width="800" height="1067" fetchpriority="high">` : ''
             }
             return `
-                <div class="modal-image-gallery">
-                    <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(product.name)}" id="modalMainImage">
+                <div class="modal-image-gallery" id="modalImageGallery">
+                    <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(product.name)}" id="modalMainImage" decoding="async" width="800" height="1067" fetchpriority="high">
                     <button class="modal-image-nav modal-image-prev" id="modalPrevImg" aria-label="Предыдущее фото">&lt;</button>
                     <button class="modal-image-nav modal-image-next" id="modalNextImg" aria-label="Следующее фото">&gt;</button>
                 </div>
@@ -837,7 +837,7 @@ function openProductModal(productId) {
                             const rUrl = rImg?.url || ''
                             return `
                                 <button class="related-card" data-id="${escapeHtml(String(r.id))}">
-                                    ${rUrl ? `<img src="${escapeHtml(rUrl)}" alt="${escapeHtml(r.name)}" loading="lazy">` : ''}
+                                    ${rUrl ? `<img src="${escapeHtml(rUrl)}" alt="${escapeHtml(r.name)}" loading="lazy" decoding="async" width="400" height="533">` : ''}
                                     <div class="related-name">${escapeHtml(r.name)}</div>
                                     <div class="related-price">${r.price} ₽</div>
                                 </button>
@@ -873,12 +873,22 @@ function openProductModal(productId) {
         const nextBtn = modalBody.querySelector('#modalNextImg')
         const dots = modalBody.querySelectorAll('.modal-image-dot')
         const counter = modalBody.querySelector('#modalImageCounter')
+        const gallery = modalBody.querySelector('#modalImageGallery')
+
+        let touchStartX = 0
+        let touchEndX = 0
+        const minSwipeDistance = 50
 
         const updateModalImage = (index) => {
             if (index < 0 || index >= images.length) return
             currentImageIndex = index
             const img = images[index]
-            if (mainImageEl) mainImageEl.src = escapeHtml(img.url)
+            if (mainImageEl) {
+                mainImageEl.style.opacity = '0.5'
+                mainImageEl.onload = () => { mainImageEl.style.opacity = '1' }
+                mainImageEl.onerror = () => { mainImageEl.style.opacity = '1' }
+                mainImageEl.src = escapeHtml(img.url)
+            }
             if (counter) counter.textContent = `${index + 1} / ${images.length}`
             dots.forEach((dot, i) => {
                 dot.classList.toggle('active', i === index)
@@ -897,6 +907,27 @@ function openProductModal(productId) {
                 updateModalImage(index)
             }
         })
+
+        if (gallery) {
+            gallery.addEventListener('touchstart', (e) => {
+                touchStartX = e.changedTouches[0].screenX
+                touchStartY = e.changedTouches[0].screenY
+            }, { passive: true })
+
+            gallery.addEventListener('touchend', (e) => {
+                touchEndX = e.changedTouches[0].screenX
+                touchEndY = e.changedTouches[0].screenY
+                const distanceX = Math.abs(touchEndX - touchStartX)
+                const distanceY = Math.abs(touchEndY - touchStartY)
+                if (distanceX > minSwipeDistance && distanceX > distanceY) {
+                    if (touchEndX > touchStartX) {
+                        updateModalImage(currentImageIndex - 1)
+                    } else {
+                        updateModalImage(currentImageIndex + 1)
+                    }
+                }
+            }, { passive: true })
+        }
     }
 
     const productModal = document.getElementById('productModal')
@@ -1067,9 +1098,11 @@ function renderCart() {
         const itemTotal = product.price * cartItem.quantity
         total += itemTotal
 
+        const cartImg = product.product_images?.[0]?.url || 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="120" height="160"><rect fill="%23f0f0f0" width="120" height="160"/><text fill="%23999" font-family="sans-serif" font-size="12" x="50%" y="50%" text-anchor="middle" dy=".3em">Нет фото</text></svg>')
+
         return `
             <div class="cart-item">
-                <img src="${escapeHtml(product.product_images?.[0]?.url || '')}" alt="${escapeHtml(product.name)}" class="cart-item-image">
+                <img src="${escapeHtml(cartImg)}" alt="${escapeHtml(product.name)}" class="cart-item-image" decoding="async" width="120" height="160">
                 <div class="cart-item-info">
                     <div class="cart-item-name">${escapeHtml(cleanProductName(product.name, product.brands?.name))}</div>
                     <div class="cart-item-price">${product.price} ₽ × ${cartItem.quantity} = ${itemTotal} ₽</div>
