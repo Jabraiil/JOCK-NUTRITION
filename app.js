@@ -98,6 +98,7 @@ function init() {
         checkOrderTime()
         setInterval(checkOrderTime, 60000)
         checkCookieConsent()
+        setupOfflineListener()
         window.addEventListener('resize', invalidateScanCropCache)
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
@@ -657,6 +658,7 @@ function renderProducts(products) {
         return
     }
     catalog.innerHTML = products.map(product => createProductCard(product)).join('')
+    initProductSliders()
 }
 
 function appendProducts(products) {
@@ -664,11 +666,62 @@ function appendProducts(products) {
     if (!catalog) return
     const html = products.map(product => createProductCard(product)).join('')
     catalog.insertAdjacentHTML('beforeend', html)
+    initProductSliders()
+}
+
+const initializedSliderTracks = new WeakSet()
+
+function initProductSliders() {
+    const tracks = document.querySelectorAll('.slider-track')
+    if (!tracks.length) return
+
+    tracks.forEach(track => {
+        if (initializedSliderTracks.has(track)) return
+        initializedSliderTracks.add(track)
+
+        const count = parseInt(track.dataset.count || '1', 10)
+        if (count <= 1) {
+            track.style.overflowX = 'hidden'
+            return
+        }
+
+        const wrap = track.closest('.product-image-wrap')
+        if (!wrap) return
+        const dots = wrap.querySelectorAll('.slider-dot')
+        if (!dots.length) return
+
+        const updateDots = () => {
+            const scrollLeft = track.scrollLeft
+            const width = track.clientWidth
+            if (width === 0) return
+            const index = Math.round(scrollLeft / width)
+            dots.forEach((dot, i) => {
+                dot.classList.toggle('active', i === index)
+            })
+        }
+
+        track.addEventListener('scroll', updateDots, { passive: true })
+
+        dots.forEach(dot => {
+            dot.addEventListener('click', (e) => {
+                e.stopPropagation()
+                const index = parseInt(dot.dataset.index, 10)
+                const width = track.clientWidth
+                if (width > 0) {
+                    track.scrollTo({ left: width * index, behavior: 'smooth' })
+                }
+            })
+        })
+    })
 }
 
 function createProductCard(product) {
-    const mainImage = product.product_images?.find(img => img.is_main) || product.product_images?.[0]
-    const imageUrl = mainImage?.url || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect fill="%23f0f0f0" width="200" height="200"/><text fill="%23999" font-family="sans-serif" font-size="14" x="50%" y="50%" text-anchor="middle" dy=".3em">Нет фото</text></svg>'
+    const images = (product.product_images || []).slice().sort((a, b) => {
+        if (a.is_main && !b.is_main) return -1
+        if (!a.is_main && b.is_main) return 1
+        return 0
+    })
+    const fallbackImg = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect fill="%23f0f0f0" width="200" height="200"/><text fill="%23999" font-family="sans-serif" font-size="14" x="50%" y="50%" text-anchor="middle" dy=".3em">Нет фото</text></svg>'
 
     const cartItem = cart.find(c => c.id === product.id)
     const inCart = cartItem ? cartItem.quantity : 0
@@ -684,10 +737,24 @@ function createProductCard(product) {
         ? Math.round((1 - product.price / product.old_price) * 100)
         : 0
 
+    const imagesHtml = images.map(img =>
+        `<img src="${escapeHtml(img.url || fallbackImg)}" alt="${escapeHtml(product.name)}" class="slider-img" loading="lazy" decoding="async" width="400" height="533">`
+    ).join('')
+
+    const trackCount = Math.max(images.length, 1)
+    const dotsHtml = trackCount > 1 ? `
+        <div class="slider-dots" data-count="${trackCount}">
+            ${Array.from({ length: trackCount }, (_, i) => `<button class="slider-dot${i === 0 ? ' active' : ''}" data-index="${i}" aria-label="Фото ${i + 1}"></button>`).join('')}
+        </div>
+    ` : ''
+
     return `
         <div class="product-card" data-id="${escapeHtml(String(product.id))}">
             <div class="product-image-wrap">
-                <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(product.name)}" class="product-image" loading="lazy" decoding="async" width="400" height="533" fetchpriority="low">
+                <div class="slider-track" data-count="${trackCount}">
+                    ${imagesHtml || `<img src="${fallbackImg}" alt="Нет фото" class="slider-img" width="400" height="533">`}
+                </div>
+                ${dotsHtml}
                 ${badges.length > 0 ? `<div class="product-badges-overlay">${badges.join('')}</div>` : ''}
                 <button class="favorite-btn ${favorited ? 'active' : ''}" data-id="${escapeHtml(String(product.id))}" aria-label="В избранное">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
@@ -696,7 +763,7 @@ function createProductCard(product) {
                 </button>
             </div>
             <div class="product-info">
-                <div class="product-brand">${escapeHtml(product.brands?.name || '')}</div>
+                <div class="product-brand">${escapeHtml(product.brands?.name || 'JOCK NUTRITION')}</div>
                 <div class="product-name">${escapeHtml(displayName)}</div>
                 <div class="product-volume">${escapeHtml(product.volume || '')}</div>
                 <div class="product-price-block">
@@ -1691,20 +1758,49 @@ function getPrivacyFallbackContent() {
     `
 }
 
-// Service Worker (обход кеша GitHub Pages)
+// Service Worker (обход кеша GitHub Pages + отслеживание обновлений)
 let swControllerListenerAdded = false
 
-function registerServiceWorker() {
-    if ('serviceWorker' in navigator && !location.pathname.startsWith('/admin/')) {
-        navigator.serviceWorker.register('./sw.js')
-            .then(reg => {
-                if (navigator.serviceWorker.controller && !swControllerListenerAdded) {
-                    swControllerListenerAdded = true
-                    navigator.serviceWorker.addEventListener('controllerchange', () => location.reload())
-                }
-                reg.update()
+async function registerServiceWorker() {
+    if (!('serviceWorker' in navigator) || location.pathname.startsWith('/admin/')) return
+
+    try {
+        const registration = await navigator.serviceWorker.register('./sw.js')
+
+        if (navigator.serviceWorker.controller && !swControllerListenerAdded) {
+            swControllerListenerAdded = true
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                window.location.reload()
             })
-            .catch(error => console.error('Service Worker registration failed:', error))
+        }
+
+        registration.addEventListener('updatefound', () => {
+            const newWorker = registration.installing
+            if (newWorker) {
+                newWorker.addEventListener('statechange', () => {
+                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                        showUpdateNotification()
+                    }
+                })
+            }
+        })
+
+        registration.update()
+    } catch (error) {
+        console.error('Service Worker registration failed:', error)
+    }
+}
+
+function showUpdateNotification() {
+    const banner = document.getElementById('updateBanner')
+    if (!banner) return
+    banner.classList.remove('hidden')
+
+    const reloadBtn = document.getElementById('updateReloadBtn')
+    if (reloadBtn) {
+        reloadBtn.onclick = () => {
+            window.location.reload()
+        }
     }
 }
 
@@ -1743,6 +1839,12 @@ function showA2HSModal() {
     }
 }
 
+function trackPWAInstall() {
+    try {
+        localStorage.setItem('jack-pwa-install-attempt', Date.now().toString())
+    } catch (e) {}
+}
+
 function initA2HS() {
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true
     if (isStandalone) return
@@ -1752,27 +1854,40 @@ function initA2HS() {
     localStorage.setItem('jack-visit-count', String(visitCount))
     const isSecondVisit = visitCount >= 2
 
-    if (isSecondVisit) {
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault()
-            deferredPrompt = e
-            setTimeout(showA2HSModal, 3000)
-        })
-        const isIOS = /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase()) && !window.MSStream
-        if (isIOS && /safari/i.test(navigator.userAgent) && !/crios|fxios|edgios/.test(navigator.userAgent)) {
-            setTimeout(showA2HSModal, 5000)
-        }
-    } else {
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault()
-            deferredPrompt = e
-            setTimeout(showA2HSBanner, 3000)
-        })
-        const isIOS = /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase()) && !window.MSStream
-        if (isIOS && /safari/i.test(navigator.userAgent) && !/crios|fxios|edgios/.test(navigator.userAgent)) {
-            setTimeout(showA2HSBanner, 5000)
+    const showTarget = isSecondVisit ? showA2HSModal : showA2HSBanner
+    const iosDelay = isSecondVisit ? 5000 : 5000
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault()
+        deferredPrompt = e
+        setTimeout(showTarget, 3000)
+    })
+
+    window.addEventListener('appinstalled', () => {
+        deferredPrompt = null
+        trackPWAInstall()
+    })
+
+    const isIOS = /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase()) && !window.MSStream
+    if (isIOS && /safari/i.test(navigator.userAgent) && !/crios|fxios|edgios/.test(navigator.userAgent)) {
+        setTimeout(showTarget, iosDelay)
+    }
+}
+
+function setupOfflineListener() {
+    const updateOnlineStatus = () => {
+        const errorEl = document.getElementById('error')
+        if (!navigator.onLine && errorEl) {
+            errorEl.textContent = 'Нет подключения к интернету. Некоторые функции могут быть ограничены.'
+            errorEl.classList.remove('hidden')
+        } else if (navigator.onLine && errorEl) {
+            errorEl.classList.add('hidden')
         }
     }
+
+    window.addEventListener('online', updateOnlineStatus)
+    window.addEventListener('offline', updateOnlineStatus)
+    updateOnlineStatus()
 }
 
 // Global error handler
