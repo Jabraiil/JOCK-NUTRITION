@@ -89,11 +89,42 @@ const apiCache = {
 
 let initialized = false
 
+function resetFilterState() {
+    favoritesOnly = false
+    const navFav = document.getElementById('navFavorites')
+    if (navFav) navFav.classList.remove('active')
+    const categoryFilter = document.getElementById('categoryFilter')
+    if (categoryFilter) categoryFilter.value = ''
+    const brandFilter = document.getElementById('brandFilter')
+    if (brandFilter) brandFilter.value = ''
+    const priceFrom = document.getElementById('priceFrom')
+    if (priceFrom) priceFrom.value = ''
+    const priceTo = document.getElementById('priceTo')
+    if (priceTo) priceTo.value = ''
+    const sortFilter = document.getElementById('sortFilter')
+    if (sortFilter) sortFilter.value = 'newest'
+    const searchInput = document.getElementById('searchInput')
+    if (searchInput) searchInput.value = ''
+    const searchBar = document.getElementById('searchBar')
+    if (searchBar && !searchBar.classList.contains('hidden')) {
+        searchBar.classList.add('hidden')
+    }
+    const bottomNavItems = document.querySelectorAll('.bottom-nav-item')
+    if (bottomNavItems.length) {
+        bottomNavItems.forEach(n => n.classList.remove('active'))
+    }
+    const navCatalog = document.getElementById('bottomNav')
+    if (navCatalog && navCatalog.firstElementChild) {
+        navCatalog.firstElementChild.classList.add('active')
+    }
+}
+
 function init() {
     if (initialized) return
     initialized = true
     try {
         applyTheme()
+        resetFilterState()
         loadSettings()
         loadProducts()
         updateCartCount()
@@ -495,6 +526,11 @@ async function loadProducts(reset = true) {
         if (reset) {
             filteredProducts = allProducts
             productsTotal = allProducts.length
+            productsPage = 1
+            hasMoreProducts = productsTotal > PRODUCTS_PER_PAGE
+            favoritesOnly = false
+            const navFav = document.getElementById('navFavorites')
+            if (navFav) navFav.classList.remove('active')
             renderProducts(allProducts.slice(0, PRODUCTS_PER_PAGE))
             updatePagination()
         }
