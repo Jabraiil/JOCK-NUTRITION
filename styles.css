@@ -1174,19 +1174,11 @@ select:focus:not(:focus-visible) {
     z-index: 3;
     padding: 4px 8px;
     border-radius: 10px;
-    background: rgba(0,0,0,0.2);
-    backdrop-filter: blur(4px);
-}
-
-@supports not (backdrop-filter: blur(4px)) {
-    .product-image-wrap .slider-dots {
-        background: rgba(0, 0, 0, 0.45);
-    }
 }
 
 .product-image-wrap .slider-dot {
-    min-width: 44px;
-    min-height: 44px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
     background: rgba(255,255,255,0.6);
     border: none;
@@ -1724,20 +1716,12 @@ select:focus:not(:focus-visible) {
     gap: 6px;
     padding: 4px 10px;
     border-radius: 10px;
-    background: rgba(0,0,0,0.25);
-    backdrop-filter: blur(4px);
     z-index: 3;
 }
 
-@supports not (backdrop-filter: blur(4px)) {
-    .modal-slider-dots {
-        background: rgba(0, 0, 0, 0.5);
-    }
-}
-
 .modal-slider-dot {
-    min-width: 44px;
-    min-height: 44px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.6);
     border: none;

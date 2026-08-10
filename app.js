@@ -1082,6 +1082,7 @@ function switchSection(nav) {
             favoritesOnly = false
             const navFav = document.getElementById('navFavorites')
             if (navFav) navFav.classList.remove('active')
+            applyFilters()
         }
         window.scrollTo({ top: 0, behavior: 'smooth' })
     } else if (nav === 'search') {
