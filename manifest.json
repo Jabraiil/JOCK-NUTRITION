@@ -1,10 +1,10 @@
 {
-  "id": "/",
+  "id": "/JOCK-NUTRITION/",
   "name": "JOCK NUTRITION",
   "short_name": "JOCK",
   "description": "Интернет-магазин биологически активных добавок",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": "/JOCK-NUTRITION/",
+  "scope": "/JOCK-NUTRITION/",
   "display": "standalone",
   "display_override": ["standalone", "fullscreen", "minimal-ui"],
   "background_color": "#F2F2F7",
