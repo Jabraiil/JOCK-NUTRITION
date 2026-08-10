@@ -1,28 +1,28 @@
 const CACHE_VERSION = 'jock-nutrition-v39-2026-08-10'
 const PRECACHE_URLS = [
-    '/index.html',
-    '/offline.html',
-    '/styles.css?v=38',
-    '/app.js?v=38',
-    '/scanner-worker.js',
-    '/manifest.json',
-    '/favicon.ico',
-    '/privacy.html',
-    '/assets/icons/icon-192.png',
-    '/assets/icons/icon-192-maskable.png',
-    '/assets/icons/icon-512.png',
-    '/assets/icons/icon-512-maskable.png',
-    '/assets/icons/favicon-16x16.png',
-    '/assets/icons/favicon-32x32.png',
-    '/assets/icons/apple-touch-icon.png',
-    '/icons/apple-touch-icon.svg',
-    '/icons/icon-192.svg',
-    '/icons/icon-512.svg',
-    '/icons/favicon.svg',
-    '/admin/styles.css',
-    '/admin/app.js?v=36',
-    '/admin/index.html',
-    '/sitemap.xml'
+    'index.html',
+    'offline.html',
+    'styles.css?v=38',
+    'app.js?v=38',
+    'scanner-worker.js',
+    'manifest.json',
+    'favicon.ico',
+    'privacy.html',
+    'assets/icons/icon-192.png',
+    'assets/icons/icon-192-maskable.png',
+    'assets/icons/icon-512.png',
+    'assets/icons/icon-512-maskable.png',
+    'assets/icons/favicon-16x16.png',
+    'assets/icons/favicon-32x32.png',
+    'assets/icons/apple-touch-icon.png',
+    'icons/apple-touch-icon.svg',
+    'icons/icon-192.svg',
+    'icons/icon-512.svg',
+    'icons/favicon.svg',
+    'admin/styles.css',
+    'admin/app.js?v=36',
+    'admin/index.html',
+    'sitemap.xml'
 ]
 
 const CACHE_STRATEGIES = {
@@ -214,13 +214,13 @@ self.addEventListener('fetch', (event) => {
                     return response
                 })
                 .catch(async () => {
-                    const cached = await caches.match('/offline.html', { cacheName: cacheName('pages') })
+                    const cached = await caches.match('offline.html', { cacheName: cacheName('pages') })
                     if (cached) return cached
                     if (url.pathname.startsWith('/admin/')) {
-                        const adminCached = await caches.match('/admin/index.html', { cacheName: cacheName('pages') })
+                        const adminCached = await caches.match('admin/index.html', { cacheName: cacheName('pages') })
                         if (adminCached) return adminCached
                     }
-                    const indexCached = await caches.match('/index.html', { cacheName: cacheName('pages') })
+                    const indexCached = await caches.match('index.html', { cacheName: cacheName('pages') })
                     if (indexCached) return indexCached
                     return new Response('Offline', { status: 503 })
                 })

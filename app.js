@@ -1798,7 +1798,7 @@ async function openPrivacyModal() {
     modal.classList.remove('hidden')
 
     try {
-        const response = await fetchWithTimeout('privacy.html', {}, 5000)
+        const response = await fetchWithTimeout('./privacy.html', {}, 5000)
         if (response.ok) {
             const html = await response.text()
             const parser = new DOMParser()
