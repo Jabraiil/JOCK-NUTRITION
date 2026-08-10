@@ -129,6 +129,7 @@ function init() {
         loadSettings()
         loadProducts()
         updateCartCount()
+        initBanner()
         setupEventListeners()
         checkOrderTime()
         setInterval(checkOrderTime, 60000)
@@ -539,6 +540,7 @@ async function loadProducts(reset = true) {
             if (navFav) navFav.classList.remove('active')
             renderProducts(allProducts.slice(0, PRODUCTS_PER_PAGE))
             updatePagination()
+            initBanner()
         }
     } catch (error) {
         showError(error && error.message ? error.message : String(error))
@@ -668,6 +670,7 @@ function filterAndRenderProducts(filters = {}) {
     hasMoreProducts = productsTotal > PRODUCTS_PER_PAGE
     renderProducts(filtered.slice(0, PRODUCTS_PER_PAGE))
     updatePagination()
+    initBanner()
 }
 
 function applyFilters() {
@@ -687,6 +690,7 @@ function applyFilters() {
         favoritesOnly: favoritesOnly
     }
     filterAndRenderProducts(filters)
+    updateBannerVisibility()
 }
 
 function resetFilters() {
@@ -823,7 +827,7 @@ function createProductCard(product) {
                 ${badges.length > 0 ? `<div class="product-badges-overlay">${badges.join('')}</div>` : ''}
                 <button class="favorite-btn ${favorited ? 'active' : ''}" data-id="${escapeHtml(String(product.id))}" aria-label="В избранное">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
-                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78a5.5 5.5 0 0 0 0-7.78z"></path>
+                        <path d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"></path>
                     </svg>
                 </button>
             </div>
@@ -883,7 +887,6 @@ function openProductModal(productId) {
                         ${images.map((_, idx) => `<button class="modal-slider-dot${idx === currentImageIndex ? ' active' : ''}" data-index="${idx}" aria-label="Фото ${idx + 1}"></button>`).join('')}
                     </div>
                 </div>
-                <div class="modal-image-counter" id="modalImageCounter">${currentImageIndex + 1} / ${images.length}</div>
             `
         })()}
         <div class="modal-brand">${escapeHtml(product.brands?.name || 'JOCK NUTRITION')}</div>
@@ -998,14 +1001,12 @@ function openProductModal(productId) {
 
     const track = modalBody.querySelector('.modal-slider-track')
     const dots = modalBody.querySelectorAll('.modal-slider-dot')
-    const counter = modalBody.querySelector('#modalImageCounter')
 
     if (!track) return
 
     const count = parseInt(track.dataset.count || '1', 10)
     if (count <= 1) {
         track.style.overflowX = 'hidden'
-        if (counter) counter.textContent = '1 / 1'
         return
     }
 
@@ -1019,7 +1020,6 @@ function openProductModal(productId) {
         dots.forEach((dot, i) => {
             dot.classList.toggle('active', i === index)
         })
-        if (counter) counter.textContent = `${index + 1} / ${count}`
     }
 
     track.addEventListener('scroll', updateDots, { passive: true })
@@ -1200,6 +1200,7 @@ function toggleFavoritesView() {
     favoritesOnly = !favoritesOnly
     const navFav = document.getElementById('navFavorites')
     if (navFav) navFav.classList.toggle('active', favoritesOnly)
+    updateBannerVisibility()
     applyFilters()
 }
 
@@ -1818,6 +1819,248 @@ function debounce(func, wait) {
         }
         clearTimeout(timeout)
         timeout = setTimeout(later, wait)
+    }
+}
+
+let bannerSlides = []
+let bannerCurrentIndex = 0
+let bannerInterval = null
+let bannerPaused = false
+
+const BANNER_INTERVAL_MS = 5000
+
+function initBanner() {
+    const banner = document.getElementById('promoBanner')
+    const track = document.getElementById('promoBannerTrack')
+    const dotsContainer = document.getElementById('promoBannerDots')
+    if (!banner || !track || !dotsContainer) return
+
+    bannerSlides = getBannerSlides()
+    if (!bannerSlides.length) {
+        banner.classList.add('hidden')
+        return
+    }
+
+    banner.classList.remove('hidden')
+
+    track.innerHTML = bannerSlides.map((slide, idx) => {
+        const isSplit = slide.layout === 'split'
+        const imagePosition = slide.image_position || 'center'
+        const hasImage = slide.image && slide.image.trim() !== ''
+        const badgeHtml = slide.badge ? `<div class="promo-badge">${escapeHtml(slide.badge)}</div>` : ''
+        const linkHtml = slide.link ? `<a href="${escapeHtml(slide.link)}" class="promo-link" ${slide.link.startsWith('http') ? 'target="_blank" rel="noopener" ' : ''}>Подробнее</a>` : ''
+        const textHtml = slide.text ? `<div class="promo-text">${escapeHtml(slide.text)}</div>` : ''
+        const activeClass = idx === 0 ? 'active' : ''
+        const splitPosClass = isSplit ? `split-${imagePosition}` : ''
+
+        let imageHtml = ''
+        let styleAttr = ''
+        if (isSplit && hasImage) {
+            const imgPosStyle = imagePosition === 'left' ? 'left: 0; right: auto;' : imagePosition === 'right' ? 'right: 0; left: auto;' : 'left: 50%; transform: translateX(-50%);'
+            imageHtml = `<img class="promo-split-image" src="${escapeHtml(slide.image)}" alt="" style="${imgPosStyle}" loading="lazy">`
+        } else if (hasImage) {
+            const bgPos = imagePosition === 'left' ? 'left center' : imagePosition === 'right' ? 'right center' : 'center center'
+            styleAttr = `background-image: url('${escapeHtml(slide.image)}'); background-position: ${bgPos};`
+        }
+
+        return `
+            <div class="promo-banner-slide ${activeClass} ${splitPosClass}" data-index="${idx}" data-link="${escapeHtml(slide.link || '')}" data-product-id="${escapeHtml(slide.product_id || '')}" style="${styleAttr}">
+                ${imageHtml}
+                <div class="promo-content">
+                    ${badgeHtml}
+                    <div class="promo-title">${escapeHtml(slide.title)}</div>
+                    ${slide.subtitle ? `<div class="promo-subtitle">${escapeHtml(slide.subtitle)}</div>` : ''}
+                    ${textHtml}
+                    ${linkHtml}
+                </div>
+            </div>
+        `
+    }).join('') + '<div class="promo-banner-dots" id="promoBannerDots"></div>'
+
+    const newDotsContainer = document.getElementById('promoBannerDots')
+    if (newDotsContainer) {
+        newDotsContainer.innerHTML = bannerSlides.map((_, idx) =>
+            `<button class="promo-banner-dot${idx === 0 ? ' active' : ''}" data-index="${idx}" aria-label="Слайд ${idx + 1}"></button>`
+        ).join('')
+    }
+
+    bannerCurrentIndex = 0
+    startBannerAutoplay()
+
+    track.addEventListener('mouseenter', () => { bannerPaused = true })
+    track.addEventListener('mouseleave', () => { bannerPaused = false })
+    track.addEventListener('touchstart', () => { bannerPaused = true }, { passive: true })
+    track.addEventListener('touchend', () => { bannerPaused = false })
+
+    const dots = track.querySelectorAll('.promo-banner-dot')
+    dots.forEach(dot => {
+        dot.addEventListener('click', (e) => {
+            e.stopPropagation()
+            const index = parseInt(dot.dataset.index, 10)
+            goToBannerSlide(index)
+            resetBannerAutoplay()
+        })
+    })
+
+    const slides = track.querySelectorAll('.promo-banner-slide')
+    slides.forEach(slide => {
+        slide.addEventListener('click', (e) => {
+            const link = slide.dataset.link
+            const productId = slide.dataset.productId
+            if (productId) {
+                openProductModal(productId)
+            } else if (link) {
+                if (link.startsWith('http')) {
+                    window.open(link, '_blank', 'noopener,noreferrer')
+                } else {
+                    window.location.href = link
+                }
+            }
+        })
+    })
+}
+
+function getBannerSlides() {
+    const settings = window.__storeSettings || {}
+    const customSlides = settings.promo_banner_slides
+    if (customSlides) {
+        try {
+            const parsed = JSON.parse(customSlides)
+            if (Array.isArray(parsed) && parsed.length) {
+                return parsed.map(s => ({
+                    ...s,
+                    product_id: s.product_id || s.productId || null,
+                    image_position: s.image_position || s.imagePosition || 'center',
+                    layout: s.layout || 'full',
+                    text: s.text || null,
+                    sort_order: s.sort_order ?? s.sortOrder ?? 0
+                }))
+            }
+        } catch (e) {
+            console.error('Failed to parse promo_banner_slides:', e)
+        }
+    }
+
+    const newProducts = (allProducts || [])
+        .filter(p => p.is_new)
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .slice(0, 3)
+
+    const slides = []
+
+    if (newProducts.length > 0) {
+        const np = newProducts[0]
+        const img = np.product_images?.find(i => i.is_main) || np.product_images?.[0]
+        slides.push({
+            type: 'product',
+            product_id: String(np.id),
+            image: img?.url || '',
+            title: cleanProductName(np.name, np.brands?.name),
+            subtitle: `Новинка от ${np.brands?.name || 'JOCK NUTRITION'}`,
+            badge: 'NEW',
+            link: null,
+            layout: 'full',
+            image_position: 'center',
+            text: null,
+            sort_order: 0
+        })
+    }
+
+    const discountProducts = (allProducts || [])
+        .filter(p => p.is_discount && p.old_price && p.price < p.old_price)
+        .sort((a, b) => {
+            const dA = Math.round((1 - a.price / a.old_price) * 100)
+            const dB = Math.round((1 - b.price / b.old_price) * 100)
+            return dB - dA
+        })
+        .slice(0, 2)
+
+    discountProducts.forEach(p => {
+        const img = p.product_images?.find(i => i.is_main) || p.product_images?.[0]
+        const discountPercent = Math.round((1 - p.price / p.old_price) * 100)
+        slides.push({
+            type: 'product',
+            product_id: String(p.id),
+            image: img?.url || '',
+            title: `Скидка ${discountPercent}%`,
+            subtitle: cleanProductName(p.name, p.brands?.name),
+            badge: 'SALE',
+            link: null,
+            layout: 'full',
+            image_position: 'center',
+            text: null,
+            sort_order: 0
+        })
+    })
+
+    if (!slides.length) {
+        slides.push({
+            type: 'promo',
+            image: '',
+            title: 'JOCK NUTRITION',
+            subtitle: 'Спортивное питание премиум качества',
+            badge: null,
+            link: null,
+            layout: 'full',
+            image_position: 'center',
+            text: null,
+            sort_order: 0
+        })
+    }
+
+    return slides
+}
+
+function goToBannerSlide(index) {
+    const track = document.getElementById('promoBannerTrack')
+    if (!track) return
+
+    const total = bannerSlides.length
+    if (total === 0) return
+
+    bannerCurrentIndex = ((index % total) + total) % total
+
+    const slides = track.querySelectorAll('.promo-banner-slide')
+    const dots = track.querySelectorAll('.promo-banner-dot')
+
+    slides.forEach((slide, i) => {
+        slide.classList.toggle('active', i === bannerCurrentIndex)
+    })
+    dots.forEach((dot, i) => {
+        dot.classList.toggle('active', i === bannerCurrentIndex)
+    })
+}
+
+function startBannerAutoplay() {
+    stopBannerAutoplay()
+    bannerInterval = setInterval(() => {
+        if (bannerPaused) return
+        goToBannerSlide(bannerCurrentIndex + 1)
+    }, BANNER_INTERVAL_MS)
+}
+
+function stopBannerAutoplay() {
+    if (bannerInterval) {
+        clearInterval(bannerInterval)
+        bannerInterval = null
+    }
+}
+
+function resetBannerAutoplay() {
+    startBannerAutoplay()
+}
+
+function updateBannerVisibility() {
+    const banner = document.getElementById('promoBanner')
+    if (!banner) return
+    if (favoritesOnly) {
+        banner.classList.add('hidden')
+        stopBannerAutoplay()
+    } else {
+        banner.classList.remove('hidden')
+        if (bannerSlides.length > 0) {
+            startBannerAutoplay()
+        }
     }
 }
 

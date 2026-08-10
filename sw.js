@@ -1,4 +1,5 @@
 const CACHE_VERSION = 'jock-nutrition-v40-2026-08-10'
+const BASE_PATH = self.location.pathname.replace(/\/sw\.js$/, '').replace(/\/$/, '') + '/'
 const PRECACHE_URLS = [
     'index.html',
     'offline.html',
@@ -222,8 +223,8 @@ self.addEventListener('fetch', (event) => {
                 .catch(async () => {
                     const cached = await caches.match('offline.html', { cacheName: cacheName('pages') })
                     if (cached) return cached
-                    if (url.pathname.startsWith('/admin/')) {
-                        const adminCached = await caches.match('admin/index.html', { cacheName: cacheName('pages') })
+                    if (url.pathname === `${BASE_PATH}admin/` || url.pathname.startsWith(`${BASE_PATH}admin/`)) {
+                        const adminCached = await caches.match(`${BASE_PATH}admin/index.html`.replace(/^\//, ''), { cacheName: cacheName('pages') })
                         if (adminCached) return adminCached
                     }
                     const indexCached = await caches.match('index.html', { cacheName: cacheName('pages') })

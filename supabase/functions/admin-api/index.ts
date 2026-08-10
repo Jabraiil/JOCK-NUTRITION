@@ -40,6 +40,156 @@ serve(async (req) => {
       await supabase.from("product_related").insert(rows)
     }
 
+    async function callDeepSeek(apiKey: string, messages: any[], params: any) {
+      const response = await fetch("https://api.deepseek.com/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "deepseek-v4-flash",
+          messages,
+          stream: false,
+          ...params
+        })
+      })
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}))
+        throw new Error(errData.error?.message || errData.error || `AI API error: ${response.status}`)
+      }
+
+      return await response.json()
+    }
+
+    async function detectProductType(name: string): Promise<{ type: string; category: string }> {
+      const lower = (name || '').toLowerCase()
+      const perfumeKeywords = ['парфюм', 'духи', 'perfume', 'cologne', 'eau de toilette', 'eau de parfum', 'edt', 'edp', 'парфюмер', 'аромат']
+      const pharmacyKeywords = ['таблетки', 'мазь', 'гель', 'спрей', 'сироп', 'пластырь', 'спирт', 'раствор', 'ампулы', 'свечи', 'суппозитории', 'сироп', 'инъекции', 'масло для', 'бальзам', 'лосьон']
+      
+      for (const kw of perfumeKeywords) {
+        if (lower.includes(kw)) return { type: 'perfume', category: 'Парфюм' }
+      }
+      for (const kw of pharmacyKeywords) {
+        if (lower.includes(kw)) return { type: 'pharmacy', category: 'Аптека' }
+      }
+      return { type: 'supplement', category: 'БАДы' }
+    }
+    async function generateProductDescription(product: any, apiKey: string) {
+      const brandName = product.brands?.name || ''
+      const productName = product.name || ''
+      const volume = product.volume || ''
+      const composition = product.composition || ''
+      const detected = detectProductType(productName)
+      const productType = detected.type
+      const categoryName = detected.category
+
+      const isPerfume = productType === 'perfume'
+      const isPharmacy = productType === 'pharmacy'
+      const isSupplement = productType === 'supplement'
+
+      const messages = [
+        {
+          role: 'system',
+          content: 'Ты профессиональный копирайтер для интернет-магазина. Всегда отвечай только валидным JSON, без markdown, без объяснений.'
+        },
+        {
+          role: 'user',
+          content: `Создай описание для товара в интернет-магазине.
+
+Название: "${productName}"
+Бренд: "${brandName}"
+Категория: "${categoryName}"
+Объём/количество в упаковке: "${volume || 'не указан'}"
+${isSupplement && composition ? `Состав по умолчанию для этого типа: "${composition}"` : ''}
+
+Ответь ТОЛЬКО валидным JSON с точными полями:
+
+{
+  "description": "Краткое описание 3-4 строки. Без воды, без рекламных фраз. Просто и понятно: для чего этот товар, какой эффект даёт, кто его обычно покупает. Язычком для обычного человека.",
+  "full_description": "Развёрнутое описание 5-7 строк. Удобное для чтения на мобильном и ПК. Короткие абзацы. Объясни простым языком: что это, как работает, что даст пользователю. Если указан объём/количество в упаковке — используй его для расчёта 'хватит на X дней' на основе типовой дозировки для этого типа товара.",
+  "composition": "Состав. Для БАДов и аптечных товаров — перечисли основные активные компоненты с дозировками как на упаковке, переведя на русский. Для парфюма — перечисли аромат, семейство, ноты как на упаковке, переведя на русский.",
+  "dosage": "Дозировка с упаковки, переведённая на русский. Для парфюма — объём флакона. Если есть информация по объёму — оформи красиво с расчётом на сколько дней хватит.",
+  "usage": "Способ применения дословно с упаковки, переведённый на русский язык. Для парфюма — способ нанесения.",
+  "contraindications": "${isPerfume ? 'Для парфюма не указывай противопоказания. Оставь пустым.' : 'Стандартные противопоказания: индивидуальная непереносимость, беременность, кормление грудью. Для аптечных товаров добавь характерные противопоказания для этого типа препарата.'}"
+}
+
+Правила:
+- description: максимум 4 строки, без воды, понятно каждому
+- full_description: 5-7 строк, короткие абзацы, удобно читать на телефоне
+- composition: точный состав как на упаковке, переведённый на русский
+- dosage: дозировка как на упаковке, переведённая на русский, красиво отформатировать
+- usage: способ применения как на упаковке, переведённый на русский, кратко
+- contraindications: ${isPerfume ? 'пусто для парфюма' : 'только фактические, без выдуманных'}
+- Не придумывай состав, дозировку и способ применения — используй только общеизвестные стандартные данные для этого типа товара и информации из названия/объёма.`
+        }
+      ]
+
+      const data = await callDeepSeek(apiKey, messages, {
+        temperature: 0.3,
+        max_tokens: 1000,
+        response_format: { type: 'json_object' },
+        thinking: { type: 'disabled' }
+      })
+
+      const rawText = data?.choices?.[0]?.message?.content?.trim()
+      if (!rawText) throw new Error('Empty response from AI')
+
+      let parsed
+      try {
+        parsed = JSON.parse(rawText)
+      } catch (e) {
+        console.error('Failed to parse AI response:', rawText)
+        return null
+      }
+
+      const auditMessages = [
+        {
+          role: 'system',
+          content: 'Ты проверяешь качество описания товара для магазина. Отвечай только "OK" или "ERROR: причина".'
+        },
+        {
+          role: 'user',
+          content: `Проверь описание товара.
+
+Название: "${productName}"
+Категория: "${categoryName}"
+
+Description: "${parsed.description || ''}"
+Full description: "${parsed.full_description || ''}"
+Composition: "${parsed.composition || ''}"
+Dosage: "${parsed.dosage || ''}"
+Usage: "${parsed.usage || ''}"
+Contraindications: "${parsed.contraindications || ''}"
+
+Правила проверки:
+- description максимум 4 строки, без воды, понятно
+- full_description 5-7 строк, короткие абзацы, удобно для телефона
+- composition соответствует типу товара
+- dosage переведён на русский
+- usage переведён на русский
+- contraindications: для парфюма пусто, для остальных — стандартные
+
+Ответь "OK" если всё хорошо, или "ERROR: причина" если есть проблемы.`
+        }
+      ]
+
+      const auditData = await callDeepSeek(apiKey, auditMessages, {
+        temperature: 0.1,
+        max_tokens: 100,
+        thinking: { type: 'disabled' }
+      })
+
+      const auditResult = auditData?.choices?.[0]?.message?.content?.trim() || ''
+      if (auditResult.toLowerCase().includes('error:')) {
+        console.warn('Self-audit failed for product:', productName, auditResult)
+        return null
+      }
+
+      return parsed
+    }
+
     // Verify JWT token
     const authHeader = req.headers.get("Authorization")
     if (!authHeader) {
@@ -672,13 +822,20 @@ serve(async (req) => {
         const p = excelProducts[i]
         
         try {
+          // Auto-detect category if not provided
+          let categoryName = p.category || ''
+          if (!categoryName) {
+            const detected = detectProductType(p.name || '')
+            categoryName = detected.category
+          }
+
           // Get or create category
           let categoryId = null
-          if (p.category) {
+          if (categoryName) {
             const { data: existingCategory } = await supabase
               .from("categories")
               .select("id")
-              .eq("name", p.category)
+              .eq("name", categoryName)
               .single()
 
             if (existingCategory) {
@@ -686,7 +843,7 @@ serve(async (req) => {
             } else {
               const { data: newCategory } = await supabase
                 .from("categories")
-                .insert({ name: p.category })
+                .insert({ name: categoryName })
                 .select()
                 .single()
               categoryId = newCategory.id
@@ -897,6 +1054,86 @@ serve(async (req) => {
     if (req.method === "GET" && path === "/health") {
       return new Response(
         JSON.stringify({ status: "ok", timestamp: new Date().toISOString() }),
+        { headers: { "Content-Type": "application/json", ...corsHeaders } }
+      )
+    }
+
+    // POST /generate-descriptions
+    if (req.method === "POST" && path === "/generate-descriptions") {
+      const body = await req.json()
+      const apiKey = body.apiKey || ''
+
+      if (!apiKey) {
+        return new Response(
+          JSON.stringify({ error: "API ключ не указан" }),
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        )
+      }
+
+      const { data: products, error: productsError } = await supabase
+        .from("products")
+        .select("id, name, volume, composition, brands(name)")
+        .is("full_description", null)
+
+      if (productsError) throw productsError
+
+      if (!products || products.length === 0) {
+        return new Response(
+          JSON.stringify({ success: 0, errors: 0, message: "Все товары уже имеют описания" }),
+          { headers: { "Content-Type": "application/json", ...corsHeaders } }
+        )
+      }
+
+      const CHUNK_SIZE = 30
+      const chunks: any[][] = []
+      for (let i = 0; i < products.length; i += CHUNK_SIZE) {
+        chunks.push(products.slice(i, i + CHUNK_SIZE))
+      }
+
+      let totalSuccess = 0
+      let totalError = 0
+
+      for (const chunk of chunks) {
+        for (const product of chunk) {
+          try {
+            const result = await generateProductDescription(product, apiKey)
+            if (result) {
+              const { error: updateError } = await supabase
+                .from("products")
+                .update({
+                  description: result.description,
+                  full_description: result.full_description,
+                  composition: result.composition,
+                  dosage: result.dosage,
+                  usage: result.usage,
+                  contraindications: result.contraindications
+                })
+                .eq("id", product.id)
+
+              if (updateError) {
+                totalError++
+                console.error(`Failed to update product ${product.id}:`, updateError)
+              } else {
+                totalSuccess++
+              }
+            } else {
+              totalError++
+            }
+          } catch (err) {
+            totalError++
+            console.error(`Error generating description for product ${product.id}:`, err)
+          }
+
+          await new Promise(r => setTimeout(r, 300))
+        }
+
+        if (chunks.length > 1) {
+          await new Promise(r => setTimeout(r, 2000))
+        }
+      }
+
+      return new Response(
+        JSON.stringify({ success: totalSuccess, errors: totalError }),
         { headers: { "Content-Type": "application/json", ...corsHeaders } }
       )
     }

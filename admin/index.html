@@ -50,6 +50,7 @@
                 <button class="nav-item active" data-page="products">Товары</button>
                 <button class="nav-item" data-page="categories">Категории</button>
                 <button class="nav-item" data-page="brands">Бренды</button>
+                <button class="nav-item" data-page="banner">Баннер</button>
                 <button class="nav-item" data-page="analytics">Статистика</button>
                 <button class="nav-item" data-page="settings">Настройки</button>
                 <button class="nav-item" data-page="import">Импорт</button>
@@ -148,7 +149,7 @@
             <div id="analyticsPage" class="page">
                 <div class="analytics-filters">
                     <label for="analyticsPeriod" class="sr-only">Период аналитики</label>
-                    <select id="analyticsPeriod">
+                    <select id="analyticsPeriod" title="Период, за который показывается статистика">
                         <option value="day">День</option>
                         <option value="week">Неделя</option>
                         <option value="month" selected>Месяц</option>
@@ -209,33 +210,42 @@
                 <div class="pagination" id="ordersPagination"></div>
             </div>
 
+            <div id="bannerPage" class="page">
+                <div class="page-header">
+                    <button id="addBannerSlideBtn" class="btn btn-primary">+ Добавить слайд <span class="field-hint" data-tooltip="Создаёт новый слайд для баннера. Вы сможете выбрать товар, загрузить фото, добавить текст и ссылку.">?</span></button>
+                    <button id="saveBannerBtn" class="btn btn-secondary">Сохранить баннер <span class="field-hint" data-tooltip="Сохраняет все слайды в настройки. После сохранения изменения сразу появятся на сайте.">?</span></button>
+                </div>
+                <div id="bannerSlidesList" class="banner-slides-list"></div>
+                <div id="bannerError" class="error hidden"></div>
+            </div>
+
             <div id="settingsPage" class="page">
                 <form id="settingsForm" class="settings-form">
                     <div class="form-group">
-                        <label for="whatsappNumber">WhatsApp номер (обычный)</label>
+                        <label for="whatsappNumber">WhatsApp номер (обычный) <span class="field-hint" data-tooltip="Номер телефона для обычного WhatsApp. Используется для оформления заказов через WhatsApp личного аккаунта.">?</span></label>
                         <input type="text" id="whatsappNumber" placeholder="79991234567" autocomplete="tel">
                     </div>
                     <div class="form-group">
-                        <label for="whatsappBusinessNumber">WhatsApp Business номер</label>
+                        <label for="whatsappBusinessNumber">WhatsApp Business номер <span class="field-hint" data-tooltip="Номер телефона для WhatsApp Business. Если заполнен, клиент сможет выбрать, через какой аккаунт отправить заказ.">?</span></label>
                         <input type="text" id="whatsappBusinessNumber" placeholder="79991234567" autocomplete="tel">
                     </div>
                     <div class="form-group">
-                        <label for="whatsappAccountType">Тип WhatsApp по умолчанию</label>
+                        <label for="whatsappAccountType">Тип WhatsApp по умолчанию <span class="field-hint" data-tooltip="Какой тип WhatsApp будет выбран по умолчанию при оформлении заказа.">?</span></label>
                         <select id="whatsappAccountType">
                             <option value="personal">Обычный WhatsApp</option>
                             <option value="business">WhatsApp Business</option>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="storeName">Название магазина</label>
+                        <label for="storeName">Название магазина <span class="field-hint" data-tooltip="Название, которое отображается в заголовке браузера и может использоваться в шаблонах сообщений.">?</span></label>
                         <input type="text" id="storeName" value="JOCK NUTRITION" autocomplete="off">
                     </div>
                     <div class="form-group">
-                        <label for="logoText">Логотип (текст)</label>
+                        <label for="logoText">Логотип (текст) <span class="field-hint" data-tooltip="Текст логотипа в шапке сайта. Можно использовать название магазина или аббревиатуру.">?</span></label>
                         <input type="text" id="logoText" value="JOCK NUTRITION" autocomplete="off">
                     </div>
                     <div class="form-group">
-                        <label for="timezone">Часовой пояс</label>
+                        <label for="timezone">Часовой пояс <span class="field-hint" data-tooltip="Определяет, в каком часовом поясе считать время для ограничения рабочего дня заказов.">?</span></label>
                         <select id="timezone">
                             <option value="Europe/Moscow" selected>Europe/Moscow (UTC+3)</option>
                             <option value="Europe/Kiev">Europe/Kiev (UTC+2)</option>
@@ -246,29 +256,29 @@
                     <div class="form-group">
                         <label class="checkbox-label">
                             <input type="checkbox" id="orderTimeLimitEnabled" checked>
-                            Ограничение времени оформления заказа
+                            Ограничение времени оформления заказа <span class="field-hint" data-tooltip="Если включено, заказы принимаются только в указанное рабочее время. Вне рабочего времени кнопка «Оформить заказ» будет отключена.">?</span>
                         </label>
                     </div>
                     <div class="form-group">
                         <label class="checkbox-label">
                             <input type="checkbox" id="stockAvailabilityEnabled" checked>
-                            Показывать статус наличия товаров
+                            Показывать статус наличия товаров <span class="field-hint" data-tooltip="Если включено, на карточках товаров будет показан статус «В наличии» или «Нет в наличии».">?</span>
                         </label>
                     </div>
                     <div class="form-group">
-                        <label for="orderStartHour">Начало рабочего дня</label>
+                        <label for="orderStartHour">Начало рабочего дня <span class="field-hint" data-tooltip="С этого часа начинают приниматься заказы. Укажите время в формате ЧЧ:ММ.">?</span></label>
                         <input type="time" id="orderStartHour" value="09:00">
                     </div>
                     <div class="form-group">
-                        <label for="orderEndHour">Конец рабочего дня</label>
+                        <label for="orderEndHour">Конец рабочего дня <span class="field-hint" data-tooltip="До этого часа принимаются заказы. Укажите время в формате ЧЧ:ММ.">?</span></label>
                         <input type="time" id="orderEndHour" value="20:00">
                     </div>
                     <div class="form-group">
-                        <label for="orderErrorCode">Шаблон текста ошибки (спецкод)</label>
+                        <label for="orderErrorCode">Шаблон текста ошибки (спецкод) <span class="field-hint" data-tooltip="Если в сообщении WhatsApp встречается этот код, приложение покажет пользователю текст об ошибке вместо отправки.">?</span></label>
                         <input type="text" id="orderErrorCode" value="[!CHECK!]" autocomplete="off">
                     </div>
                     <div class="form-group">
-                        <label for="currency">Валюта</label>
+                        <label for="currency">Валюта <span class="field-hint" data-tooltip="Валюта, в которой отображаются цены на сайте.">?</span></label>
                         <select id="currency">
                             <option value="₽">Рубли (₽)</option>
                             <option value="$">Доллары ($)</option>
@@ -276,11 +286,11 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="orderTemplate">Шаблон текста заказа (опционально)</label>
+                        <label for="orderTemplate">Шаблон текста заказа (опционально) <span class="field-hint" data-tooltip="Дополнительный текст, который будет добавлен к сообщению заказа в WhatsApp. Используется для правил доставки, контактов и т.д.">?</span></label>
                         <textarea id="orderTemplate" rows="5" placeholder="Дополнительный текст к заказу..."></textarea>
                     </div>
                     <div class="form-group">
-                        <label for="geminiApiKey">DeepSeek API Key</label>
+                        <label for="geminiApiKey">DeepSeek API Key <span class="field-hint" data-tooltip="Ключ для генерации описаний товаров через AI. Хранится только в браузере, на сервер не передаётся.">?</span></label>
                         <input type="password" id="geminiApiKey" placeholder="Введите DeepSeek API ключ" autocomplete="current-password">
                         <small class="hint">Используется для генерации описаний товаров. Хранится только в localStorage браузера.</small>
                     </div>
@@ -309,7 +319,7 @@
 
             <div id="importPage" class="page">
                 <div class="import-export-box">
-                    <h3>Импорт из Excel</h3>
+                    <h3>Импорт из Excel <span class="field-hint" data-tooltip="Загрузите Excel-файл (.xlsx/.xls) с товарами. По артикулу товары будут обновлены, а новые — созданы. Пустые поля не затирают существующие данные.">?</span></h3>
                     <p>Поддерживаемые форматы: .xlsx, .xls</p>
                     <p>При совпадении артикула — обновление. Пустые поля не затирают существующие.</p>
                     <input type="file" id="importFile" accept=".xlsx,.xls" class="hidden" aria-label="Импорт из Excel">
@@ -330,12 +340,12 @@
 
             <div id="exportPage" class="page">
                 <div class="import-export-box">
-                    <h3>Экспорт в Excel</h3>
+                    <h3>Экспорт в Excel <span class="field-hint" data-tooltip="Выгружает весь каталог товаров в Excel-файл. Выберите нужные столбцы, затем скачайте файл.">?</span></h3>
                     <p>Выгрузка каталога в .xlsx. Выберите столбцы для экспорта:</p>
                     <div id="exportColumns" class="export-columns"></div>
                     <button id="exportBtn" class="btn btn-primary">Скачать каталог</button>
                     <hr class="divider">
-                    <h3>Шаблон для импорта</h3>
+                    <h3>Шаблон для импорта <span class="field-hint" data-tooltip="Скачайте пустой шаблон Excel, заполните его товарами и загрузите через страницу «Импорт». Поля со * обязательны.">?</span></h3>
                     <p>Скачайте шаблон, заполните его и загрузите через «Импорт». Поля со <strong>*</strong> обязательны.</p>
                     <button id="exportTemplateBtn" class="btn btn-secondary">Скачать шаблон (Excel)</button>
                 </div>
@@ -343,7 +353,7 @@
 
             <div id="backupPage" class="page">
                 <div class="import-export-box">
-                    <h3>Резервное копирование</h3>
+                    <h3>Резервное копирование <span class="field-hint" data-tooltip="Скачайте резервную копию базы данных. JSON — для восстановления через админку. SQL — для импорта в Supabase.">?</span></h3>
                     <p>Скачать дамп базы данных (JSON)</p>
                     <button id="backupBtn" class="btn btn-primary">Скачать дамп БД (JSON)</button>
                     <p style="margin-top:12px;">Скачать SQL-дамп (восстанавливаемый .sql)</p>
@@ -360,86 +370,86 @@
             <div id="productError" class="error hidden"></div>
             <form id="productForm">
                 <div class="form-group">
-                    <label for="prodName">Название *</label>
+                    <label for="prodName">Название * <span class="field-hint" data-tooltip="Полное название товара. Бренд подставится автоматически в начало, если он указан.">?</span></label>
                     <input type="text" id="prodName" required autocomplete="off">
                 </div>
                 <div class="form-group">
-                    <label for="prodDescription">Краткое описание</label>
+                    <label for="prodDescription">Краткое описание <span class="field-hint" data-tooltip="Короткое описание для карточки товара в каталоге. 3-4 строки, без воды.">?</span></label>
                     <input type="text" id="prodDescription" autocomplete="off">
                 </div>
                 <div class="form-group">
-                    <label for="prodFullDescription">Полное описание</label>
+                    <label for="prodFullDescription">Полное описание <span class="field-hint" data-tooltip="Развёрнутое описание, которое показывается в модальном окне товара. 5-7 строк, удобно читать на мобильном.">?</span></label>
                     <textarea id="prodFullDescription" rows="3"></textarea>
                 </div>
                 <div class="form-group">
-                    <label for="prodComposition">Состав</label>
+                    <label for="prodComposition">Состав <span class="field-hint" data-tooltip="Ингредиенты товара. Можно копировать с упаковки.">?</span></label>
                         <textarea id="prodComposition" rows="2"></textarea>
                 </div>
                 <div class="form-group">
-                    <label for="prodDosage">Дозировка</label>
+                    <label for="prodDosage">Дозировка <span class="field-hint" data-tooltip="Рекомендуемая дозировка. Например: «1 капсула 2 раза в день».">?</span></label>
                     <input type="text" id="prodDosage" autocomplete="off">
                 </div>
                 <div class="form-group">
-                    <label for="prodUsage">Способ применения</label>
+                    <label for="prodUsage">Способ применения <span class="field-hint" data-tooltip="Как принимать товар. Лучше указать время приёма (до/после еды) и длительность курса.">?</span></label>
                         <textarea id="prodUsage" rows="2"></textarea>
                 </div>
                 <div class="form-group">
                     <label class="checkbox-label">
                         <input type="checkbox" id="showContraindications">
-                        Показать противопоказания
+                        Показать противопоказания <span class="field-hint" data-tooltip="Включите, если у товара есть противопоказания. Появится отдельное поле для их заполнения.">?</span>
                     </label>
                 </div>
                 <div class="form-group" id="contraindicationsGroup" style="display: none;">
-                    <label for="prodContraindications">Противопоказания</label>
+                    <label for="prodContraindications">Противопоказания <span class="field-hint" data-tooltip="Список случаев, когда товар принимать нельзя. Например: индивидуальная непереносимость, беременность.">?</span></label>
                         <textarea id="prodContraindications" rows="2"></textarea>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="prodCategory">Категория</label>
+                        <label for="prodCategory">Категория <span class="field-hint" data-tooltip="Группа товаров. Например: Витамины, Протеин, BCAA. Помогает фильтровать в каталоге.">?</span></label>
                         <select id="prodCategory"></select>
                     </div>
                     <div class="form-group">
-                        <label for="prodBrand">Бренд</label>
+                        <label for="prodBrand">Бренд <span class="field-hint" data-tooltip="Производитель товара. Бренд отображается на карточке и используется в поиске.">?</span></label>
                         <select id="prodBrand"></select>
                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="prodPrice">Цена *</label>
+                        <label for="prodPrice">Цена * <span class="field-hint" data-tooltip="Текущая цена товара в рублях. Без копеек, целое число.">?</span></label>
                         <input type="number" id="prodPrice" required autocomplete="off" inputmode="numeric">
                     </div>
                     <div class="form-group">
-                        <label for="prodOldPrice">Старая цена</label>
+                        <label for="prodOldPrice">Старая цена <span class="field-hint" data-tooltip="Цена до скидки. Если заполнена, автоматически показывается процент скидки и зачёркивается старая цена.">?</span></label>
                         <input type="number" id="prodOldPrice" autocomplete="off" inputmode="numeric">
                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="prodStock">Остаток</label>
+                        <label for="prodStock">Остаток <span class="field-hint" data-tooltip="Количество товара на складе. Если 0 — товар считается отсутствующим, кнопка «В корзину» будет неактивна.">?</span></label>
                         <input type="number" id="prodStock" value="0" autocomplete="off" inputmode="numeric">
                     </div>
                     <div class="form-group">
-                        <label for="prodVolume">Объём</label>
+                        <label for="prodVolume">Объём <span class="field-hint" data-tooltip="Объём или количество в упаковке. Например: «30 капсул», «100 г», «500 мл».">?</span></label>
                         <input type="text" id="prodVolume" placeholder="30 капсул" autocomplete="off">
                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="prodSku">Артикул</label>
+                        <label for="prodSku">Артикул <span class="field-hint" data-tooltip="Уникальный код товара для внутреннего учёта. Используется при импорте/экспорте и поиске.">?</span></label>
                         <input type="text" id="prodSku" autocomplete="off">
                     </div>
                     <div class="form-group">
-                        <label for="prodBarcode">Штрих-код</label>
+                        <label for="prodBarcode">Штрих-код <span class="field-hint" data-tooltip="Штрих-код с упаковки (EAN-13, EAN-8, Code-128). Позволяет искать товар сканером в приложении.">?</span></label>
                         <input type="text" id="prodBarcode" autocomplete="off">
                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="prodShelfLife">Срок годности</label>
+                        <label for="prodShelfLife">Срок годности <span class="field-hint" data-tooltip="Срок годности товара. Например: «24 месяца» или «до 01.01.2028».">?</span></label>
                         <input type="text" id="prodShelfLife" autocomplete="off">
                     </div>
                     <div class="form-group">
-                        <label for="prodIsVisible">Видимость</label>
+                        <label for="prodIsVisible">Видимость <span class="field-hint" data-tooltip="«Показывать» — товар виден в каталоге. «Скрыть» — товар не отображается, но остаётся в базе.">?</span></label>
                         <select id="prodIsVisible">
                             <option value="true">Показывать</option>
                             <option value="false">Скрыть</option>
@@ -447,7 +457,7 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>Бейджи</label>
+                    <label>Бейджи <span class="field-hint" data-tooltip="Визуальные плашки на карточке товара. HIT — популярный товар, NEW — новинка, SALE — скидка. Влияют на авто-генерацию баннера.">?</span></label>
                     <div class="checkbox-group">
                         <label class="checkbox-label">
                             <input type="checkbox" id="prodIsHit"> Хит
@@ -464,12 +474,12 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label for="prodImages">Фото (до 4)</label>
+                    <label for="prodImages">Фото (до 4) <span class="field-hint" data-tooltip="Главное фото будет показано первым в каталоге и на баннере. Можно загрузить до 4 изображений.">?</span></label>
                     <input type="file" id="prodImages" accept="image/*" multiple>
                     <div id="imagePreview" class="image-preview"></div>
                 </div>
                 <div class="form-group">
-                    <label for="prodRelated">Связанные товары (явный список)</label>
+                    <label for="prodRelated">Связанные товары (явный список) <span class="field-hint" data-tooltip="Товары, которые будут показаны в разделе «Связанные товары» в модальном окне. Если список пуст и включён чекбокс выше — подставятся товары той же категории или бренда.">?</span></label>
                     <select id="prodRelated" multiple size="5"></select>
                     <small class="hint">Ctrl/Cmd + клик — выбор нескольких. Если пусто и включён чекбокс «Связанные товары» — подставятся похожие по категории/бренду.</small>
                 </div>
@@ -498,8 +508,81 @@
         </div>
     </div>
 
+    <div id="bannerSlideModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="bannerSlideModalTitle">
+        <div class="modal-content">
+            <button class="modal-close" id="bannerSlideModalClose">&times;</button>
+            <h2 id="bannerSlideModalTitle">Слайд баннера</h2>
+            <div id="bannerSlideError" class="error hidden"></div>
+            <form id="bannerSlideForm">
+                <div class="form-group">
+                    <label for="bannerSlideType">Тип <span class="field-hint" data-tooltip="Авто — слайд создаётся автоматически из новинок или скидок. Товар — показывает выбранный товар с его фото. Промо — произвольный слайд с ссылкой. Раздельный — фото с одной стороны, текст с другой.">?</span></label>
+                    <select id="bannerSlideType">
+                        <option value="auto">Авто (новинка / скидка)</option>
+                        <option value="product">Товар</option>
+                        <option value="promo">Промо</option>
+                        <option value="split">Раздельный (фото + текст)</option>
+                    </select>
+                </div>
+                <div class="form-group" id="bannerProductGroup">
+                    <label for="bannerProduct">Товар <span class="field-hint" data-tooltip="Выберите товар, который будет показан на слайде. Его главное фото и название подставятся автоматически.">?</span></label>
+                    <select id="bannerProduct"><option value="">— не выбран —</option></select>
+                </div>
+                <div class="form-group">
+                    <label for="bannerImage">URL фото <span class="field-hint" data-tooltip="Ссылка на изображение. Можно вставить ссылку из интернета (https://...). Если поле пустое, для товара подставится главное фото из каталога.">?</span></label>
+                    <input type="text" id="bannerImage" placeholder="https://... или оставьте пустым">
+                </div>
+                <div class="form-group">
+                    <label for="bannerTitle">Заголовок <span class="field-hint" data-tooltip="Главный текст на баннере. Виден всегда. Для типа «Авто» подставляется автоматически, но можно переопределить.">?</span></label>
+                    <input type="text" id="bannerTitle" required>
+                </div>
+                <div class="form-group">
+                    <label for="bannerSubtitle">Подзаголовок <span class="field-hint" data-tooltip="Второстепенный текст под заголовком. Используется для уточнения: название товара, бренд, краткое описание акции.">?</span></label>
+                    <input type="text" id="bannerSubtitle">
+                </div>
+                <div class="form-group">
+                    <label for="bannerText">Текст (для раздельного слайда) <span class="field-hint" data-tooltip="Дополнительный текст, который отображается на баннере в раздельном режиме. Подходит для описания акции или преимуществ товара.">?</span></label>
+                    <textarea id="bannerText" rows="2"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="bannerBadge">Бейдж <span class="field-hint" data-tooltip="Небольшая плашка в углу слайда. Например: NEW, SALE, АКЦИЯ. Если оставить пустым — бейдж не показывается.">?</span></label>
+                    <input type="text" id="bannerBadge" placeholder="NEW, SALE, АКЦИЯ">
+                </div>
+                <div class="form-group">
+                    <label for="bannerLink">Ссылка <span class="field-hint" data-tooltip="Куда переходить при нажатии на баннер. Можно указать внутренний путь (/catalog) или внешнюю ссылку (https://...). Если пусто — при типе «Товар» откроется карточка товара.">?</span></label>
+                    <input type="text" id="bannerLink" placeholder="/catalog или https://...">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="bannerLayout">Оформление <span class="field-hint" data-tooltip="Фон — фото на весь баннер, текст поверх. Раздельное — фото занимает часть баннера, текст — другую часть. Второй вариант удобен, если нужно добавить описание на сам баннер.">?</span></label>
+                        <select id="bannerLayout">
+                            <option value="full">Фон (фото на весь баннер)</option>
+                            <option value="split">Раздельное (фото + текст)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="bannerImagePosition">Положение фото <span class="field-hint" data-tooltip="Только для режима «Фон». Определяет, куда сдвигается фото: слева, справа или по центру. Освободившееся место можно использовать для текста.">?</span></label>
+                        <select id="bannerImagePosition">
+                            <option value="left">Слева</option>
+                            <option value="right">Справа</option>
+                            <option value="center">По центру</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="bannerSort">Порядок <span class="field-hint" data-tooltip="Чем меньше число, тем раньше слайд появляется в очереди. Слайды с одинаковым порядком сортируются по дате создания.">?</span></label>
+                    <input type="number" id="bannerSort" value="0" min="0">
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                    <button type="button" id="bannerSlideCancel" class="btn btn-secondary">Отмена</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <div id="globalTooltip" class="global-tooltip" aria-hidden="true"></div>
     <script src="app.js?v=36"></script>
 </body>
 </html>

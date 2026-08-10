@@ -125,11 +125,11 @@ function init() {
                 window.location.hash = ''
                 const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
                 if (isLocalhost) {
-                    window.location.href = 'https://jabraiil.github.io/JOCK-NUTRITION/admin/'
+                    window.location.href = './admin/'
                     return
                 }
                 if (!window.location.pathname.includes('/admin/')) {
-                    window.location.href = 'https://jabraiil.github.io/JOCK-NUTRITION/admin/'
+                    window.location.href = './admin/'
                     return
                 }
             }
@@ -214,9 +214,11 @@ function setupEventListeners() {
         productsTable.addEventListener('click', (e) => {
             const editBtn = e.target.closest('button[data-action="edit-product"]')
             const dupBtn = e.target.closest('button[data-action="duplicate-product"]')
+            const copyBtn = e.target.closest('button[data-action="copy-image-url"]')
             const delBtn = e.target.closest('button[data-action="delete-product"]')
             if (editBtn) editProduct(editBtn.dataset.id)
             if (dupBtn) duplicateProduct(dupBtn.dataset.id)
+            if (copyBtn) copyImageUrl(copyBtn.dataset.url, copyBtn)
             if (delBtn) deleteProduct(delBtn.dataset.id)
         })
     }
@@ -383,6 +385,70 @@ function setupEventListeners() {
 
     const addBrandBtn = document.getElementById('addBrandBtn')
     if (addBrandBtn) addBrandBtn.addEventListener('click', () => openBrandModal())
+
+    const addBannerSlideBtn = document.getElementById('addBannerSlideBtn')
+    if (addBannerSlideBtn) addBannerSlideBtn.addEventListener('click', () => openBannerSlideModal())
+
+    const saveBannerBtn = document.getElementById('saveBannerBtn')
+    if (saveBannerBtn) saveBannerBtn.addEventListener('click', saveBannerSettings)
+
+    const bannerSlidesList = document.getElementById('bannerSlidesList')
+    if (bannerSlidesList) {
+        bannerSlidesList.addEventListener('click', (e) => {
+            const editBtn = e.target.closest('button[data-action="edit-banner-slide"]')
+            const delBtn = e.target.closest('button[data-action="delete-banner-slide"]')
+            if (editBtn) openBannerSlideModal(parseInt(editBtn.dataset.index, 10))
+            if (delBtn) deleteBannerSlide(parseInt(delBtn.dataset.index, 10))
+        })
+    }
+
+    const bannerSlideForm = document.getElementById('bannerSlideForm')
+    if (bannerSlideForm) bannerSlideForm.addEventListener('submit', saveBannerSlide)
+
+    const bannerSlideModalClose = document.getElementById('bannerSlideModalClose')
+    if (bannerSlideModalClose) bannerSlideModalClose.addEventListener('click', closeBannerSlideModal)
+
+    const bannerSlideCancel = document.getElementById('bannerSlideCancel')
+    if (bannerSlideCancel) bannerSlideCancel.addEventListener('click', closeBannerSlideModal)
+
+    const bannerSlideType = document.getElementById('bannerSlideType')
+    if (bannerSlideType) bannerSlideType.addEventListener('change', updateBannerFormVisibility)
+
+    setupGlobalTooltip()
+
+    const bannerProduct = document.getElementById('bannerProduct')
+    if (bannerProduct) {
+        bannerProduct.addEventListener('change', async (e) => {
+            const productId = e.target.value
+            if (!productId) return
+
+            try {
+                const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/products/${productId}`, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
+                })
+
+                if (!response.ok) return
+
+                const product = await response.json()
+                const mainImage = product.images?.find(img => img.is_main) || product.images?.[0]
+                const bannerImage = document.getElementById('bannerImage')
+                const bannerTitle = document.getElementById('bannerTitle')
+                const bannerSubtitle = document.getElementById('bannerSubtitle')
+
+                if (mainImage?.url && bannerImage && !bannerImage.value) {
+                    bannerImage.value = mainImage.url
+                }
+                if (product.name && bannerTitle && !bannerTitle.value) {
+                    bannerTitle.value = product.name
+                }
+                if (product.brands?.name && bannerSubtitle && !bannerSubtitle.value) {
+                    bannerSubtitle.value = product.brands.name
+                }
+            } catch (err) {
+                console.error('Error loading product for banner:', err)
+            }
+        })
+    }
 }
 
 function showAuthPage() {
@@ -454,7 +520,7 @@ async function handleForgotPassword() {
                 'apikey': CONFIG.supabaseAnonKey,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ email, redirect_to: 'https://jabraiil.github.io/JOCK-NUTRITION/admin/' })
+            body: JSON.stringify({ email, redirect_to: window.location.origin + '/JOCK-NUTRITION/admin/' })
         })
         
         if (response.ok) {
@@ -500,6 +566,7 @@ function switchPage(page) {
         products: 'Товары',
         categories: 'Категории',
         brands: 'Бренды',
+        banner: 'Баннер',
         analytics: 'Статистика',
         settings: 'Настройки',
         import: 'Импорт',
@@ -522,6 +589,9 @@ async function loadPageData(page) {
             break
         case 'brands':
             await loadBrands()
+            break
+        case 'banner':
+            await loadBannerSlides()
             break
         case 'analytics':
             await loadAnalytics()
@@ -582,6 +652,7 @@ async function loadProducts() {
                     <td>
                         <button class="btn btn-sm btn-secondary" data-action="edit-product" data-id="${escapeHtml(String(product.id))}">✏️</button>
                         <button class="btn btn-sm btn-primary" data-action="duplicate-product" data-id="${escapeHtml(String(product.id))}">⧉</button>
+                        <button class="btn btn-sm btn-accent" data-action="copy-image-url" data-id="${escapeHtml(String(product.id))}" data-url="${escapeHtml(product.product_images?.[0]?.url || '')}" title="Скопировать ссылку на фото">🔗</button>
                         <button class="btn btn-sm btn-danger" data-action="delete-product" data-id="${escapeHtml(String(product.id))}">🗑️</button>
                     </td>
                 </tr>
@@ -1046,6 +1117,25 @@ async function duplicateProduct(id) {
     } catch (error) {
         console.error('Error duplicating product:', error)
         showError('Ошибка дублирования товара: ' + (error && error.message ? error.message : String(error)))
+    }
+}
+
+async function copyImageUrl(url, btn) {
+    if (!url) {
+        showError('У товара нет фото')
+        return
+    }
+
+    try {
+        await navigator.clipboard.writeText(url)
+        if (btn) {
+            const original = btn.textContent
+            btn.textContent = '✅'
+            setTimeout(() => { btn.textContent = original }, 1500)
+        }
+    } catch (error) {
+        console.error('Copy error:', error)
+        showError('Ошибка копирования ссылки')
     }
 }
 
@@ -1638,8 +1728,338 @@ async function handleChangePassword(e) {
     }
 }
 
+// ============================================
+// Banner Management
+// ============================================
+
+let bannerSlidesData = []
+let editingBannerSlideId = null
+
+async function loadBannerSlides() {
+    try {
+        const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/settings`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
+        })
+
+        if (!response.ok) {
+            const result = await response.json().catch(() => ({}))
+            showBannerError(translateError(result.error) || 'Ошибка загрузки баннера')
+            return
+        }
+
+        const settings = await response.json()
+        const raw = settings.promo_banner_slides || '[]'
+
+        try {
+            bannerSlidesData = JSON.parse(raw)
+        } catch (e) {
+            bannerSlidesData = []
+        }
+
+        renderBannerSlidesList()
+        await populateBannerProductSelect()
+    } catch (error) {
+        console.error('Error loading banner:', error)
+        showBannerError('Ошибка загрузки баннера: ' + (error && error.message ? error.message : String(error)))
+    }
+}
+
+function renderBannerSlidesList() {
+    const container = document.getElementById('bannerSlidesList')
+    if (!container) return
+
+    if (!bannerSlidesData.length) {
+        container.innerHTML = '<div class="banner-empty">Нет слайдов. Добавьте первый слайд.</div>'
+        return
+    }
+
+    container.innerHTML = bannerSlidesData.map((slide, idx) => {
+        const previewStyle = slide.image ? `background-image: url('${escapeHtml(slide.image)}');` : ''
+        const typeLabel = { auto: 'Авто', product: 'Товар', promo: 'Промо', split: 'Раздельный' }[slide.type] || slide.type
+        const layoutLabel = slide.layout === 'split' ? 'Раздельное' : 'Фон'
+        const posLabel = { left: 'Слева', right: 'Справа', center: 'По центру' }[slide.image_position] || slide.image_position
+
+        return `
+            <div class="banner-slide-item">
+                <div class="slide-preview" style="${previewStyle}"></div>
+                <div class="slide-info">
+                    <div class="slide-title">${escapeHtml(slide.title || 'Без заголовка')}</div>
+                    <div class="slide-meta">${escapeHtml(typeLabel)} | ${escapeHtml(layoutLabel)} | ${escapeHtml(posLabel)} | Порядок: ${slide.sort_order || idx}</div>
+                    ${slide.subtitle ? `<div class="slide-meta">${escapeHtml(slide.subtitle)}</div>` : ''}
+                </div>
+                <div class="slide-actions">
+                    <button class="btn btn-sm btn-secondary" data-action="edit-banner-slide" data-index="${idx}">✏️</button>
+                    <button class="btn btn-sm btn-danger" data-action="delete-banner-slide" data-index="${idx}">🗑️</button>
+                </div>
+            </div>
+        `
+    }).join('')
+}
+
+async function populateBannerProductSelect() {
+    const select = document.getElementById('bannerProduct')
+    if (!select) return
+
+    try {
+        const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/products?limit=1000&page=1`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
+        })
+
+        if (!response.ok) return
+
+        const result = await response.json()
+        const products = result.data || []
+
+        select.innerHTML = '<option value="">— не выбран —</option>' +
+            products.map(p => `<option value="${escapeHtml(String(p.id))}">${escapeHtml(p.name)}</option>`).join('')
+    } catch (e) {
+        console.error('Error loading products for banner:', e)
+    }
+}
+
+function openBannerSlideModal(slideIndex = null) {
+    editingBannerSlideId = slideIndex
+    const modal = document.getElementById('bannerSlideModal')
+    const title = document.getElementById('bannerSlideModalTitle')
+    const form = document.getElementById('bannerSlideForm')
+    const error = document.getElementById('bannerSlideError')
+
+    if (!modal || !form) return
+
+    error.classList.add('hidden')
+    form.reset()
+
+    const slide = slideIndex !== null ? bannerSlidesData[slideIndex] : null
+
+    if (slide) {
+        title.textContent = 'Редактировать слайд'
+        document.getElementById('bannerSlideType').value = slide.type || 'promo'
+        document.getElementById('bannerProduct').value = slide.product_id || ''
+        document.getElementById('bannerImage').value = slide.image || ''
+        document.getElementById('bannerTitle').value = slide.title || ''
+        document.getElementById('bannerSubtitle').value = slide.subtitle || ''
+        document.getElementById('bannerText').value = slide.text || ''
+        document.getElementById('bannerBadge').value = slide.badge || ''
+        document.getElementById('bannerLink').value = slide.link || ''
+        document.getElementById('bannerLayout').value = slide.layout || 'full'
+        document.getElementById('bannerImagePosition').value = slide.image_position || 'center'
+        document.getElementById('bannerSort').value = slide.sort_order ?? 0
+    } else {
+        title.textContent = 'Новый слайд'
+        document.getElementById('bannerSlideType').value = 'promo'
+        document.getElementById('bannerProduct').value = ''
+        document.getElementById('bannerImage').value = ''
+        document.getElementById('bannerTitle').value = ''
+        document.getElementById('bannerSubtitle').value = ''
+        document.getElementById('bannerText').value = ''
+        document.getElementById('bannerBadge').value = ''
+        document.getElementById('bannerLink').value = ''
+        document.getElementById('bannerLayout').value = 'full'
+        document.getElementById('bannerImagePosition').value = 'center'
+        document.getElementById('bannerSort').value = '0'
+    }
+
+    updateBannerFormVisibility()
+    modal.classList.remove('hidden')
+}
+
+function closeBannerSlideModal() {
+    const modal = document.getElementById('bannerSlideModal')
+    if (modal) modal.classList.add('hidden')
+    editingBannerSlideId = null
+}
+
+function updateBannerFormVisibility() {
+    const type = document.getElementById('bannerSlideType')?.value || 'promo'
+    const productGroup = document.getElementById('bannerProductGroup')
+    const textField = document.getElementById('bannerText')
+
+    if (productGroup) {
+        productGroup.style.display = type === 'product' ? 'block' : 'none'
+    }
+    if (textField) {
+        textField.style.display = type === 'split' ? 'block' : 'none'
+    }
+}
+
+async function saveBannerSlide(e) {
+    e.preventDefault()
+
+    const error = document.getElementById('bannerSlideError')
+    if (error) error.classList.add('hidden')
+
+    const type = document.getElementById('bannerSlideType')?.value || 'promo'
+    const productId = document.getElementById('bannerProduct')?.value || ''
+    const image = document.getElementById('bannerImage')?.value || ''
+    const title = document.getElementById('bannerTitle')?.value?.trim() || ''
+    const subtitle = document.getElementById('bannerSubtitle')?.value?.trim() || ''
+    const text = document.getElementById('bannerText')?.value?.trim() || ''
+    const badge = document.getElementById('bannerBadge')?.value?.trim() || ''
+    const link = document.getElementById('bannerLink')?.value?.trim() || ''
+    const layout = document.getElementById('bannerLayout')?.value || 'full'
+    const imagePosition = document.getElementById('bannerImagePosition')?.value || 'center'
+    const sortOrder = parseInt(document.getElementById('bannerSort')?.value || '0', 10)
+
+    if (!title) {
+        if (error) {
+            error.textContent = 'Введите заголовок'
+            error.classList.remove('hidden')
+        }
+        return
+    }
+
+    const slide = {
+        id: editingBannerSlideId !== null ? bannerSlidesData[editingBannerSlideId]?.id || Date.now().toString() : Date.now().toString(),
+        type,
+        product_id: productId || null,
+        image: image || null,
+        title,
+        subtitle: subtitle || null,
+        text: text || null,
+        badge: badge || null,
+        link: link || null,
+        layout,
+        image_position: imagePosition,
+        sort_order: sortOrder
+    }
+
+    if (editingBannerSlideId !== null) {
+        bannerSlidesData[editingBannerSlideId] = slide
+    } else {
+        bannerSlidesData.push(slide)
+    }
+
+    bannerSlidesData.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+
+    await saveBannerSettings()
+    closeBannerSlideModal()
+    renderBannerSlidesList()
+}
+
+async function saveBannerSettings() {
+    try {
+        const payload = {
+            promo_banner_slides: JSON.stringify(bannerSlidesData)
+        }
+
+        const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/settings`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('admin-token')}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        })
+
+        if (response.ok) {
+            showBannerError('Баннер сохранён')
+        } else {
+            const result = await response.json().catch(() => ({}))
+            showBannerError(translateError(result.error) || 'Ошибка сохранения баннера')
+        }
+    } catch (error) {
+        console.error('Error saving banner:', error)
+        showBannerError('Ошибка сохранения баннера: ' + (error && error.message ? error.message : String(error)))
+    }
+}
+
+function deleteBannerSlide(index) {
+    if (!confirm('Удалить слайд?')) return
+    bannerSlidesData.splice(index, 1)
+    saveBannerSettings()
+    renderBannerSlidesList()
+}
+
+function showBannerError(message) {
+    const error = document.getElementById('bannerError')
+    if (!error) return
+    error.textContent = message
+    error.classList.remove('hidden')
+    setTimeout(() => error.classList.add('hidden'), 4000)
+}
+
+function setupGlobalTooltip() {
+    const tooltip = document.getElementById('globalTooltip')
+    if (!tooltip) return
+
+    let activeHint = null
+    let hideTimeout = null
+
+    function showTooltip(hint) {
+        if (hideTimeout) {
+            clearTimeout(hideTimeout)
+            hideTimeout = null
+        }
+
+        const text = hint.dataset.tooltip || ''
+        if (!text) return
+
+        tooltip.textContent = text
+        tooltip.classList.add('visible')
+
+        const hintRect = hint.getBoundingClientRect()
+        const tooltipRect = tooltip.getBoundingClientRect()
+        const viewportW = window.innerWidth
+        const viewportH = window.innerHeight
+        const gap = 10
+        const padding = 16
+
+        let top = hintRect.top - tooltipRect.height - gap
+        let left = hintRect.left + hintRect.width / 2 - tooltipRect.width / 2
+
+        if (top < padding) {
+            top = hintRect.bottom + gap
+        }
+
+        if (left < padding) {
+            left = padding
+        } else if (left + tooltipRect.width > viewportW - padding) {
+            left = viewportW - padding - tooltipRect.width
+        }
+
+        tooltip.style.top = `${top}px`
+        tooltip.style.left = `${left}px`
+        activeHint = hint
+    }
+
+    function hideTooltip() {
+        hideTimeout = setTimeout(() => {
+            tooltip.classList.remove('visible')
+            activeHint = null
+        }, 80)
+    }
+
+    document.querySelectorAll('.field-hint').forEach(hint => {
+        hint.addEventListener('mouseenter', () => showTooltip(hint))
+        hint.addEventListener('mouseleave', hideTooltip)
+        hint.addEventListener('focus', () => showTooltip(hint))
+        hint.addEventListener('blur', hideTooltip)
+    })
+
+    document.addEventListener('scroll', () => {
+        if (activeHint) {
+            tooltip.classList.remove('visible')
+            setTimeout(() => {
+                if (activeHint) showTooltip(activeHint)
+            }, 50)
+        }
+    }, true)
+
+    window.addEventListener('resize', () => {
+        if (activeHint) {
+            tooltip.classList.remove('visible')
+            setTimeout(() => {
+                if (activeHint) showTooltip(activeHint)
+            }, 50)
+        }
+    })
+}
+
+// ============================================
+// Import/Export
+// ============================================
+
 const EXPORT_COLUMNS = [
-    { key: 'name', label: 'Название', required: true },
     { key: 'description', label: 'Краткое описание', required: false },
     { key: 'full_description', label: 'Полное описание', required: false },
     { key: 'composition', label: 'Состав', required: false },
@@ -2392,221 +2812,31 @@ async function handleGenerateDescriptions() {
 
     try {
         const productsRes = await fetchWithTimeout(
-            `${CONFIG.supabaseUrl}/rest/v1/products?select=id,name,brands(name),brand_id,description,dosage,usage,contraindications,full_description&description=is.null&order=id`,
+            `${CONFIG.adminApiUrl}/generate-descriptions`,
             {
+                method: 'POST',
                 headers: {
-                    'apikey': CONFIG.supabaseAnonKey,
-                    'Authorization': `Bearer ${CONFIG.supabaseAnonKey}`
-                }
+                    'Authorization': `Bearer ${localStorage.getItem('admin-token')}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ apiKey })
             }
         )
 
-        if (!productsRes.ok) throw new Error('Ошибка загрузки товаров')
-
-        const products = await productsRes.json()
-
-        if (products.length === 0) {
-            showError('Все товары уже имеют описания')
-            btn.disabled = false
-            btn.textContent = originalText
-            return
+        if (!productsRes.ok) {
+            const result = await productsRes.json().catch(() => ({}))
+            throw new Error(result.error || 'Ошибка запуска генерации')
         }
 
-        const CHUNK_SIZE = 30
-        const chunks = []
-        for (let i = 0; i < products.length; i += CHUNK_SIZE) {
-            chunks.push(products.slice(i, i + CHUNK_SIZE))
-        }
+        const genResult = await productsRes.json()
 
-        let totalSuccess = 0
-        let totalError = 0
-
-        for (let c = 0; c < chunks.length; c++) {
-            const chunk = chunks[c]
-            btn.textContent = `⏳ Генерация... ${c * CHUNK_SIZE}/${products.length}`
-
-            for (const product of chunk) {
-                try {
-                    const result = await generateAndValidateDescription(product, apiKey)
-                    if (result) {
-                        const updateRes = await fetchWithTimeout(
-                            `${CONFIG.supabaseUrl}/rest/v1/products?id=eq.${product.id}`,
-                            {
-                                method: 'PATCH',
-                                headers: {
-                                    'apikey': CONFIG.supabaseAnonKey,
-                                    'Authorization': `Bearer ${CONFIG.supabaseAnonKey}`,
-                                    'Content-Type': 'application/json',
-                                    'Prefer': 'return=minimal'
-                                },
-                                body: JSON.stringify({
-                                    description: result.description,
-                                    dosage: result.dosage,
-                                    usage: result.usage,
-                                    contraindications: result.contraindications
-                                })
-                            }
-                        )
-
-                        if (updateRes.ok) {
-                            totalSuccess++
-                        } else {
-                            totalError++
-                            console.error(`Failed to update product ${product.id}:`, await updateRes.text())
-                        }
-                    } else {
-                        totalError++
-                    }
-                } catch (err) {
-                    totalError++
-                    console.error(`Error generating description for product ${product.id}:`, err)
-                }
-
-                await new Promise(r => setTimeout(r, 300))
-            }
-
-            if (c < chunks.length - 1) {
-                await new Promise(r => setTimeout(r, 2000))
-            }
-        }
-
-        showError(`Генерация завершена: ${totalSuccess} успешно, ${totalError} ошибок`)
+        showError(`Генерация завершена: ${genResult.success || 0} успешно, ${genResult.errors || 0} ошибок`)
     } catch (error) {
         showError('Ошибка при генерации описаний: ' + (error && error.message ? error.message : String(error)))
         console.error(error)
     } finally {
         btn.disabled = false
         btn.textContent = originalText
-    }
-}
-
-async function generateAndValidateDescription(product, apiKey) {
-    const brandName = product.brands?.name || ''
-    const productName = product.name || ''
-
-    const messages = [
-        {
-            role: 'system',
-            content: 'You are a professional copywriter for a dietary supplement e-commerce store. Always respond with valid JSON only, no markdown, no explanations.'
-        },
-        {
-            role: 'user',
-            content: `Generate a product description for a dietary supplement.
-
-Product name: "${productName}"
-Brand: "${brandName}"
-
-Return ONLY valid JSON with these exact fields:
-{
-  "description": "2-3 sentences about product benefits matching the name",
-  "dosage": "amount extracted from product name (e.g., '120 капсул')",
-  "usage": "short intake instruction (e.g., 'По 1 капсуле 2 раза в день во время еды')",
-  "contraindications": "basic contraindications (individual intolerance, pregnancy, breastfeeding)"
-}
-
-Rules:
-- description must exactly match "${productName}" and "${brandName}"
-- dosage must be extracted from the product name
-- usage: brief instruction
-- contraindications: standard list only
-- Do not confuse with similar products`
-        }
-    ]
-
-    const data = await callDeepSeekWithRetry(apiKey, messages, {
-        temperature: 0.3,
-        max_tokens: 500,
-        response_format: { type: 'json_object' }
-    })
-
-    const rawText = data?.choices?.[0]?.message?.content?.trim()
-
-    if (!rawText) throw new Error('Empty response from AI')
-
-    let parsed
-    try {
-        parsed = JSON.parse(rawText)
-    } catch (e) {
-        console.error('Failed to parse AI response:', rawText)
-        return null
-    }
-
-    const auditMessages = [
-        {
-            role: 'system',
-            content: 'You are a quality checker. Respond with only "OK" or "ERROR: reason".'
-        },
-        {
-            role: 'user',
-            content: `Check if this supplement description matches the product.
-
-Product: "${productName}"
-Brand: "${brandName}"
-Description: "${parsed.description || ''}"
-Dosage: "${parsed.dosage || ''}"
-
-Answer ONLY "OK" if correct, or "ERROR: reason" if there is a mismatch or error.`
-        }
-    ]
-
-    const auditData = await callDeepSeekWithRetry(apiKey, auditMessages, {
-        temperature: 0.1,
-        max_tokens: 100
-    })
-
-    const auditResult = auditData?.choices?.[0]?.message?.content?.trim() || ''
-
-    if (auditResult.toLowerCase().includes('error:')) {
-        console.warn('Self-audit failed for product:', productName, auditResult)
-        return null
-    }
-
-    return parsed
-}
-
-async function callDeepSeekWithRetry(apiKey, messages, params, attempts = 3) {
-    for (let i = 0; i < attempts; i++) {
-        try {
-        const response = await fetchWithTimeout(
-            'https://api.deepseek.com/chat/completions',
-                {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${apiKey}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        model: 'deepseek-v4-flash',
-                        messages: messages,
-                        stream: false,
-                        ...params
-                    })
-                }
-            )
-
-            if (response.ok) {
-                return await response.json()
-            }
-
-            const errData = await response.json().catch(() => ({}))
-            const errorMsg = errData.error?.message || errData.error || 'AI API error'
-
-            if ((response.status === 429 || response.status === 503) && i < attempts - 1) {
-                const delay = Math.pow(2, i) * 3000
-                console.warn(`DeepSeek rate limit/server busy, retrying in ${delay}ms...`)
-                await new Promise(r => setTimeout(r, delay))
-                continue
-            }
-
-            throw new Error(errorMsg)
-        } catch (err) {
-            if (i < attempts - 1) {
-                const delay = Math.pow(2, i) * 2000
-                await new Promise(r => setTimeout(r, delay))
-                continue
-            }
-            throw err
-        }
     }
 }
 
