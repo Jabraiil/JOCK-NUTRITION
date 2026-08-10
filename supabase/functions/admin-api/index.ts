@@ -838,7 +838,7 @@ serve(async (req) => {
         { 
           headers: { 
             "Content-Type": "application/json",
-            "Content-Disposition": "attachment; filename=jack-nutrition-backup.json"
+            "Content-Disposition": "attachment; filename=jock-nutrition-backup.json"
           } 
         }
       )
@@ -856,7 +856,7 @@ serve(async (req) => {
           {
             headers: {
               "Content-Type": "application/sql",
-              "Content-Disposition": `attachment; filename=jack-nutrition-backup-${new Date().toISOString().split("T")[0]}.sql`
+              "Content-Disposition": `attachment; filename=jock-nutrition-backup-${new Date().toISOString().split("T")[0]}.sql`
             }
           }
         )

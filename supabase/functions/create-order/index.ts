@@ -188,7 +188,7 @@ serve(async (req) => {
     }
     await supabase.from("orders_analytics").insert({ order_number: orderNumber, items: orderItems, total })
 
-    const storeName = settingsMap.store_name || "JACK NUTRITION"
+    const storeName = settingsMap.store_name || "JOCK NUTRITION"
     const currency = settingsMap.currency || "₽"
     const timeOpts = { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }
     const timeFormatter = new Intl.DateTimeFormat("ru-RU", timeOpts)
