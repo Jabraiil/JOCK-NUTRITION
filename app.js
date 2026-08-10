@@ -475,15 +475,29 @@ async function loadProducts(reset = true) {
         if (apiCache.products.data && now - apiCache.products.ts < apiCache.products.ttl) {
             products = apiCache.products.data
         } else {
-            const response = await fetchWithTimeout(`${CONFIG.supabaseUrl}/rest/v1/products?is_visible=eq.true&select=*,categories(name),brands(name),product_images(*)&order=created_at.desc&limit=1000`, {
-                headers: {
-                    'apikey': CONFIG.supabaseAnonKey,
-                    'Authorization': `Bearer ${CONFIG.supabaseAnonKey}`
+            let lastError = null
+            for (let attempt = 0; attempt < 3; attempt++) {
+                try {
+                    const response = await fetchWithTimeout(`${CONFIG.supabaseUrl}/rest/v1/products?is_visible=eq.true&select=*,categories(name),brands(name),product_images(*)&order=created_at.desc&limit=1000`, {
+                        headers: {
+                            'apikey': CONFIG.supabaseAnonKey,
+                            'Authorization': `Bearer ${CONFIG.supabaseAnonKey}`
+                        }
+                    })
+                    if (!response.ok) throw new Error('Failed to load products: ' + response.status)
+                    products = await response.json()
+                    if (!products || !Array.isArray(products)) products = []
+                    apiCache.products = { data: products, ts: Date.now(), ttl: 30000 }
+                    break
+                } catch (e) {
+                    lastError = e
+                    console.error(`Products fetch attempt ${attempt + 1} failed:`, e)
+                    if (attempt < 2) await new Promise(r => setTimeout(r, 1000))
                 }
-            })
-            if (!response.ok) throw new Error('Failed to load products')
-            products = await response.json()
-            apiCache.products = { data: products, ts: now, ttl: 30000 }
+            }
+            if (!products || products.length === 0) {
+                throw lastError || new Error('No products received')
+            }
         }
         
         productsTotal = products.length
@@ -528,13 +542,24 @@ async function loadProducts(reset = true) {
     } catch (error) {
         showError(error && error.message ? error.message : String(error))
         console.error(error)
+        const catalog = document.getElementById('catalog')
+        if (catalog) {
+            catalog.innerHTML = `
+                <div class="loading">
+                    <p style="margin-bottom: 12px;">Не удалось загрузить товары.</p>
+                    <button onclick="loadProducts()" class="btn btn-primary" style="padding: 8px 20px; font-size: 14px;">
+                        Попробовать снова
+                    </button>
+                </div>
+            `
+        }
     } finally {
         if (reset) {
-            if (!document.getElementById('catalog')?.querySelector('.product-card')) {
-                const catalog = document.getElementById('catalog')
-                if (catalog) catalog.innerHTML = '<div class=\"loading\">Товары не найдены</div>'
-            }
             showLoading(false)
+            const catalog = document.getElementById('catalog')
+            if (catalog && catalog.classList.contains('skeleton-mode')) {
+                catalog.classList.remove('skeleton-mode')
+            }
         }
         isLoadingMore = false
     }
@@ -1840,6 +1865,25 @@ async function registerServiceWorker() {
     try {
         const registration = await navigator.serviceWorker.register('./sw.js')
 
+        if (registration.waiting) {
+            registration.waiting.postMessage({ action: 'SKIP_WAITING' })
+        }
+
+        registration.addEventListener('updatefound', () => {
+            const newWorker = registration.installing
+            if (newWorker) {
+                newWorker.addEventListener('statechange', () => {
+                    if (newWorker.state === 'installed') {
+                        if (registration.waiting) {
+                            registration.waiting.postMessage({ action: 'SKIP_WAITING' })
+                        } else if (navigator.serviceWorker.controller) {
+                            showUpdateNotification()
+                        }
+                    }
+                })
+            }
+        })
+
         if (navigator.serviceWorker.controller && !swControllerListenerAdded) {
             swControllerListenerAdded = true
             navigator.serviceWorker.addEventListener('controllerchange', () => {
@@ -1847,18 +1891,8 @@ async function registerServiceWorker() {
             })
         }
 
-        registration.addEventListener('updatefound', () => {
-            const newWorker = registration.installing
-            if (newWorker) {
-                newWorker.addEventListener('statechange', () => {
-                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                        showUpdateNotification()
-                    }
-                })
-            }
-        })
-
         registration.update()
+        setInterval(() => registration.update(), 60000)
     } catch (error) {
         console.error('Service Worker registration failed:', error)
     }
@@ -1872,7 +1906,17 @@ function showUpdateNotification() {
     const reloadBtn = document.getElementById('updateReloadBtn')
     if (reloadBtn) {
         reloadBtn.onclick = () => {
-            window.location.reload()
+            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                navigator.serviceWorker.getRegistrations().then(regs => {
+                    if (regs[0] && regs[0].waiting) {
+                        regs[0].waiting.postMessage({ action: 'SKIP_WAITING' })
+                    } else {
+                        window.location.reload()
+                    }
+                })
+            } else {
+                window.location.reload()
+            }
         }
     }
 }

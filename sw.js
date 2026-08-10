@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'jock-nutrition-v39-2026-08-10'
+const CACHE_VERSION = 'jock-nutrition-v40-2026-08-10'
 const PRECACHE_URLS = [
     'index.html',
     'offline.html',
@@ -95,6 +95,12 @@ self.addEventListener('activate', (event) => {
         cleanOldCaches()
             .then(() => self.clients.claim())
     )
+})
+
+self.addEventListener('message', (event) => {
+    if (event.data && event.data.action === 'SKIP_WAITING') {
+        self.skipWaiting()
+    }
 })
 
 self.addEventListener('fetch', (event) => {
