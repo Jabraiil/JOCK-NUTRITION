@@ -438,7 +438,7 @@ async function handleLogin(e) {
 async function handleForgotPassword() {
     const email = await openNameModal('Сброс пароля', 'Email')
     if (!email) return
-        if (!email.includes('@')) {
+    if (!email.includes('@')) {
             showError('Введите корректный email')
             return
         }
@@ -1696,7 +1696,7 @@ async function handleImport() {
             const statusEl = document.getElementById('importStatus')
             if (statusEl) {
                 statusEl.className = 'status-message error'
-                    statusEl.textContent = 'Ошибка чтения файла: ' + (error && error.message ? error.message : String(error))
+                statusEl.textContent = 'Ошибка чтения файла: ' + (error && error.message ? error.message : String(error))
             }
         }
     }
@@ -2137,7 +2137,7 @@ async function checkMonitor() {
         const text = document.querySelector('.indicator-text')
         if (!dot || !text) return
         dot.className = 'indicator-dot error'
-            text.textContent = 'Нет подключения: ' + (error && error.message ? error.message : String(error))
+        text.textContent = 'Нет подключения: ' + (error && error.message ? error.message : String(error))
         console.error('Monitor error:', error)
     }
 }

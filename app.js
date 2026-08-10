@@ -1443,7 +1443,7 @@ function onWorkerMessage(e) {
                 scanner.classList.add('not-found')
                 setTimeout(() => scanner.classList.remove('not-found'), 900)
             }
-        })
+        }).catch(() => {})
     } else if (type === 'error') {
         console.error('Scanner worker error:', error)
     }
