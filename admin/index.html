@@ -314,7 +314,11 @@
                     <p>При совпадении артикула — обновление. Пустые поля не затирают существующие.</p>
                     <input type="file" id="importFile" accept=".xlsx,.xls" class="hidden" aria-label="Импорт из Excel">
                     <button id="importFileBtn" class="btn btn-secondary">Выбрать файл</button>
-                    <div id="importFileInfo" class="status-message" style="margin-top:12px;"></div>
+                    <div id="importFileInfo" class="status-message" style="margin-top:12px; display:none;">
+                        <span id="importFileName"></span>
+                        <button type="button" id="importRemoveFileBtn" class="btn btn-sm btn-secondary" style="margin-left:8px; min-height:32px; padding:0 10px; font-size:0.85rem;">✕</button>
+                    </div>
+                    <button type="button" id="undoImportBtn" class="btn btn-secondary" style="margin-top:12px; display:none;">Отменить последний импорт</button>
                     <div id="importColumnsSection" style="display:none; margin-top:16px;">
                         <p style="font-weight:600; margin-bottom:8px;">Выберите столбцы для импорта:</p>
                         <div id="importColumns" class="export-columns"></div>

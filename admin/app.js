@@ -315,6 +315,10 @@ function setupEventListeners() {
     if (importFile) importFile.addEventListener('change', handleImportFileSelect)
     const importBtn = document.getElementById('importBtn')
     if (importBtn) importBtn.addEventListener('click', handleImport)
+    const importRemoveFileBtn = document.getElementById('importRemoveFileBtn')
+    if (importRemoveFileBtn) importRemoveFileBtn.addEventListener('click', clearImportFile)
+    const undoImportBtn = document.getElementById('undoImportBtn')
+    if (undoImportBtn) undoImportBtn.addEventListener('click', undoLastImport)
     const exportBtn = document.getElementById('exportBtn')
     if (exportBtn) exportBtn.addEventListener('click', handleExport)
     const exportTemplateBtn = document.getElementById('exportTemplateBtn')
@@ -486,6 +490,10 @@ function switchPage(page) {
     
     if (page === 'export') {
         buildExportColumnsUI()
+    }
+    
+    if (page === 'import') {
+        updateUndoImportButton()
     }
     
     const titles = {
@@ -1800,6 +1808,165 @@ function buildImportColumnsUI(headers) {
 
 let importFile = null
 
+const IMPORT_HISTORY_KEY = 'jock-import-history'
+
+function saveImportHistory(data) {
+    try {
+        localStorage.setItem(IMPORT_HISTORY_KEY, JSON.stringify({
+            ...data,
+            timestamp: Date.now()
+        }))
+    } catch (e) {
+        console.error('Error saving import history:', e)
+    }
+}
+
+function loadImportHistory() {
+    try {
+        const stored = localStorage.getItem(IMPORT_HISTORY_KEY)
+        if (stored) return JSON.parse(stored)
+    } catch (e) {
+        console.error('Error loading import history:', e)
+    }
+    return null
+}
+
+function clearImportHistory() {
+    try {
+        localStorage.removeItem(IMPORT_HISTORY_KEY)
+    } catch (e) {
+        console.error('Error clearing import history:', e)
+    }
+}
+
+function updateUndoImportButton() {
+    const undoBtn = document.getElementById('undoImportBtn')
+    const history = loadImportHistory()
+    if (undoBtn) {
+        if (history && history.createdProducts && history.createdProducts.length > 0) {
+            undoBtn.style.display = 'inline-flex'
+            undoBtn.textContent = `Отменить импорт (${history.createdProducts.length + history.updatedProducts.length} товаров)`
+        } else {
+            undoBtn.style.display = 'none'
+        }
+    }
+}
+
+async function undoLastImport() {
+    const history = loadImportHistory()
+    if (!history) {
+        showError('Нет данных для отмены импорта')
+        return
+    }
+
+    if (!confirm(`Отменить последний импорт?\n\nСозданные товары (${history.createdProducts.length}) будут удалены.\nОбновлённые товары (${history.updatedProducts.length}) будут восстановлены до предыдущего состояния.`)) {
+        return
+    }
+
+    const token = localStorage.getItem('admin-token')
+    if (!token) {
+        showError('Сессия истекла. Войдите снова.')
+        return
+    }
+
+    let errors = []
+
+    try {
+        for (const product of history.updatedProducts) {
+            try {
+                const previous = product.previous
+                const updateData = {}
+                const fields = [
+                    "name", "description", "full_description", "composition",
+                    "dosage", "usage", "contraindications", "price", "old_price",
+                    "stock", "volume", "barcode", "is_hit", "is_new", "is_discount",
+                    "shelf_life", "is_visible", "category_id", "brand_id"
+                ]
+
+                fields.forEach(field => {
+                    if (previous[field] !== undefined && previous[field] !== null) {
+                        updateData[field] = previous[field]
+                    }
+                })
+
+                const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/products/${product.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updateData)
+                })
+
+                if (!response.ok) {
+                    const result = await response.json().catch(() => ({}))
+                    errors.push({ id: product.id, name: product.name, error: result.error || 'Ошибка восстановления' })
+                }
+            } catch (err) {
+                errors.push({ id: product.id, name: product.name, error: String(err) })
+            }
+        }
+
+        for (const product of history.createdProducts) {
+            try {
+                const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/products/${product.id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                })
+
+                if (!response.ok) {
+                    const result = await response.json().catch(() => ({}))
+                    errors.push({ id: product.id, name: product.name, error: result.error || 'Ошибка удаления' })
+                }
+            } catch (err) {
+                errors.push({ id: product.id, name: product.name, error: String(err) })
+            }
+        }
+
+        if (errors.length === 0) {
+            clearImportHistory()
+            showError('Импорт успешно отменён')
+        } else {
+            showError(`Отменено с ошибками: ${errors.length}. Успешно: ${history.createdProducts.length + history.updatedProducts.length - errors.length}`)
+        }
+        updateUndoImportButton()
+    } catch (error) {
+        showError('Ошибка отмены импорта: ' + (error && error.message ? error.message : String(error)))
+    }
+}
+
+function clearImportFile() {
+    importFile = null
+    importParsedData = null
+    importSelectedKeys = null
+
+    const importFileInput = document.getElementById('importFile')
+    if (importFileInput) importFileInput.value = ''
+
+    const importBtn = document.getElementById('importBtn')
+    if (importBtn) importBtn.disabled = true
+
+    const importFileInfo = document.getElementById('importFileInfo')
+    if (importFileInfo) importFileInfo.style.display = 'none'
+
+    const importFileName = document.getElementById('importFileName')
+    if (importFileName) importFileName.textContent = ''
+
+    const importColumnsSection = document.getElementById('importColumnsSection')
+    if (importColumnsSection) importColumnsSection.style.display = 'none'
+
+    const importColumns = document.getElementById('importColumns')
+    if (importColumns) importColumns.innerHTML = ''
+
+    const importStatus = document.getElementById('importStatus')
+    if (importStatus) {
+        importStatus.className = 'status-message'
+        importStatus.textContent = ''
+    }
+}
+
 async function handleImportFileSelect(e) {
     importFile = e.target.files[0]
     const importBtn = document.getElementById('importBtn')
@@ -1857,9 +2024,12 @@ async function handleImportFileSelect(e) {
                 fileName: importFile.name
             }
 
+            const importFileName = document.getElementById('importFileName')
+            if (importFileName) importFileName.textContent = `Файл: ${importFile.name}, строк: ${importParsedData.rows.length}, столбцов: ${headers.length}`
+
             if (importFileInfo) {
                 importFileInfo.className = 'status-message success'
-                importFileInfo.textContent = `Файл: ${importFile.name}, строк: ${importParsedData.rows.length}, столбцов: ${headers.length}`
+                importFileInfo.style.display = 'block'
             }
 
             buildImportColumnsUI(headers)
@@ -1960,6 +2130,13 @@ async function handleImport() {
         const statusEl = document.getElementById('importStatus')
         
         if (result.success) {
+            if (result.createdProducts || result.updatedProducts) {
+                saveImportHistory({
+                    createdProducts: result.createdProducts || [],
+                    updatedProducts: result.updatedProducts || []
+                })
+                updateUndoImportButton()
+            }
             if (statusEl) {
                 statusEl.className = 'status-message success'
                 statusEl.textContent = `Импортировано: ${result.results.success} товаров`

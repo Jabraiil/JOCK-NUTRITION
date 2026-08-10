@@ -665,6 +665,8 @@ serve(async (req) => {
       const { products: excelProducts } = body
 
       const results = { success: 0, errors: [] }
+      const createdProducts = []
+      const updatedProducts = []
 
       for (let i = 0; i < excelProducts.length; i++) {
         const p = excelProducts[i]
@@ -730,6 +732,8 @@ serve(async (req) => {
                 "shelf_life", "is_visible"
               ]
 
+              const previousState = { ...existingProduct }
+
               for (const field of fields) {
                 if (p[field] !== undefined && p[field] !== null && p[field] !== "") {
                   if (field === "is_visible" || field === "is_hit" || field === "is_new" || field === "is_discount") {
@@ -748,13 +752,19 @@ serve(async (req) => {
                 .update(updateData)
                 .eq("id", existingProduct.id)
 
+              updatedProducts.push({
+                id: existingProduct.id,
+                sku: existingProduct.sku,
+                name: existingProduct.name,
+                previous: previousState
+              })
               results.success++
               continue
             }
           }
 
           // Create new product
-          const { error: insertError } = await supabase
+          const { data: newProduct, error: insertError } = await supabase
             .from("products")
             .insert({
               name: p.name,
@@ -778,11 +788,18 @@ serve(async (req) => {
               shelf_life: p.shelf_life || "",
               is_visible: p.is_visible === true || p.is_visible === "TRUE" || p.is_visible === "true" || p.is_visible === 1 || p.is_visible === "1"
             })
+            .select()
+            .single()
 
           if (insertError) {
             results.errors.push({ row: i + 1, error: insertError.message })
-          } else {
+          } else if (newProduct) {
             results.success++
+            createdProducts.push({
+              id: newProduct.id,
+              sku: newProduct.sku,
+              name: newProduct.name
+            })
           }
 
         } catch (error) {
@@ -790,15 +807,22 @@ serve(async (req) => {
         }
       }
 
+      const responseData = {
+        success: results.errors.length === 0,
+        results,
+        createdProducts,
+        updatedProducts
+      }
+
       if (results.errors.length > 0) {
         return new Response(
-          JSON.stringify({ success: false, results }),
+          JSON.stringify(responseData),
           { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
         )
       }
 
       return new Response(
-        JSON.stringify({ success: true, results }),
+        JSON.stringify(responseData),
         { headers: { "Content-Type": "application/json", ...corsHeaders } }
       )
     }
