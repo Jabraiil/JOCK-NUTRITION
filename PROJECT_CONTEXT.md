@@ -897,7 +897,7 @@ CSS-переменные для цветов и шрифтов.
 
 #### Админ
 - Email: `jamalovjabrail007@gmail.com`
-- Пароль: `JackNutrition_555` (сброшен через Admin API 2026-08-05)
+- Пароль: `JockNutrition_555` (сброшен через Admin API 2026-08-05)
 - Пользователь подтверждён (`email_confirmed_at: 2026-08-05`)
 - Gemini API Key хранится в `localStorage` браузера админа (не в БД)
 
