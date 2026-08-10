@@ -278,16 +278,7 @@ function setupEventListeners() {
                     const nav = item.dataset.nav
                     navItems.forEach(n => n.classList.remove('active'))
                     item.classList.add('active')
-
-                    if (nav === 'catalog') {
-                        window.scrollTo({ top: 0, behavior: 'smooth' })
-                    } else if (nav === 'search') {
-                        toggleSearch()
-                    } else if (nav === 'cart') {
-                        openCart()
-                    } else if (nav === 'favorites') {
-                        toggleFavoritesView()
-                    }
+                    switchSection(nav)
                 })
             })
         }
@@ -1025,6 +1016,55 @@ function openProductModal(productId) {
 function closeModal() {
     const productModal = document.getElementById('productModal')
     if (productModal) productModal.classList.add('hidden')
+}
+
+function closeAllModals() {
+    const ids = [
+        'productModal',
+        'barcodeScanner',
+        'privacyModal',
+        'welcomeModal',
+        'a2hsModal',
+        'a2hsBanner',
+        'updateBanner',
+        'cookieBanner',
+    ]
+    ids.forEach(id => {
+        const el = document.getElementById(id)
+        if (el) el.classList.add('hidden')
+    })
+    const drawerIds = ['cartDrawer', 'filterSidebar']
+    drawerIds.forEach(id => {
+        const el = document.getElementById(id)
+        if (el) el.classList.remove('open')
+    })
+    const overlayIds = ['cartDrawerOverlay', 'filterSidebarOverlay']
+    overlayIds.forEach(id => {
+        const el = document.getElementById(id)
+        if (el) el.classList.remove('open')
+    })
+    const scannerManual = document.getElementById('scannerManual')
+    if (scannerManual) scannerManual.classList.add('hidden')
+    closeBarcodeScanner()
+}
+
+function switchSection(nav) {
+    closeAllModals()
+
+    if (nav === 'catalog') {
+        if (favoritesOnly) {
+            favoritesOnly = false
+            const navFav = document.getElementById('navFavorites')
+            if (navFav) navFav.classList.remove('active')
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+    } else if (nav === 'search') {
+        toggleSearch()
+    } else if (nav === 'cart') {
+        openCart()
+    } else if (nav === 'favorites') {
+        toggleFavoritesView()
+    }
 }
 
 function addToCart(productId, quantity) {
