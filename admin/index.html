@@ -440,7 +440,18 @@
                     </div>
                     <div class="form-group">
                         <label for="prodBarcode">Штрих-код <span class="field-hint" data-tooltip="Штрих-код с упаковки (EAN-13, EAN-8, Code-128). Позволяет искать товар сканером в приложении.">?</span></label>
-                        <input type="text" id="prodBarcode" autocomplete="off">
+                        <div class="barcode-input-wrap">
+                            <input type="text" id="prodBarcode" autocomplete="off">
+                            <button type="button" id="adminBarcodeScanBtn" class="barcode-scan-btn" aria-label="Сканировать штрих-код камерой" title="Сканировать камерой">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M3 7V5a2 2 0 0 1 2-2h2"></path>
+                                    <path d="M17 3h2a2 2 0 0 1 2 2v2"></path>
+                                    <path d="M21 17v2a2 2 0 0 1-2 2h-2"></path>
+                                    <path d="M7 21H5a2 2 0 0 1-2-2v-2"></path>
+                                    <rect x="7" y="7" width="10" height="10" rx="1"></rect>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
                 </div>
                 <div class="form-row">
@@ -580,9 +591,38 @@
         </div>
     </div>
 
+    <div id="adminBarcodeScanner" class="admin-barcode-scanner hidden" role="dialog" aria-modal="true" aria-label="Сканер штрих-кодов">
+        <button id="adminCloseScannerX" class="admin-scanner-close" aria-label="Закрыть сканер">&times;</button>
+
+        <div id="adminScannerNative" class="admin-scanner-native">
+            <video id="adminScannerVideo" playsinline muted autoplay></video>
+            <div class="admin-scanner-overlay">
+                <div class="admin-scanner-frame"></div>
+            </div>
+        </div>
+
+        <div id="adminScannerFallback" class="admin-scanner-fallback hidden">
+            <div id="adminScannerHtml5Qr" class="admin-scanner-fallback-container"></div>
+        </div>
+
+        <div id="adminScannerStatus" class="admin-scanner-status">Наведите камеру на штрих-код</div>
+
+        <div class="admin-scanner-tools">
+            <button type="button" id="adminScannerUploadBtn" class="admin-scanner-tool-btn" aria-label="Загрузить фото штрих-кода" title="Загрузить фото">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                    <polyline points="21 15 16 10 5 21"></polyline>
+                </svg>
+            </button>
+            <input type="file" id="adminScannerFileInput" accept="image/*" class="admin-scanner-file-input">
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <div id="globalTooltip" class="global-tooltip" aria-hidden="true"></div>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <div id="globalTooltip" class="global-tooltip" role="tooltip" aria-hidden="true"></div>
     <script src="app.js?v=36"></script>
 </body>
 </html>

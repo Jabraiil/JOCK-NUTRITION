@@ -71,6 +71,21 @@ let ordersTotal = 0
 const ORDERS_PER_PAGE = 50
 let initialized = false
 
+// Admin Barcode Scanner State
+let adminBarcodeStream = null
+let adminScannerWorker = null
+let adminScannerDetector = null
+let adminScanRafId = null
+let adminWorkerBusy = false
+let adminScanLastTime = 0
+let adminLastVideoTime = -1
+let adminScanCropCache = null
+let adminScanCropVideoW = 0
+let adminScanCropVideoH = 0
+let adminScannerMode = 'none'
+let adminHtml5QrCode = null
+const ADMIN_SCAN_INTERVAL_MS = 250
+
 function handleAuthError(message) {
     localStorage.removeItem('admin-token')
     showAuthPage()
@@ -447,6 +462,27 @@ function setupEventListeners() {
             } catch (err) {
                 console.error('Error loading product for banner:', err)
             }
+        })
+    }
+
+    // Admin Barcode Scanner
+    const adminBarcodeScanBtn = document.getElementById('adminBarcodeScanBtn')
+    if (adminBarcodeScanBtn) adminBarcodeScanBtn.addEventListener('click', openAdminBarcodeScanner)
+
+    const adminCloseScannerX = document.getElementById('adminCloseScannerX')
+    if (adminCloseScannerX) adminCloseScannerX.addEventListener('click', closeAdminBarcodeScanner)
+
+    const adminScannerUploadBtn = document.getElementById('adminScannerUploadBtn')
+    const adminScannerFileInput = document.getElementById('adminScannerFileInput')
+    if (adminScannerUploadBtn && adminScannerFileInput) {
+        adminScannerUploadBtn.addEventListener('click', () => adminScannerFileInput.click())
+        adminScannerFileInput.addEventListener('change', handleAdminFileUpload)
+    }
+
+    const adminProductForm = document.getElementById('productForm')
+    if (adminProductForm) {
+        adminProductForm.addEventListener('submit', () => {
+            if (adminScanRafId || adminHtml5QrCode) closeAdminBarcodeScanner()
         })
     }
 }
@@ -2906,8 +2942,429 @@ async function sendAlert(message) {
 }
 
 // ============================================
-// Utilities
+// Admin Barcode Scanner
 // ============================================
+
+function invalidateAdminScanCropCache() {
+    adminScanCropCache = null
+    adminScanCropVideoW = 0
+    adminScanCropVideoH = 0
+}
+
+function getCachedAdminScanCrop() {
+    const video = document.getElementById('adminScannerVideo')
+    if (!video || !video.videoWidth || !video.videoHeight) return null
+    if (adminScanCropCache && adminScanCropVideoW === video.videoWidth && adminScanCropVideoH === video.videoHeight) {
+        return adminScanCropCache
+    }
+    adminScanCropCache = getAdminScanCrop()
+    adminScanCropVideoW = video.videoWidth
+    adminScanCropVideoH = video.videoHeight
+    return adminScanCropCache
+}
+
+function getAdminScanCrop() {
+    const video = document.getElementById('adminScannerVideo')
+    const frame = document.querySelector('.admin-scanner-frame')
+    if (!video || !frame) return null
+    const vRect = video.getBoundingClientRect()
+    const fRect = frame.getBoundingClientRect()
+    const vw = video.videoWidth
+    const vh = video.videoHeight
+    if (!vw || !vh) return null
+
+    const scale = Math.max(vRect.width / vw, vRect.height / vh)
+    const dispW = vw * scale
+    const dispH = vh * scale
+    const offX = (vRect.width - dispW) / 2
+    const offY = (vRect.height - dispH) / 2
+
+    const fx = (fRect.left - vRect.left - offX) / scale
+    const fy = (fRect.top - vRect.top - offY) / scale
+    const fw = fRect.width / scale
+    const fh = fRect.height / scale
+
+    const pad = Math.min(fw, fh) * 0.08
+    const x = Math.max(0, Math.floor(fx - pad))
+    const y = Math.max(0, Math.floor(fy - pad))
+    const w = Math.min(vw - x, Math.ceil(fw + pad * 2))
+    const h = Math.min(vh - y, Math.ceil(fh + pad * 2))
+    return { x, y, w, h }
+}
+
+function getCameraErrorMessage(error) {
+    if (!error) return 'Камера недоступна. Разрешите доступ к камере или введите штрих-код вручную.'
+    const name = error.name || ''
+    if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+        return 'Доступ к камере запрещён. Разрешите доступ в настройках браузера и попробуйте снова.'
+    }
+    if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+        return 'Камера не найдена на устройстве. Используйте загрузку фото.'
+    }
+    if (name === 'NotReadableError' || name === 'TrackStartError') {
+        return 'Камера занята другим приложением. Закройте другие приложения, использующие камеру.'
+    }
+    if (name === 'OverconstrainedError' || name === 'ConstraintNotSatisfiedError') {
+        return 'Камера не поддерживает нужные параметры. Попробуйте другой браузер или загрузите фото.'
+    }
+    if (name === 'TypeError') {
+        return 'Браузер не поддерживает доступ к камере. Используйте загрузку фото.'
+    }
+    if (name === 'NotSupportedError') {
+        return 'Доступ к камере не поддерживается в этом контексте. Используйте HTTPS.'
+    }
+    return 'Ошибка доступа к камере: ' + (error.message || error.name || 'неизвестная ошибка')
+}
+
+async function openAdminBarcodeScanner() {
+    const scanner = document.getElementById('adminBarcodeScanner')
+    const nativeContainer = document.getElementById('adminScannerNative')
+    const fallbackContainer = document.getElementById('adminScannerFallback')
+    const statusEl = document.getElementById('adminScannerStatus')
+    if (!scanner || !statusEl) return
+
+    closeAdminBarcodeScanner()
+
+    scanner.classList.remove('hidden')
+    scanner.classList.remove('not-found')
+    statusEl.textContent = 'Наведите камеру на штрих-код'
+    adminScannerMode = 'none'
+
+    if (!('BarcodeDetector' in window)) {
+        statusEl.textContent = 'Сканирование камерой не поддерживается этим браузером. Включите html5-qrcode или загрузите фото.'
+        await startFallbackScanner()
+        return
+    }
+
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } }
+        })
+        await startNativeScanner(stream)
+    } catch (error) {
+        console.error('Native camera error:', error)
+        statusEl.textContent = getCameraErrorMessage(error)
+        await startFallbackScanner()
+    }
+}
+
+async function startNativeScanner(stream) {
+    const scanner = document.getElementById('adminBarcodeScanner')
+    const nativeContainer = document.getElementById('adminScannerNative')
+    const fallbackContainer = document.getElementById('adminScannerFallback')
+    const video = document.getElementById('adminScannerVideo')
+    const statusEl = document.getElementById('adminScannerStatus')
+    if (!scanner || !video || !nativeContainer) return
+
+    adminScannerMode = 'native'
+    if (nativeContainer) nativeContainer.classList.remove('hidden')
+    if (fallbackContainer) fallbackContainer.classList.add('hidden')
+
+    video.srcObject = stream
+    adminBarcodeStream = stream
+
+    await new Promise((resolve) => {
+        if (video.readyState >= 1 && video.videoWidth > 0) return resolve()
+        video.onloadedmetadata = () => resolve()
+        setTimeout(resolve, 1500)
+    })
+
+    try { await video.play() } catch (e) { console.error('video.play error:', e) }
+
+    await new Promise((resolve) => {
+        if (video.videoWidth > 0) return resolve()
+        const check = () => {
+            if (video.videoWidth > 0) resolve()
+            else requestAnimationFrame(check)
+        }
+        check()
+    })
+
+    adminScannerWorker = new Worker('../scanner-worker.js')
+    adminScannerWorker.onmessage = onAdminWorkerMessage
+    adminScannerWorker.onerror = (err) => console.error('Admin scanner worker error:', err)
+
+    try {
+        adminScannerDetector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128'] })
+    } catch (err) {
+        console.warn('BarcodeDetector init failed, falling back')
+        closeAdminBarcodeScanner()
+        if (statusEl) statusEl.textContent = 'Не удалось инициализировать сканер. Загрузите фото штрих-кода.'
+        await startFallbackScanner()
+        return
+    }
+
+    invalidateAdminScanCropCache()
+    const crop = getAdminScanCrop()
+    if (crop) {
+        adminScannerWorker.postMessage({ type: 'init', crop: crop, tw: 320 })
+    }
+
+    adminScanRafId = requestAnimationFrame(adminScanLoop)
+    if (statusEl) statusEl.textContent = 'Наведите камеру на штрих-код'
+}
+
+async function startFallbackScanner() {
+    const scanner = document.getElementById('adminBarcodeScanner')
+    const nativeContainer = document.getElementById('adminScannerNative')
+    const fallbackContainer = document.getElementById('adminScannerFallback')
+    const fallbackEl = document.getElementById('adminScannerHtml5Qr')
+    const statusEl = document.getElementById('adminScannerStatus')
+    if (!scanner || !fallbackContainer || !fallbackEl || !statusEl) return
+
+    if (adminScanRafId) {
+        cancelAnimationFrame(adminScanRafId)
+        adminScanRafId = null
+    }
+    if (adminScannerWorker) {
+        adminScannerWorker.terminate()
+        adminScannerWorker = null
+    }
+    adminWorkerBusy = false
+    adminScannerDetector = null
+    invalidateAdminScanCropCache()
+    if (adminBarcodeStream) {
+        adminBarcodeStream.getTracks().forEach(track => track.stop())
+        adminBarcodeStream = null
+    }
+    const video = document.getElementById('adminScannerVideo')
+    if (video) video.srcObject = null
+
+    adminScannerMode = 'fallback'
+    if (nativeContainer) nativeContainer.classList.add('hidden')
+    fallbackContainer.classList.remove('hidden')
+    statusEl.textContent = 'Сканирование через fallback-библиотеку...'
+
+    try {
+        if (typeof Html5Qrcode === 'undefined') {
+            statusEl.textContent = 'Fallback-библиотека не загрузилась. Загрузите фото штрих-кода.'
+            return
+        }
+
+        if (adminHtml5QrCode) {
+            try { await adminHtml5QrCode.stop() } catch (e) { /* ignore */ }
+            adminHtml5QrCode = null
+        }
+
+        adminHtml5QrCode = new Html5Qrcode('adminScannerHtml5Qr')
+        const cameraConfig = { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } }
+
+        await adminHtml5QrCode.start(
+            cameraConfig,
+            {
+                fps: 10,
+                qrbox: { width: 250, height: 120 },
+                formatsToSupport: [
+                    Html5QrcodeSupportedFormats.EAN_13,
+                    Html5QrcodeSupportedFormats.EAN_8,
+                    Html5QrcodeSupportedFormats.CODE_128,
+                    Html5QrcodeSupportedFormats.CODE_39,
+                    Html5QrcodeSupportedFormats.UPC_A,
+                    Html5QrcodeSupportedFormats.UPC_E
+                ]
+            },
+            (decodedText) => {
+                handleAdminBarcodeDetected(decodedText)
+            },
+            () => { /* ignore scan failures */ }
+        )
+
+        statusEl.textContent = 'Наведите камеру на штрих-код (fallback)'
+    } catch (error) {
+        console.error('Fallback scanner error:', error)
+        statusEl.textContent = 'Не удалось запустить сканер. Загрузите фото штрих-кода.'
+        if (adminHtml5QrCode) {
+            try { await adminHtml5QrCode.stop() } catch (e) { /* ignore */ }
+            adminHtml5QrCode = null
+        }
+    }
+}
+
+async function handleAdminFileUpload(e) {
+    const file = e.target?.target?.files?.[0] || e.target?.files?.[0]
+    if (!file) return
+
+    const statusEl = document.getElementById('adminScannerStatus')
+    if (statusEl) statusEl.textContent = 'Обработка изображения...'
+
+    try {
+        if ('BarcodeDetector' in window) {
+            const bitmap = await createImageBitmap(file)
+            try {
+                const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'upc_a', 'upc_e'] })
+                const barcodes = await detector.detect(bitmap)
+                const code = barcodes.length > 0 ? barcodes[0].rawValue : null
+                if (code) {
+                    handleAdminBarcodeDetected(code)
+                    return
+                }
+            } catch (err) {
+                console.error('BarcodeDetect on file error:', err)
+            } finally {
+                bitmap.close()
+            }
+        }
+
+        if (typeof Html5Qrcode !== 'undefined' && Html5Qrcode.getFileFormats) {
+            const result = await Html5Qrcode.scanFile(file, true)
+            if (result) {
+                handleAdminBarcodeDetected(result)
+                return
+            }
+        }
+
+        if (statusEl) statusEl.textContent = 'Штрих-код на изображении не найден. Попробуйте другое фото.'
+    } catch (error) {
+        console.error('File scan error:', error)
+        if (statusEl) statusEl.textContent = 'Ошибка обработки изображения. Попробуйте другое фото.'
+    } finally {
+        const fileInput = document.getElementById('adminScannerFileInput')
+        if (fileInput) fileInput.value = ''
+    }
+}
+
+function adminScanLoop(timestamp) {
+    if (!adminBarcodeStream || adminScannerMode !== 'native') return
+    if (!adminScannerWorker) return
+
+    const video = document.getElementById('adminScannerVideo')
+    if (!video) return
+
+    if (timestamp - adminScanLastTime < ADMIN_SCAN_INTERVAL_MS) {
+        adminScanRafId = requestAnimationFrame(adminScanLoop)
+        return
+    }
+
+    if (video.readyState >= 2 && video.videoWidth > 0 && !adminWorkerBusy) {
+        if (video.currentTime !== adminLastVideoTime) {
+            adminLastVideoTime = video.currentTime
+            adminWorkerBusy = true
+            adminScanLastTime = timestamp
+            try {
+                const crop = getCachedAdminScanCrop()
+                if (crop && crop.w > 0 && crop.h > 0) {
+                    createImageBitmap(video).then(bitmap => {
+                        if (adminWorkerBusy || !adminScannerWorker) {
+                            bitmap.close()
+                            adminWorkerBusy = false
+                        } else {
+                            adminScannerWorker.postMessage({
+                                type: 'scan',
+                                bitmap: bitmap,
+                                crop: crop,
+                                tw: 320
+                            }, [bitmap])
+                        }
+                    }).catch((err) => {
+                        console.error('createImageBitmap error:', err)
+                        adminWorkerBusy = false
+                    })
+                } else {
+                    adminWorkerBusy = false
+                }
+            } catch (error) {
+                console.error('Scan error:', error)
+                adminWorkerBusy = false
+            }
+        } else {
+            adminWorkerBusy = false
+        }
+    }
+
+    adminScanRafId = requestAnimationFrame(adminScanLoop)
+}
+
+function onAdminWorkerMessage(e) {
+    const { type, error, bitmap } = e.data
+
+    if (type === 'init_error') {
+        console.warn('Worker init failed')
+        adminWorkerBusy = false
+        closeAdminBarcodeScanner()
+        return
+    }
+
+    if (type === 'result' && bitmap) {
+        if (adminScannerDetector) {
+            adminScannerDetector.detect(bitmap).then(barcodes => {
+                const code = barcodes.length > 0 ? barcodes[0].rawValue : null
+                if (code) {
+                    handleAdminBarcodeDetected(code)
+                }
+            }).catch(err => {
+                console.error('Detect error:', err)
+            }).finally(() => {
+                adminWorkerBusy = false
+                if (bitmap && typeof bitmap.close === 'function') {
+                    bitmap.close()
+                }
+            })
+        } else {
+            adminWorkerBusy = false
+            if (bitmap && typeof bitmap.close === 'function') {
+                bitmap.close()
+            }
+        }
+    } else if (type === 'error') {
+        console.error('Scanner worker error:', error)
+        adminWorkerBusy = false
+    }
+}
+
+function handleAdminBarcodeDetected(code) {
+    const prodBarcode = document.getElementById('prodBarcode')
+    const scanner = document.getElementById('adminBarcodeScanner')
+    const statusEl = document.getElementById('adminScannerStatus')
+
+    if (prodBarcode) {
+        prodBarcode.value = code
+    }
+
+    if (navigator.vibrate) navigator.vibrate(200)
+    if (statusEl) statusEl.textContent = 'Штрих-код найден: ' + code
+
+    setTimeout(() => {
+        closeAdminBarcodeScanner()
+    }, 600)
+}
+
+function closeAdminBarcodeScanner() {
+    if (adminScanRafId) {
+        cancelAnimationFrame(adminScanRafId)
+        adminScanRafId = null
+    }
+    if (adminScannerWorker) {
+        adminScannerWorker.terminate()
+        adminScannerWorker = null
+    }
+    adminWorkerBusy = false
+    adminScannerDetector = null
+    adminScanLastTime = 0
+    adminLastVideoTime = -1
+    invalidateAdminScanCropCache()
+    if (adminBarcodeStream) {
+        adminBarcodeStream.getTracks().forEach(track => track.stop())
+        adminBarcodeStream = null
+    }
+    if (adminHtml5QrCode) {
+        try { adminHtml5QrCode.stop() } catch (e) { /* ignore */ }
+        adminHtml5QrCode = null
+    }
+    adminScannerMode = 'none'
+    const scanner = document.getElementById('adminBarcodeScanner')
+    if (scanner) {
+        scanner.classList.add('hidden')
+        scanner.classList.remove('not-found')
+    }
+    const video = document.getElementById('adminScannerVideo')
+    if (video) video.srcObject = null
+    const fileInput = document.getElementById('adminScannerFileInput')
+    if (fileInput) fileInput.value = ''
+    const nativeContainer = document.getElementById('adminScannerNative')
+    const fallbackContainer = document.getElementById('adminScannerFallback')
+    if (nativeContainer) nativeContainer.classList.remove('hidden')
+    if (fallbackContainer) fallbackContainer.classList.add('hidden')
+}
 
 function debounce(func, wait) {
     let timeout
