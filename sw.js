@@ -1,9 +1,9 @@
-const CACHE_VERSION = 'jack-nutrition-v37-2026-08-09'
+const CACHE_VERSION = 'jock-nutrition-v38-2026-08-10'
 const PRECACHE_URLS = [
     '/index.html',
     '/offline.html',
-    '/styles.css?v=36',
-    '/app.js?v=36',
+    '/styles.css?v=37',
+    '/app.js?v=37',
     '/scanner-worker.js',
     '/manifest.json',
     '/favicon.ico',
@@ -20,7 +20,7 @@ const PRECACHE_URLS = [
     '/icons/icon-512.svg',
     '/icons/favicon.svg',
     '/admin/styles.css',
-    '/admin/app.js?v=34',
+    '/admin/app.js?v=35',
     '/admin/index.html',
     '/sitemap.xml'
 ]

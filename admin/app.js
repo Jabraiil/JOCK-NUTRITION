@@ -159,7 +159,7 @@ function init() {
 }
 
 function applyTheme() {
-    const darkMode = localStorage.getItem('jack-theme') === 'dark'
+    const darkMode = localStorage.getItem('jock-theme') === 'dark'
     if (darkMode) {
         document.documentElement.setAttribute('data-theme', 'dark')
     } else {
@@ -168,8 +168,8 @@ function applyTheme() {
 }
 
 function toggleTheme() {
-    const darkMode = localStorage.getItem('jack-theme') === 'dark'
-    localStorage.setItem('jack-theme', darkMode ? 'light' : 'dark')
+    const darkMode = localStorage.getItem('jock-theme') === 'dark'
+    localStorage.setItem('jock-theme', darkMode ? 'light' : 'dark')
     applyTheme()
 }
 
@@ -1751,7 +1751,7 @@ async function handleExport() {
         const ws = XLSX.utils.json_to_sheet(flatData)
         const wb = XLSX.utils.book_new()
         XLSX.utils.book_append_sheet(wb, ws, 'Products')
-        XLSX.writeFile(wb, 'jack-nutrition-catalog.xlsx')
+        XLSX.writeFile(wb, 'jock-nutrition-catalog.xlsx')
     } catch (error) {
         console.error('Error exporting:', error)
         showError('Ошибка экспорта: ' + (error && error.message ? error.message : String(error)))
@@ -1810,7 +1810,7 @@ async function handleExportTemplate() {
         const wb = XLSX.utils.book_new()
         XLSX.utils.book_append_sheet(wb, ws, 'Products')
         ws['!cols'] = headers.map(() => ({ wch: 22 }))
-        XLSX.writeFile(wb, 'jack-nutrition-template.xlsx')
+        XLSX.writeFile(wb, 'jock-nutrition-template.xlsx')
     } catch (error) {
         console.error('Error exporting template:', error)
         showError('Ошибка создания шаблона: ' + (error && error.message ? error.message : String(error)))
@@ -1834,7 +1834,7 @@ async function handleBackup() {
         const url = window.URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        a.download = `jack-nutrition-backup-${new Date().toISOString().split('T')[0]}.json`
+        a.download = `jock-nutrition-backup-${new Date().toISOString().split('T')[0]}.json`
         a.click()
     } catch (error) {
         console.error('Error backup:', error)
@@ -1858,7 +1858,7 @@ async function handleBackupSql() {
         const url = window.URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        a.download = `jack-nutrition-backup-${new Date().toISOString().split('T')[0]}.sql`
+        a.download = `jock-nutrition-backup-${new Date().toISOString().split('T')[0]}.sql`
         a.click()
     } catch (error) {
         console.error('Error SQL backup:', error)

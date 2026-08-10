@@ -50,19 +50,19 @@ let relatedMap = []
 let cart = []
 let favorites = []
 try {
-    const cartRaw = localStorage.getItem('jack-cart')
+    const cartRaw = localStorage.getItem('jock-cart')
     if (cartRaw) cart = JSON.parse(cartRaw)
 } catch (e) {
     console.error('Failed to parse cart from localStorage:', e)
 }
 try {
-    const favRaw = localStorage.getItem('jack-favorites')
+    const favRaw = localStorage.getItem('jock-favorites')
     if (favRaw) favorites = JSON.parse(favRaw)
 } catch (e) {
     console.error('Failed to parse favorites from localStorage:', e)
 }
 let favoritesOnly = false
-let darkMode = localStorage.getItem('jack-theme') === 'dark'
+let darkMode = localStorage.getItem('jock-theme') === 'dark'
 let barcodeStream = null
 let scannerFlashOn = false
 let scannerMode = 'camera'
@@ -383,7 +383,7 @@ function closeFilters() {
 
 function toggleTheme() {
     darkMode = !darkMode
-    localStorage.setItem('jack-theme', darkMode ? 'dark' : 'light')
+    localStorage.setItem('jock-theme', darkMode ? 'dark' : 'light')
     applyTheme()
 }
 
@@ -486,7 +486,11 @@ async function loadProducts(reset = true) {
         relatedMap = apiCache.related.data || []
         
         // Load categories and brands for filters (cached)
-        await loadFilters()
+        try {
+            await loadFilters()
+        } catch (e) {
+            console.error('Error loading filters:', e)
+        }
         
         if (reset) {
             filteredProducts = allProducts
@@ -498,7 +502,13 @@ async function loadProducts(reset = true) {
         showError(error && error.message ? error.message : String(error))
         console.error(error)
     } finally {
-        if (reset) showLoading(false)
+        if (reset) {
+            if (!document.getElementById('catalog')?.querySelector('.product-card')) {
+                const catalog = document.getElementById('catalog')
+                if (catalog) catalog.innerHTML = '<div class=\"loading\">Товары не найдены</div>'
+            }
+            showLoading(false)
+        }
         isLoadingMore = false
     }
 }
@@ -1044,7 +1054,7 @@ function updateProductCardCart(productId) {
 }
 
 function saveCart() {
-    localStorage.setItem('jack-cart', JSON.stringify(cart))
+    localStorage.setItem('jock-cart', JSON.stringify(cart))
 }
 
 function updateCartCount() {
@@ -1061,7 +1071,7 @@ function updateCartCount() {
 }
 
 function saveFavorites() {
-    localStorage.setItem('jack-favorites', JSON.stringify(favorites))
+    localStorage.setItem('jock-favorites', JSON.stringify(favorites))
 }
 
 function isFavorited(productId) {
@@ -1641,18 +1651,18 @@ function debounce(func, wait) {
 function checkCookieConsent() {
     const banner = document.getElementById('cookieBanner')
     if (!banner) return
-    const consent = localStorage.getItem('jack-cookie-consent')
+    const consent = localStorage.getItem('jock-cookie-consent')
     if (!consent) {
         banner.classList.remove('hidden')
     }
 }
 
 function acceptCookies() {
-    localStorage.setItem('jack-cookie-consent', 'true')
+    localStorage.setItem('jock-cookie-consent', 'true')
     const banner = document.getElementById('cookieBanner')
     if (banner) banner.classList.add('hidden')
 
-    const welcomeShown = localStorage.getItem('jack-welcome-shown')
+    const welcomeShown = localStorage.getItem('jock-welcome-shown')
     if (!welcomeShown) {
         setTimeout(() => {
             showWelcomeModal()
@@ -1669,7 +1679,7 @@ function showWelcomeModal() {
 }
 
 function hideWelcomeModal() {
-    localStorage.setItem('jack-welcome-shown', 'true')
+    localStorage.setItem('jock-welcome-shown', 'true')
     const modal = document.getElementById('welcomeModal')
     if (modal) modal.classList.add('hidden')
     const privacyBtn = document.getElementById('privacyToggle')
@@ -1708,10 +1718,10 @@ function closePrivacyModal() {
 
 function getPrivacyFallbackContent() {
     return `
-        <p><strong>JACK NUTRITION</strong> уважает вашу приватность.</p>
+        <p><strong>JOCK NUTRITION</strong> уважает вашу приватность.</p>
         <p>Наше веб-приложение использует исключительно технические механизмы хранения данных на устройстве пользователя для обеспечения базовой функциональности:</p>
         <ul>
-            <li><strong>localStorage:</strong> сохранение корзины покупок (<code>jack-cart</code>), списка избранного (<code>jack-favorites</code>), темы оформления (<code>jack-theme</code>), флагов согласия на cookies и приветственного окна (<code>jack-cookie-consent</code>, <code>jack-welcome-shown</code>).</li>
+            <li><strong>localStorage:</strong> сохранение корзины покупок (<code>jock-cart</code>), списка избранного (<code>jock-favorites</code>), темы оформления (<code>jock-theme</code>), флагов согласия на cookies и приветственного окна (<code>jock-cookie-consent</code>, <code>jock-welcome-shown</code>).</li>
             <li><strong>Service Worker / Cache API:</strong> временное кеширование статических ресурсов для ускорения загрузки приложения.</li>
         </ul>
         <p>Мы <strong>не собираем, не передаём и не продаём</strong> никакие персональные данные третьим лицам или на сторонние серверы. В приложении не запрашиваются ФИО, номера телефонов, адреса электронной почты или иные персональные идентификаторы.</p>
@@ -1804,7 +1814,7 @@ function showA2HSModal() {
 
 function trackPWAInstall() {
     try {
-        localStorage.setItem('jack-pwa-install-attempt', Date.now().toString())
+        localStorage.setItem('jock-pwa-install-attempt', Date.now().toString())
     } catch (e) {}
 }
 
@@ -1812,9 +1822,9 @@ function initA2HS() {
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true
     if (isStandalone) return
 
-    let visitCount = parseInt(localStorage.getItem('jack-visit-count') || '0', 10)
+    let visitCount = parseInt(localStorage.getItem('jock-visit-count') || '0', 10)
     visitCount++
-    localStorage.setItem('jack-visit-count', String(visitCount))
+    localStorage.setItem('jock-visit-count', String(visitCount))
     const isSecondVisit = visitCount >= 2
 
     const showTarget = isSecondVisit ? showA2HSModal : showA2HSBanner

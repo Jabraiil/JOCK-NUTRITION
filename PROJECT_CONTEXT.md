@@ -1,4 +1,4 @@
-# PROJECT_CONTEXT.md — JACK NUTRITION
+# PROJECT_CONTEXT.md — JOCK NUTRITION
 
 > Полный технический документ проекта. Написан так, чтобы любой ИИ или разработчик мог прочитать его и сразу понять весь проект без дополнительных вопросов.
 
@@ -8,7 +8,7 @@
 
 ## 1. Общее описание
 
-**JACK NUTRITION** — интернет-магазин биологически активных добавок (БАДов), построенный по архитектуре «статический фронтенд + Supabase backend».
+**JOCK NUTRITION** — интернет-магазин биологически активных добавок (БАДов), построенный по архитектуре «статический фронтенд + Supabase backend».
 
 ### Бизнес-логика
 1. **Витрина** — покупатель открывает сайт, просматривает каталог товаров, фильтрует, ищет, добавляет в корзину.
@@ -34,7 +34,7 @@
 - В проекте используется реальный `anon key`, он прописан в `app.js` и `admin/app.js`
 - Обе Edge Functions развёрнуты, `create-order` имеет рабочий эндпоинт `/health`
 - В репозитории есть `.nojekyll` для отключения Jekyll на GitHub Pages
-- Service Worker версия: `jack-nutrition-v37-2026-08-09`
+- Service Worker версия: `jock-nutrition-v37-2026-08-09`
 - `manifest.json` cache bust: `2026-08-09-v3`
 - `index.html` deploy marker: `2026-08-09-v3`
 - Версии статики в query params: `styles.css?v=36`, `app.js?v=36`
@@ -175,8 +175,8 @@
 - `whatsapp_number` — номер WhatsApp (обычный)
 - `whatsapp_business_number` — номер WhatsApp Business
 - `whatsapp_account_type` — `personal` или `business` (тип по умолчанию)
-- `store_name` — «JACK NUTRITION»
-- `logo_text` — «JACK NUTRITION»
+- `store_name` — «JOCK NUTRITION»
+- `logo_text` — «JOCK NUTRITION»
 - `currency` — «₽»
 - `order_error_code` — «[!CHECK!]»
 - `timezone` — «Europe/Moscow»
@@ -449,7 +449,7 @@ products (1) ──< (N) product_related
 - Debounce 300 мс. Поиск по `name` и `brands.name`.
 
 #### Избранное
-- Хранилище: `localStorage` (ключ `jack-favorites`), массив UUID товаров.
+- Хранилище: `localStorage` (ключ `jock-favorites`), массив UUID товаров.
 - Кнопка-сердце на каждой карточке товара.
 - Вкладка «Избранное» в нижней панели фильтрует каталог по избранным товарам.
 
@@ -472,7 +472,7 @@ products (1) ──< (N) product_related
 - Debounce для инпутов: 300 мс (поиск), 500 мс (цена).
 
 #### Корзина
-- Хранилище: `localStorage` (ключ `jack-cart`), только `{ id, quantity }`.
+- Хранилище: `localStorage` (ключ `jock-cart`), только `{ id, quantity }`.
 - При изменении перерендеривает каталог (чтобы обновить кнопки на карточках).
 - Счётчик в шапке: сумма quantity всех товаров.
 
@@ -1210,7 +1210,7 @@ const CONFIG = {
 ## 14. Changelog — 2026-08-09 (Session)
 
 ### Версии и деплой
-- Обновлён Service Worker версия: `jack-nutrition-v37-2026-08-09`
+- Обновлён Service Worker версия: `jock-nutrition-v37-2026-08-09`
 - Обновлён `manifest.json` cache bust: `2026-08-09-v3`
 - Обновлён `index.html` deploy marker: `2026-08-09-v3`
 - Обновлены версии статики в query params: `app.js?v=36`, `styles.css?v=36`
@@ -1253,7 +1253,7 @@ const CONFIG = {
 ## 14. Changelog — 2026-08-07 (Session)
 
 ### Версии и деплой
-- Обновлён Service Worker версия: `jack-nutrition-v31-2026-08-07`
+- Обновлён Service Worker версия: `jock-nutrition-v31-2026-08-07`
 - Обновлён `manifest.json` cache bust: `2026-08-07-v6`
 - Обновлены версии статики в query params: `app.js?v=28`, `styles.css?v=28`
 

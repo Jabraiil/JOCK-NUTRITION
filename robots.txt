@@ -3,4 +3,4 @@ Allow: /
 Disallow: /admin/
 Disallow: /admin/index.html
 
-Sitemap: https://jabraiil.github.io/JACK-NUTRITION/sitemap.xml
+Sitemap: https://jabraiil.github.io/JOCK-NUTRITION/sitemap.xml
