@@ -484,6 +484,10 @@ function switchPage(page) {
         p.classList.toggle('active', p.id === page + 'Page')
     })
     
+    if (page === 'export') {
+        buildExportColumnsUI()
+    }
+    
     const titles = {
         products: 'Товары',
         categories: 'Категории',
@@ -1626,23 +1630,202 @@ async function handleChangePassword(e) {
     }
 }
 
+const EXPORT_COLUMNS = [
+    { key: 'name', label: 'Название', required: true },
+    { key: 'description', label: 'Краткое описание', required: false },
+    { key: 'full_description', label: 'Полное описание', required: false },
+    { key: 'composition', label: 'Состав', required: false },
+    { key: 'dosage', label: 'Дозировка', required: false },
+    { key: 'usage', label: 'Способ применения', required: false },
+    { key: 'contraindications', label: 'Противопоказания', required: false },
+    { key: 'category', label: 'Категория', required: false },
+    { key: 'brand', label: 'Бренд', required: false },
+    { key: 'price', label: 'Цена', required: true },
+    { key: 'old_price', label: 'Старая цена', required: false },
+    { key: 'stock', label: 'Остаток', required: false },
+    { key: 'volume', label: 'Объём', required: false },
+    { key: 'sku', label: 'Артикул', required: false },
+    { key: 'barcode', label: 'Штрих-код', required: false },
+    { key: 'is_hit', label: 'Хит', required: false },
+    { key: 'is_new', label: 'Новинка', required: false },
+    { key: 'is_discount', label: 'Скидка', required: false },
+    { key: 'is_visible', label: 'Видимость', required: false },
+    { key: 'shelf_life', label: 'Срок годности', required: false },
+    { key: 'stock_image', label: 'Картинка (остатки)', required: false },
+    { key: 'cart_image', label: 'Картинка (корзина)', required: false },
+    { key: 'wholesale_price', label: 'Оптовая цена', required: false },
+    { key: 'unit', label: 'Ед. изм.', required: false }
+]
+
+const EXPORT_COLUMNS_STORAGE_KEY = 'jock-export-columns'
+
+function getDefaultExportColumns() {
+    return EXPORT_COLUMNS.filter(c => c.required).map(c => c.key)
+}
+
+function loadExportColumns() {
+    try {
+        const stored = localStorage.getItem(EXPORT_COLUMNS_STORAGE_KEY)
+        if (stored) {
+            const parsed = JSON.parse(stored)
+            const validKeys = EXPORT_COLUMNS.map(c => c.key)
+            const filtered = parsed.filter((k) => validKeys.includes(k))
+            if (filtered.length > 0) return filtered
+        }
+    } catch (e) {
+        console.error('Error loading export columns:', e)
+    }
+    return getDefaultExportColumns()
+}
+
+function saveExportColumns(keys) {
+    try {
+        localStorage.setItem(EXPORT_COLUMNS_STORAGE_KEY, JSON.stringify(keys))
+    } catch (e) {
+        console.error('Error saving export columns:', e)
+    }
+}
+
+function buildExportColumnsUI() {
+    const container = document.getElementById('exportColumns')
+    if (!container) return
+
+    const selectedKeys = loadExportColumns()
+
+    container.innerHTML = EXPORT_COLUMNS.map(col => `
+        <label class="checkbox-label export-column-checkbox">
+            <input type="checkbox" value="${col.key}" ${selectedKeys.includes(col.key) ? 'checked' : ''} ${col.required ? 'disabled' : ''}>
+            ${col.label}${col.required ? ' *' : ''}
+        </label>
+    `).join('')
+
+    container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        cb.addEventListener('change', () => {
+            const checked = Array.from(container.querySelectorAll('input[type="checkbox"]:checked')).map(c => c.value)
+            const requiredKeys = EXPORT_COLUMNS.filter(c => c.required).map(c => c.key)
+            saveExportColumns([...new Set([...requiredKeys, ...checked])])
+        })
+    })
+}
+
+function getSelectedExportColumns() {
+    const container = document.getElementById('exportColumns')
+    if (!container) return getDefaultExportColumns()
+
+    const checked = Array.from(container.querySelectorAll('input[type="checkbox"]:checked')).map(c => c.value)
+    const requiredKeys = EXPORT_COLUMNS.filter(c => c.required).map(c => c.key)
+    return [...new Set([...requiredKeys, ...checked])]
+}
+
+const IMPORT_COLUMN_MAP = {
+    'наименование': 'name',
+    'название': 'name',
+    'остаток': 'stock',
+    'артикул': 'sku',
+    'штрих-код': 'barcode',
+    'цена': 'price',
+    'оптовая цена': 'wholesale_price',
+    'старая цена': 'old_price',
+    'категория': 'category',
+    'бренд': 'brand',
+    'состав': 'composition',
+    'дозировка': 'dosage',
+    'способ применения': 'usage',
+    'противопоказания': 'contraindications',
+    'объём': 'volume',
+    'срок годности': 'shelf_life',
+    'хит': 'is_hit',
+    'новинка': 'is_new',
+    'скидка': 'is_discount',
+    'видимость': 'is_visible',
+    'картинка остатки': 'stock_image',
+    'картинка корзина': 'cart_image',
+    'ед.изм': 'unit',
+    'единица измерения': 'unit',
+    'валюта': 'currency_display'
+}
+
+let importParsedData = null
+let importSelectedKeys = null
+
+function normalizeImportKey(header) {
+    const lower = String(header || '').toLowerCase().trim()
+    if (IMPORT_COLUMN_MAP[lower]) return IMPORT_COLUMN_MAP[lower]
+    for (const [key, value] of Object.entries(IMPORT_COLUMN_MAP)) {
+        if (lower.includes(key)) return value
+    }
+    return lower
+}
+
+function buildImportColumnsUI(headers) {
+    const container = document.getElementById('importColumns')
+    const section = document.getElementById('importColumnsSection')
+    if (!container || !section) return
+
+    const normalizedHeaders = headers.map(h => normalizeImportKey(h))
+    const uniqueHeaders = []
+    const seen = new Set()
+    headers.forEach((h, idx) => {
+        const norm = normalizedHeaders[idx]
+        if (!seen.has(norm)) {
+            seen.add(norm)
+            uniqueHeaders.push({ original: h, normalized: norm })
+        }
+    })
+
+    importSelectedKeys = new Set(uniqueHeaders.map(h => h.normalized))
+
+    container.innerHTML = uniqueHeaders.map(h => `
+        <label class="checkbox-label export-column-checkbox">
+            <input type="checkbox" value="${escapeHtml(h.normalized)}" checked>
+            ${escapeHtml(h.original)}${h.normalized !== h.original ? ` <small style="color:var(--text-secondary)">(${escapeHtml(h.normalized)})</small>` : ''}
+        </label>
+    `).join('')
+
+    container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        cb.addEventListener('change', () => {
+            const checked = Array.from(container.querySelectorAll('input[type="checkbox"]:checked')).map(c => c.value)
+            importSelectedKeys = new Set(checked)
+        })
+    })
+
+    section.style.display = 'block'
+    const importBtn = document.getElementById('importBtn')
+    if (importBtn) importBtn.disabled = false
+}
+
 // ============================================
 // Import/Export
 // ============================================
 
 let importFile = null
 
-function handleImportFileSelect(e) {
+async function handleImportFileSelect(e) {
     importFile = e.target.files[0]
     const importBtn = document.getElementById('importBtn')
-    if (importBtn) importBtn.disabled = !importFile
-}
-
-async function handleImport() {
-    if (!importFile) return
+    const importStatus = document.getElementById('importStatus')
+    const importColumnsSection = document.getElementById('importColumnsSection')
+    const importFileInfo = document.getElementById('importFileInfo')
     
+    if (!importFile) {
+        if (importBtn) importBtn.disabled = true
+        if (importStatus) {
+            importStatus.className = 'status-message'
+            importStatus.textContent = ''
+        }
+        return
+    }
+
+    if (importStatus) {
+        importStatus.className = 'status-message'
+        importStatus.textContent = 'Чтение файла...'
+    }
+
     if (typeof XLSX === 'undefined') {
-        showError('Библиотека Excel не загружена. Проверьте подключение к интернету и обновите страницу.')
+        if (importStatus) {
+            importStatus.className = 'status-message error'
+            importStatus.textContent = 'Библиотека Excel не загружена.'
+        }
         return
     }
     
@@ -1656,52 +1839,145 @@ async function handleImport() {
                 throw new Error('В файле нет листов')
             }
             const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
-            const jsonData = XLSX.utils.sheet_to_json(firstSheet)
+            const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 })
             
-            const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/import`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('admin-token')}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ products: jsonData })
-            })
-            
-            if (!response.ok) {
-                const result = await response.json().catch(() => ({}))
-                const statusEl = document.getElementById('importStatus')
-                if (statusEl) {
-                    statusEl.className = 'status-message error'
-                    statusEl.textContent = translateError(result.error) || 'Ошибка импорта'
-                }
-                return
+            if (!jsonData.length) {
+                throw new Error('Файл пуст')
             }
+
+            const headers = jsonData[0].filter(h => h !== null && h !== undefined && String(h).trim() !== '')
             
-            const result = await response.json()
-            const statusEl = document.getElementById('importStatus')
-            
-            if (result.success) {
-                if (statusEl) {
-                    statusEl.className = 'status-message success'
-                    statusEl.textContent = `Импортировано: ${result.results.success} товаров`
-                }
-            } else {
-                if (statusEl) {
-                    statusEl.className = 'status-message error'
-                    statusEl.textContent = `Ошибки: ${result.results.errors.length}. Успешно: ${result.results.success}`
-                }
+            if (headers.length === 0) {
+                throw new Error('Не найдены заголовки столбцов')
+            }
+
+            importParsedData = {
+                headers: jsonData[0],
+                rows: jsonData.slice(1),
+                fileName: importFile.name
+            }
+
+            if (importFileInfo) {
+                importFileInfo.className = 'status-message success'
+                importFileInfo.textContent = `Файл: ${importFile.name}, строк: ${importParsedData.rows.length}, столбцов: ${headers.length}`
+            }
+
+            buildImportColumnsUI(headers)
+
+            if (importStatus) {
+                importStatus.className = 'status-message'
+                importStatus.textContent = ''
             }
         } catch (error) {
-            console.error('Import error:', error)
-            const statusEl = document.getElementById('importStatus')
-            if (statusEl) {
-                statusEl.className = 'status-message error'
-                statusEl.textContent = 'Ошибка чтения файла: ' + (error && error.message ? error.message : String(error))
+            console.error('Import file read error:', error)
+            if (importStatus) {
+                importStatus.className = 'status-message error'
+                importStatus.textContent = 'Ошибка чтения файла: ' + (error && error.message ? error.message : String(error))
             }
+            if (importColumnsSection) importColumnsSection.style.display = 'none'
+            if (importBtn) importBtn.disabled = true
+            importParsedData = null
         }
     }
     
     reader.readAsArrayBuffer(importFile)
+}
+
+async function handleImport() {
+    if (!importParsedData || !importParsedData.headers || !importParsedData.rows) {
+        showError('Сначала выберите файл')
+        return
+    }
+
+    if (!importSelectedKeys || importSelectedKeys.size === 0) {
+        showError('Выберите хотя бы один столбец для импорта')
+        return
+    }
+    
+    if (typeof XLSX === 'undefined') {
+        showError('Библиотека Excel не загружена. Проверьте подключение к интернету и обновите страницу.')
+        return
+    }
+    
+    const rawHeaders = importParsedData.headers
+    const rows = importParsedData.rows
+    const selectedKeys = Array.from(importSelectedKeys)
+
+    const colIndices = []
+    const normalizedHeaders = []
+    rawHeaders.forEach((h, idx) => {
+        const norm = normalizeImportKey(h)
+        if (selectedKeys.includes(norm)) {
+            colIndices.push(idx)
+            normalizedHeaders.push(norm)
+        }
+    })
+
+    if (colIndices.length === 0) {
+        showError('Не выбраны столбцы для импорта')
+        return
+    }
+
+    const jsonData = rows.map(row => {
+        const obj = {}
+        colIndices.forEach((idx, i) => {
+            const val = row[idx]
+            obj[normalizedHeaders[i]] = val !== null && val !== undefined ? val : ''
+        })
+        return obj
+    }).filter(row => {
+        const name = row.name || row.наименование || row.название || ''
+        const sku = row.sku || row.артикул || ''
+        return name.trim() !== '' || sku.trim() !== ''
+    })
+
+    if (jsonData.length === 0) {
+        showError('В файле нет данных для импорта')
+        return
+    }
+
+    try {
+        const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/import`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('admin-token')}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ products: jsonData })
+        })
+        
+        if (!response.ok) {
+            const result = await response.json().catch(() => ({}))
+            const statusEl = document.getElementById('importStatus')
+            if (statusEl) {
+                statusEl.className = 'status-message error'
+                statusEl.textContent = translateError(result.error) || 'Ошибка импорта'
+            }
+            return
+        }
+        
+        const result = await response.json()
+        const statusEl = document.getElementById('importStatus')
+        
+        if (result.success) {
+            if (statusEl) {
+                statusEl.className = 'status-message success'
+                statusEl.textContent = `Импортировано: ${result.results.success} товаров`
+            }
+        } else {
+            if (statusEl) {
+                statusEl.className = 'status-message error'
+                statusEl.textContent = `Ошибки: ${result.results.errors.length}. Успешно: ${result.results.success}`
+            }
+        }
+    } catch (error) {
+        console.error('Import error:', error)
+        const statusEl = document.getElementById('importStatus')
+        if (statusEl) {
+            statusEl.className = 'status-message error'
+            statusEl.textContent = 'Ошибка импорта: ' + (error && error.message ? error.message : String(error))
+        }
+    }
 }
 
 async function handleExport() {
@@ -1722,31 +1998,95 @@ async function handleExport() {
         }
         
         const data = await response.json()
+        const selectedKeys = getSelectedExportColumns()
+        const selectedColumns = EXPORT_COLUMNS.filter(c => selectedKeys.includes(c.key))
         
         const products = Array.isArray(data) ? data : []
-        const flatData = products.map(p => ({
-            name: p.name || '',
-            description: p.description || '',
-            full_description: p.full_description || '',
-            composition: p.composition || '',
-            dosage: p.dosage || '',
-            usage: p.usage || '',
-            contraindications: p.contraindications || '',
-            category: p.categories?.name || '',
-            brand: p.brands?.name || '',
-            price: p.price ?? '',
-            old_price: p.old_price ?? '',
-            stock: p.stock ?? '',
-            volume: p.volume || '',
-            sku: p.sku || '',
-            barcode: p.barcode || '',
-            is_hit: p.is_hit ? 'TRUE' : 'FALSE',
-            is_new: p.is_new ? 'TRUE' : 'FALSE',
-            is_discount: p.is_discount ? 'TRUE' : 'FALSE',
-            is_visible: p.is_visible ? 'TRUE' : 'FALSE',
-            is_related_enabled: p.is_related_enabled ? 'TRUE' : 'FALSE',
-            shelf_life: p.shelf_life || '',
-        }))
+        const flatData = products.map(p => {
+            const row = {}
+            selectedColumns.forEach(col => {
+                switch (col.key) {
+                    case 'name':
+                        row[col.key] = p.name || ''
+                        break
+                    case 'description':
+                        row[col.key] = p.description || ''
+                        break
+                    case 'full_description':
+                        row[col.key] = p.full_description || ''
+                        break
+                    case 'composition':
+                        row[col.key] = p.composition || ''
+                        break
+                    case 'dosage':
+                        row[col.key] = p.dosage || ''
+                        break
+                    case 'usage':
+                        row[col.key] = p.usage || ''
+                        break
+                    case 'contraindications':
+                        row[col.key] = p.contraindications || ''
+                        break
+                    case 'category':
+                        row[col.key] = p.categories?.name || ''
+                        break
+                    case 'brand':
+                        row[col.key] = p.brands?.name || ''
+                        break
+                    case 'price':
+                        row[col.key] = p.price ?? ''
+                        break
+                    case 'old_price':
+                        row[col.key] = p.old_price ?? ''
+                        break
+                    case 'stock':
+                        row[col.key] = p.stock ?? ''
+                        break
+                    case 'volume':
+                        row[col.key] = p.volume || ''
+                        break
+                    case 'sku':
+                        row[col.key] = p.sku || ''
+                        break
+                    case 'barcode':
+                        row[col.key] = p.barcode || ''
+                        break
+                    case 'is_hit':
+                        row[col.key] = p.is_hit ? 'TRUE' : 'FALSE'
+                        break
+                    case 'is_new':
+                        row[col.key] = p.is_new ? 'TRUE' : 'FALSE'
+                        break
+                    case 'is_discount':
+                        row[col.key] = p.is_discount ? 'TRUE' : 'FALSE'
+                        break
+                    case 'is_visible':
+                        row[col.key] = p.is_visible ? 'TRUE' : 'FALSE'
+                        break
+                    case 'is_related_enabled':
+                        row[col.key] = p.is_related_enabled ? 'TRUE' : 'FALSE'
+                        break
+                    case 'shelf_life':
+                        row[col.key] = p.shelf_life || ''
+                        break
+                    case 'stock_image':
+                        row[col.key] = p.product_images?.[0]?.url || ''
+                        break
+                    case 'cart_image':
+                        row[col.key] = p.product_images?.[0]?.url || ''
+                        break
+                    case 'wholesale_price':
+                        row[col.key] = ''
+                        break
+                    case 'unit':
+                        row[col.key] = 'шт'
+                        break
+                    default:
+                        row[col.key] = ''
+                }
+            })
+            return row
+        })
         
         const ws = XLSX.utils.json_to_sheet(flatData)
         const wb = XLSX.utils.book_new()
@@ -1765,51 +2105,41 @@ async function handleExportTemplate() {
             return
         }
 
-        const headers = [
-            { key: 'name', label: 'Название *', required: true },
-            { key: 'category', label: 'Категория', required: false },
-            { key: 'brand', label: 'Бренд', required: false },
-            { key: 'price', label: 'Цена *', required: true },
-            { key: 'old_price', label: 'Старая цена', required: false },
-            { key: 'stock', label: 'Остаток *', required: true },
-            { key: 'volume', label: 'Объём', required: false },
-            { key: 'sku', label: 'Артикул', required: false },
-            { key: 'barcode', label: 'Штрих-код', required: false },
-            { key: 'composition', label: 'Состав', required: false },
-            { key: 'usage', label: 'Способ применения', required: false },
-            { key: 'contraindications', label: 'Противопоказания', required: false },
-            { key: 'shelf_life', label: 'Срок годности', required: false },
-            { key: 'is_hit', label: 'Бейдж: Хит (TRUE/FALSE)', required: false },
-            { key: 'is_new', label: 'Бейдж: Новинка (TRUE/FALSE)', required: false },
-            { key: 'is_discount', label: 'Бейдж: Скидка (TRUE/FALSE)', required: false },
-            { key: 'is_visible', label: 'Видимость (TRUE/FALSE)', required: false }
-        ]
+        const selectedKeys = getSelectedExportColumns()
+        const selectedColumns = EXPORT_COLUMNS.filter(c => selectedKeys.includes(c.key))
 
-        const headerRow = headers.map(h => h.required ? h.label + ' *' : h.label)
-        const exampleRow = [
-            'Пример: Витамин C 1000 мг',
-            'Витамины',
-            'BrandX',
-            500,
-            650,
-            100,
-            '60 капсул',
-            'VC-1000',
-            '4601234567890',
-            'Аскорбиновая кислота...',
-            'По 1 капсуле в день',
-            'Индивидуальная непереносимость',
-            '24 месяца',
-            'TRUE',
-            'TRUE',
-            'FALSE',
-            'TRUE'
-        ]
+        const headerRow = selectedColumns.map(h => h.required ? h.label + ' *' : h.label)
+        const exampleRow = selectedColumns.map(h => {
+            switch (h.key) {
+                case 'name': return 'Пример: Витамин C 1000 мг'
+                case 'category': return 'Витамины'
+                case 'brand': return 'BrandX'
+                case 'price': return 500
+                case 'old_price': return 650
+                case 'stock': return 100
+                case 'volume': return '60 капсул'
+                case 'sku': return 'VC-1000'
+                case 'barcode': return '4601234567890'
+                case 'composition': return 'Аскорбиновая кислота...'
+                case 'usage': return 'По 1 капсуле в день'
+                case 'contraindications': return 'Индивидуальная непереносимость'
+                case 'shelf_life': return '24 месяца'
+                case 'is_hit': return 'TRUE'
+                case 'is_new': return 'TRUE'
+                case 'is_discount': return 'FALSE'
+                case 'is_visible': return 'TRUE'
+                case 'stock_image': return 'https://...'
+                case 'cart_image': return 'https://...'
+                case 'wholesale_price': return 400
+                case 'unit': return 'шт'
+                default: return ''
+            }
+        })
 
         const ws = XLSX.utils.aoa_to_sheet([headerRow, exampleRow])
         const wb = XLSX.utils.book_new()
         XLSX.utils.book_append_sheet(wb, ws, 'Products')
-        ws['!cols'] = headers.map(() => ({ wch: 22 }))
+        ws['!cols'] = selectedColumns.map(() => ({ wch: 22 }))
         XLSX.writeFile(wb, 'jock-nutrition-template.xlsx')
     } catch (error) {
         console.error('Error exporting template:', error)

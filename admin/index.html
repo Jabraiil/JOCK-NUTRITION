@@ -314,7 +314,12 @@
                     <p>При совпадении артикула — обновление. Пустые поля не затирают существующие.</p>
                     <input type="file" id="importFile" accept=".xlsx,.xls" class="hidden" aria-label="Импорт из Excel">
                     <button id="importFileBtn" class="btn btn-secondary">Выбрать файл</button>
-                    <button id="importBtn" class="btn btn-primary" disabled>Импортировать</button>
+                    <div id="importFileInfo" class="status-message" style="margin-top:12px;"></div>
+                    <div id="importColumnsSection" style="display:none; margin-top:16px;">
+                        <p style="font-weight:600; margin-bottom:8px;">Выберите столбцы для импорта:</p>
+                        <div id="importColumns" class="export-columns"></div>
+                    </div>
+                    <button id="importBtn" class="btn btn-primary" disabled style="margin-top:16px;">Импортировать</button>
                     <div id="importStatus" class="status-message"></div>
                 </div>
             </div>
@@ -322,7 +327,8 @@
             <div id="exportPage" class="page">
                 <div class="import-export-box">
                     <h3>Экспорт в Excel</h3>
-                    <p>Выгрузка всего каталога в .xlsx</p>
+                    <p>Выгрузка каталога в .xlsx. Выберите столбцы для экспорта:</p>
+                    <div id="exportColumns" class="export-columns"></div>
                     <button id="exportBtn" class="btn btn-primary">Скачать каталог</button>
                     <hr class="divider">
                     <h3>Шаблон для импорта</h3>

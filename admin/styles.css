@@ -931,6 +931,21 @@ body {
     line-height: 1.4;
 }
 
+.export-columns {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 10px 16px;
+    margin: 16px 0;
+    padding: 16px;
+    background: var(--bg);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+}
+
+.export-column-checkbox {
+    font-size: 0.9rem;
+}
+
 #generateDescBtn {
     background: #6C5CE7;
     color: #fff;
