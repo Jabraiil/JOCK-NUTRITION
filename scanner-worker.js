@@ -1,8 +1,8 @@
 let detector = null
 let cropRect = null
 let targetWidth = 320
-let canvas = null
-let ctx = null
+let mainCanvas = null
+let mainCtx = null
 
 self.onmessage = async (e) => {
   const { type, bitmap, crop, tw } = e.data
@@ -10,19 +10,26 @@ self.onmessage = async (e) => {
   if (type === 'init') {
     cropRect = crop
     targetWidth = tw || 320
+
     try {
+      mainCanvas = new OffscreenCanvas(targetWidth, targetWidth)
+      mainCtx = mainCanvas.getContext('2d')
+
       detector = new BarcodeDetector({
         formats: ['ean_13', 'ean_8', 'code_128', 'qr_code']
       })
     } catch (err) {
-      self.postMessage({ type: 'error', error: 'BarcodeDetector unavailable in worker' })
+      self.postMessage({ type: 'init_error', error: 'BarcodeDetector unavailable or failed to init' })
     }
     return
   }
 
   if (type === 'scan' && detector && bitmap) {
-    let localCanvas = null
-    let localCtx = null
+    if (!mainCanvas || !mainCtx) {
+      if (bitmap && typeof bitmap.close === 'function') bitmap.close()
+      return
+    }
+
     try {
       const { x = 0, y = 0, w = bitmap.width, h = bitmap.height } = cropRect || {}
       const cw = Math.max(1, w)
@@ -30,23 +37,22 @@ self.onmessage = async (e) => {
       const tw = targetWidth
       const th = Math.max(1, Math.round(h * scale))
 
-      localCanvas = new OffscreenCanvas(tw, th)
-      localCtx = localCanvas.getContext('2d')
-      localCtx.drawImage(bitmap, x, y, w, h, 0, 0, tw, th)
+      if (mainCanvas.width !== tw) mainCanvas.width = tw
+      if (mainCanvas.height !== th) mainCanvas.height = th
 
-      const barcodes = await detector.detect(localCanvas)
-      self.postMessage({ type: 'result', barcode: barcodes.length > 0 ? barcodes[0].rawValue : null })
+      mainCtx.drawImage(bitmap, x, y, w, h, 0, 0, tw, th)
+
+      const barcodes = await detector.detect(mainCanvas)
+      self.postMessage({
+        type: 'result',
+        barcode: barcodes.length > 0 ? barcodes[0].rawValue : null
+      })
     } catch (err) {
       self.postMessage({ type: 'error', error: err.message })
     } finally {
       if (bitmap && typeof bitmap.close === 'function') {
         bitmap.close()
       }
-      if (localCtx) {
-        localCtx.clearRect(0, 0, localCanvas.width, localCanvas.height)
-      }
-      localCanvas = null
-      localCtx = null
     }
   }
 }

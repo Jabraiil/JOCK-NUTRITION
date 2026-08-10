@@ -1443,6 +1443,26 @@ function onWorkerMessage(e) {
     const { type, barcode, error } = e.data
     workerBusy = false
 
+    if (type === 'init_error') {
+        console.warn('BarcodeDetector unavailable in worker, falling back to manual mode')
+        closeBarcodeScanner()
+        scannerMode = 'manual'
+        const scanner = document.getElementById('barcodeScanner')
+        if (scanner && scanner.classList.contains('hidden')) {
+            scanner.classList.remove('hidden')
+        }
+        const scannerManual = document.getElementById('scannerManual')
+        if (scannerManual) scannerManual.classList.remove('hidden')
+        const scannerModeToggle = document.getElementById('scannerModeToggle')
+        if (scannerModeToggle) {
+            scannerModeToggle.textContent = '📷'
+            scannerModeToggle.classList.add('active')
+        }
+        const manualInput = document.getElementById('manualBarcodeInput')
+        if (manualInput) manualInput.focus()
+        return
+    }
+
     if (type === 'result' && barcode) {
         const scanner = document.getElementById('barcodeScanner')
         if (navigator.vibrate) navigator.vibrate(200)
