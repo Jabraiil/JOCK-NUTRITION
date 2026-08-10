@@ -152,7 +152,7 @@ function init() {
         console.error('Init error:', error)
         const errorEl = document.getElementById('loginError')
         if (errorEl) {
-            errorEl.textContent = 'Ошибка инициализации: ' + (error.message || String(error))
+            errorEl.textContent = 'Ошибка инициализации: ' + (error && error.message ? error.message : String(error))
             errorEl.classList.remove('hidden')
         }
     }
@@ -430,7 +430,7 @@ async function handleLogin(e) {
             throw new Error(translateError(errorMessage))
         }
     } catch (error) {
-        errorEl.textContent = translateError(error.message)
+        errorEl.textContent = translateError(error.message || String(error))
         errorEl.classList.remove('hidden')
     }
 }
@@ -460,7 +460,7 @@ async function handleForgotPassword() {
             showError(translateError(result.msg || result.error || result.error_description || 'Ошибка отправки письма'))
         }
     } catch (error) {
-        showError('Ошибка: ' + translateError(error.message))
+        showError('Ошибка: ' + translateError(error.message || String(error)))
     }
 }
 
@@ -579,7 +579,7 @@ async function loadProducts() {
         renderProductsPagination()
     } catch (error) {
         console.error('Error loading products:', error)
-        showError('Ошибка загрузки товаров: ' + error.message)
+        showError('Ошибка загрузки товаров: ' + (error && error.message ? error.message : String(error)))
     }
 }
 
@@ -710,7 +710,7 @@ async function openProductModal(productId = null) {
             }
         } catch (error) {
             console.error('Error loading product:', error)
-            showError('Ошибка загрузки товара: ' + error.message)
+            showError('Ошибка загрузки товара: ' + (error && error.message ? error.message : String(error)))
             closeProductModal()
             return
         }
@@ -781,7 +781,7 @@ async function loadFormOptions() {
         return true
     } catch (error) {
         console.error('Error loading form options:', error)
-        showError('Ошибка загрузки справочников: ' + error.message)
+        showError('Ошибка загрузки справочников: ' + (error && error.message ? error.message : String(error)))
         return false
     }
 }
@@ -910,7 +910,8 @@ async function handleProductSubmit(e) {
     }
     } catch (err) {
         console.error('Product save error:', err)
-        errorEl.textContent = (translateError(err.message) || 'Неизвестная ошибка при сохранении') + ' (' + err.message + ')'
+        const translated = translateError(err.message) || 'Неизвестная ошибка при сохранении'
+        errorEl.textContent = translated + (err.message && err.message !== translated ? ' (' + err.message + ')' : '')
         errorEl.classList.remove('hidden')
     }
 }
@@ -931,7 +932,7 @@ async function deleteProduct(id) {
         }
     } catch (error) {
         console.error('Error deleting product:', error)
-        showError('Ошибка удаления товара: ' + error.message)
+        showError('Ошибка удаления товара: ' + (error && error.message ? error.message : String(error)))
     }
 }
 
@@ -1032,7 +1033,7 @@ async function duplicateProduct(id) {
     document.getElementById('productModal')?.classList.remove('hidden')
     } catch (error) {
         console.error('Error duplicating product:', error)
-        showError('Ошибка дублирования товара: ' + error.message)
+        showError('Ошибка дублирования товара: ' + (error && error.message ? error.message : String(error)))
     }
 }
 
@@ -1068,7 +1069,7 @@ async function loadCategories() {
         }
     } catch (error) {
         console.error('Error loading categories:', error)
-        showError('Ошибка загрузки категорий: ' + error.message)
+        showError('Ошибка загрузки категорий: ' + (error && error.message ? error.message : String(error)))
     }
 }
 
@@ -1149,7 +1150,7 @@ async function openCategoryModal(categoryId = null) {
         }
     } catch (error) {
         console.error('Error saving category:', error)
-        showError('Ошибка сохранения категории: ' + error.message)
+        showError('Ошибка сохранения категории: ' + (error && error.message ? error.message : String(error)))
     }
 }
 
@@ -1169,7 +1170,7 @@ async function deleteCategory(id) {
         }
     } catch (error) {
         console.error('Error deleting category:', error)
-        showError('Ошибка удаления категории: ' + error.message)
+        showError('Ошибка удаления категории: ' + (error && error.message ? error.message : String(error)))
     }
 }
 
@@ -1209,7 +1210,7 @@ async function loadBrands() {
         }
     } catch (error) {
         console.error('Error loading brands:', error)
-        showError('Ошибка загрузки брендов: ' + error.message)
+        showError('Ошибка загрузки брендов: ' + (error && error.message ? error.message : String(error)))
     }
 }
 
@@ -1260,7 +1261,7 @@ async function openBrandModal(brandId = null) {
         }
     } catch (error) {
         console.error('Error saving brand:', error)
-        showError('Ошибка сохранения бренда: ' + error.message)
+        showError('Ошибка сохранения бренда: ' + (error && error.message ? error.message : String(error)))
     }
 }
 
@@ -1280,7 +1281,7 @@ async function deleteBrand(id) {
         }
     } catch (error) {
         console.error('Error deleting brand:', error)
-        showError('Ошибка удаления бренда: ' + error.message)
+        showError('Ошибка удаления бренда: ' + (error && error.message ? error.message : String(error)))
     }
 }
 
@@ -1362,7 +1363,7 @@ async function loadAnalytics() {
         renderOrdersPagination()
     } catch (error) {
         console.error('Error loading analytics:', error)
-        showError('Ошибка загрузки статистики: ' + error.message)
+        showError('Ошибка загрузки статистики: ' + (error && error.message ? error.message : String(error)))
     }
 }
 
@@ -1413,7 +1414,7 @@ async function deleteOrder(id) {
         }
     } catch (error) {
         console.error('Error deleting order:', error)
-        showError('Ошибка удаления заказа: ' + error.message)
+        showError('Ошибка удаления заказа: ' + (error && error.message ? error.message : String(error)))
     }
 }
 
@@ -1437,7 +1438,7 @@ async function deleteSelectedOrders() {
         loadAnalytics()
     } catch (error) {
         console.error('Error deleting orders:', error)
-        showError('Ошибка удаления заказов: ' + error.message)
+        showError('Ошибка удаления заказов: ' + (error && error.message ? error.message : String(error)))
     }
 }
 
@@ -1533,7 +1534,7 @@ async function loadSettings() {
         if (geminiApiKeyEl) geminiApiKeyEl.value = settings.gemini_api_key || ''
     } catch (error) {
         console.error('Error loading settings:', error)
-        showError('Ошибка загрузки настроек: ' + error.message)
+        showError('Ошибка загрузки настроек: ' + (error && error.message ? error.message : String(error)))
     }
 }
 
@@ -1576,7 +1577,7 @@ async function handleSettingsSave(e) {
     }
     } catch (err) {
         console.error('Settings save error:', err)
-        showError('Ошибка сохранения настроек: ' + err.message)
+        showError('Ошибка сохранения настроек: ' + (err && err.message ? err.message : String(err)))
     }
 }
 
@@ -1621,7 +1622,7 @@ async function handleChangePassword(e) {
             showError(translateError(data.msg || data.error || data.error_description) || 'Ошибка изменения пароля')
         }
     } catch (error) {
-        showError('Ошибка: ' + translateError(error.message))
+        showError('Ошибка: ' + translateError(error.message || String(error)))
     }
 }
 
@@ -1695,7 +1696,7 @@ async function handleImport() {
             const statusEl = document.getElementById('importStatus')
             if (statusEl) {
                 statusEl.className = 'status-message error'
-                statusEl.textContent = 'Ошибка чтения файла: ' + error.message
+                    statusEl.textContent = 'Ошибка чтения файла: ' + (error && error.message ? error.message : String(error))
             }
         }
     }
@@ -1753,7 +1754,7 @@ async function handleExport() {
         XLSX.writeFile(wb, 'jack-nutrition-catalog.xlsx')
     } catch (error) {
         console.error('Error exporting:', error)
-        showError('Ошибка экспорта: ' + error.message)
+        showError('Ошибка экспорта: ' + (error && error.message ? error.message : String(error)))
     }
 }
 
@@ -1812,7 +1813,7 @@ async function handleExportTemplate() {
         XLSX.writeFile(wb, 'jack-nutrition-template.xlsx')
     } catch (error) {
         console.error('Error exporting template:', error)
-        showError('Ошибка создания шаблона: ' + error.message)
+        showError('Ошибка создания шаблона: ' + (error && error.message ? error.message : String(error)))
     }
 }
 
@@ -1837,7 +1838,7 @@ async function handleBackup() {
         a.click()
     } catch (error) {
         console.error('Error backup:', error)
-        showError('Ошибка резервного копирования: ' + error.message)
+        showError('Ошибка резервного копирования: ' + (error && error.message ? error.message : String(error)))
     }
 }
 
@@ -1861,7 +1862,7 @@ async function handleBackupSql() {
         a.click()
     } catch (error) {
         console.error('Error SQL backup:', error)
-        showError('Ошибка SQL-дампа: ' + error.message)
+        showError('Ошибка SQL-дампа: ' + (error && error.message ? error.message : String(error)))
     }
 }
 
@@ -1964,7 +1965,7 @@ async function handleGenerateDescriptions() {
 
         showError(`Генерация завершена: ${totalSuccess} успешно, ${totalError} ошибок`)
     } catch (error) {
-        showError('Ошибка при генерации описаний: ' + error.message)
+        showError('Ошибка при генерации описаний: ' + (error && error.message ? error.message : String(error)))
         console.error(error)
     } finally {
         btn.disabled = false
@@ -2136,7 +2137,7 @@ async function checkMonitor() {
         const text = document.querySelector('.indicator-text')
         if (!dot || !text) return
         dot.className = 'indicator-dot error'
-        text.textContent = 'Нет подключения: ' + error.message
+            text.textContent = 'Нет подключения: ' + (error && error.message ? error.message : String(error))
         console.error('Monitor error:', error)
     }
 }

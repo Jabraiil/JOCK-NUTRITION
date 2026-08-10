@@ -117,7 +117,7 @@ function init() {
     } catch (error) {
         const msg = error && error.message ? error.message : String(error)
         console.error('Init error:', error)
-        showError('Ошибка инициализации приложения: ' + msg)
+        showError('Ошибка инициализации приложения: ' + (msg || String(error)))
     }
 }
 
@@ -495,7 +495,7 @@ async function loadProducts(reset = true) {
             updatePagination()
         }
     } catch (error) {
-        showError(error.message)
+        showError(error && error.message ? error.message : String(error))
         console.error(error)
     } finally {
         if (reset) showLoading(false)
@@ -554,7 +554,7 @@ async function loadFilters() {
         }
     } catch (error) {
         console.error('Error loading filters:', error)
-        showError('Ошибка загрузки фильтров: ' + error.message)
+        showError('Ошибка загрузки фильтров: ' + (error && error.message ? error.message : String(error)))
     }
 }
 
