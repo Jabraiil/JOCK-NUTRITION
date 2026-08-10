@@ -68,6 +68,7 @@ let scannerFlashOn = false
 let scannerMode = 'camera'
 let lastVideoTime = -1
 let scannerWorker = null
+let scannerDetector = null
 let workerBusy = false
 let scanCropCache = null
 let scanCropVideoW = 0
@@ -1425,6 +1426,26 @@ async function toggleBarcodeScanner() {
             scannerWorker.onmessage = onWorkerMessage
             scannerWorker.onerror = (err) => console.error('Scanner worker error:', err)
 
+            try {
+                scannerDetector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128'] })
+            } catch (err) {
+                console.warn('BarcodeDetector init failed, falling back to manual')
+                closeBarcodeScanner()
+                scannerMode = 'manual'
+                const scanner = document.getElementById('barcodeScanner')
+                if (scanner && scanner.classList.contains('hidden')) scanner.classList.remove('hidden')
+                const scannerManual = document.getElementById('scannerManual')
+                if (scannerManual) scannerManual.classList.remove('hidden')
+                const scannerModeToggle = document.getElementById('scannerModeToggle')
+                if (scannerModeToggle) {
+                    scannerModeToggle.textContent = '📷'
+                    scannerModeToggle.classList.add('active')
+                }
+                const manualInput = document.getElementById('manualBarcodeInput')
+                if (manualInput) manualInput.focus()
+                return
+            }
+
             invalidateScanCropCache()
             const crop = getScanCrop()
             if (crop) {
@@ -1516,13 +1537,19 @@ function scanLoop(timestamp) {
                 const crop = getCachedScanCrop()
                 if (crop && crop.w > 0 && crop.h > 0) {
                     createImageBitmap(video).then(bitmap => {
-                        scannerWorker.postMessage({
-                            type: 'scan',
-                            bitmap: bitmap,
-                            crop: crop,
-                            tw: 320
-                        }, [bitmap])
-                    }).catch(() => {
+                        if (workerBusy || !scannerWorker) {
+                            bitmap.close()
+                            workerBusy = false
+                        } else {
+                            scannerWorker.postMessage({
+                                type: 'scan',
+                                bitmap: bitmap,
+                                crop: crop,
+                                tw: 320
+                            }, [bitmap])
+                        }
+                    }).catch((err) => {
+                        console.error('createImageBitmap error:', err)
                         workerBusy = false
                     })
                 } else {
@@ -1541,11 +1568,11 @@ function scanLoop(timestamp) {
 }
 
 function onWorkerMessage(e) {
-    const { type, barcode, error } = e.data
-    workerBusy = false
+    const { type, error, bitmap } = e.data
 
     if (type === 'init_error') {
-        console.warn('BarcodeDetector unavailable in worker, falling back to manual mode')
+        console.warn('Worker init failed, falling back to manual mode')
+        workerBusy = false
         closeBarcodeScanner()
         scannerMode = 'manual'
         const scanner = document.getElementById('barcodeScanner')
@@ -1564,19 +1591,39 @@ function onWorkerMessage(e) {
         return
     }
 
-    if (type === 'result' && barcode) {
-        const scanner = document.getElementById('barcodeScanner')
-        if (navigator.vibrate) navigator.vibrate(200)
-        searchByBarcode(barcode).then(found => {
-            if (found) {
-                closeBarcodeScanner()
-            } else if (scanner) {
-                scanner.classList.add('not-found')
-                setTimeout(() => scanner.classList.remove('not-found'), 900)
+    if (type === 'result' && bitmap) {
+        if (scannerDetector) {
+            scannerDetector.detect(bitmap).then(barcodes => {
+                const code = barcodes.length > 0 ? barcodes[0].rawValue : null
+                if (code) {
+                    const scanner = document.getElementById('barcodeScanner')
+                    if (navigator.vibrate) navigator.vibrate(200)
+                    searchByBarcode(code).then(found => {
+                        if (found) {
+                            closeBarcodeScanner()
+                        } else if (scanner) {
+                            scanner.classList.add('not-found')
+                            setTimeout(() => scanner.classList.remove('not-found'), 900)
+                        }
+                    }).catch(() => {})
+                }
+            }).catch(err => {
+                console.error('Detect error:', err)
+            }).finally(() => {
+                workerBusy = false
+                if (bitmap && typeof bitmap.close === 'function') {
+                    bitmap.close()
+                }
+            })
+        } else {
+            workerBusy = false
+            if (bitmap && typeof bitmap.close === 'function') {
+                bitmap.close()
             }
-        }).catch(() => {})
+        }
     } else if (type === 'error') {
         console.error('Scanner worker error:', error)
+        workerBusy = false
     }
 }
 
@@ -1677,6 +1724,7 @@ function closeBarcodeScanner() {
         scannerWorker = null
     }
     workerBusy = false
+    scannerDetector = null
     scanLastTime = 0
     lastVideoTime = -1
     invalidateScanCropCache()

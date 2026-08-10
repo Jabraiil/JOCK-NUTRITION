@@ -1,4 +1,3 @@
-let detector = null
 let cropRect = null
 let targetWidth = 320
 let mainCanvas = null
@@ -14,19 +13,16 @@ self.onmessage = async (e) => {
     try {
       mainCanvas = new OffscreenCanvas(targetWidth, targetWidth)
       mainCtx = mainCanvas.getContext('2d')
-
-      detector = new BarcodeDetector({
-        formats: ['ean_13', 'ean_8', 'code_128', 'qr_code']
-      })
     } catch (err) {
-      self.postMessage({ type: 'init_error', error: 'BarcodeDetector unavailable or failed to init' })
+      self.postMessage({ type: 'init_error', error: 'Worker init failed' })
     }
     return
   }
 
-  if (type === 'scan' && detector && bitmap) {
+  if (type === 'scan' && bitmap) {
     if (!mainCanvas || !mainCtx) {
       if (bitmap && typeof bitmap.close === 'function') bitmap.close()
+      self.postMessage({ type: 'error', error: 'Worker not initialized' })
       return
     }
 
@@ -40,13 +36,11 @@ self.onmessage = async (e) => {
       if (mainCanvas.width !== tw) mainCanvas.width = tw
       if (mainCanvas.height !== th) mainCanvas.height = th
 
+      mainCtx.clearRect(0, 0, tw, th)
       mainCtx.drawImage(bitmap, x, y, w, h, 0, 0, tw, th)
 
-      const barcodes = await detector.detect(mainCanvas)
-      self.postMessage({
-        type: 'result',
-        barcode: barcodes.length > 0 ? barcodes[0].rawValue : null
-      })
+      const croppedBitmap = await createImageBitmap(mainCanvas)
+      self.postMessage({ type: 'result', bitmap: croppedBitmap }, [croppedBitmap])
     } catch (err) {
       self.postMessage({ type: 'error', error: err.message })
     } finally {
