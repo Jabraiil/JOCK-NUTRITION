@@ -812,7 +812,7 @@ async function handleProductSubmit(e) {
         category_id: document.getElementById('prodCategory')?.value || null,
         brand_id: document.getElementById('prodBrand')?.value || null,
         price: parseInt(prodPrice.value, 10) || 0,
-        old_price: document.getElementById('prodOldPrice')?.value ? parseInt(document.getElementById('prodOldPrice').value, 10) : null,
+        old_price: (() => { const el = document.getElementById('prodOldPrice'); return el?.value ? parseInt(el.value, 10) : null })(),
         stock: parseInt(prodStock.value, 10) || 0,
         volume: document.getElementById('prodVolume')?.value.trim() || '',
         sku: document.getElementById('prodSku')?.value.trim() || null,
@@ -1877,6 +1877,7 @@ async function handleGenerateDescriptions() {
     }
 
     const btn = document.getElementById('generateDescBtn')
+    if (!btn) return
     const originalText = btn.textContent
     btn.disabled = true
     btn.textContent = '⏳ Генерация...'

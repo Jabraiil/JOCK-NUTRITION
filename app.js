@@ -97,7 +97,6 @@ function init() {
         loadSettings()
         loadProducts()
         updateCartCount()
-        updateFavoritesCount()
         setupEventListeners()
         checkOrderTime()
         setInterval(checkOrderTime, 60000)
@@ -1076,17 +1075,12 @@ function toggleFavorite(productId) {
         favorites.push(productId)
     }
     saveFavorites()
-    updateFavoritesCount()
     document.querySelectorAll(`.favorite-btn[data-id="${productId}"]`).forEach(btn => {
         btn.classList.toggle('active', isFavorited(productId))
     })
     if (favoritesOnly) {
         applyFilters()
     }
-}
-
-function updateFavoritesCount() {
-    const count = favorites.length
 }
 
 function toggleFavoritesView() {

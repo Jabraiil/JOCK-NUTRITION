@@ -46,14 +46,14 @@ function isFont(url) {
 }
 
 function isAPI(url) {
-    return url.pathname.startsWith('/rest/') ||
+    return url.pathname.startsWith('/rest/v1/') ||
            url.pathname.startsWith('/functions/') ||
            url.pathname.startsWith('/auth/') ||
            url.pathname.startsWith('/storage/')
 }
 
 function isStaticAsset(url) {
-    return url.pathname.match(/\.(css|js)$/)
+    return url.pathname.match(/\.(css|js)$/i)
 }
 
 async function precache() {
@@ -107,20 +107,21 @@ self.addEventListener('fetch', (event) => {
     if (isAPI(url)) {
         event.respondWith(
             fetch(request)
-                .then(response => {
+                .then(async response => {
                     if (response && response.status === 200) {
-                        const clone = response.clone()
-                        caches.open(cacheName('api')).then(cache => cache.put(request, clone)).catch(() => {})
+                        try {
+                            const cache = await caches.open(cacheName('api'))
+                            cache.put(request, response.clone())
+                        } catch (e) { /* quota exceeded */ }
                     }
                     return response
                 })
-                .catch(() => {
-                    return caches.match(request).then(cached => {
-                        if (cached) return cached
-                        return new Response(JSON.stringify({ error: 'Offline' }), {
-                            headers: { 'Content-Type': 'application/json' },
-                            status: 503
-                        })
+                .catch(async () => {
+                    const cached = await caches.match(request)
+                    if (cached) return cached
+                    return new Response(JSON.stringify({ error: 'Offline' }), {
+                        headers: { 'Content-Type': 'application/json' },
+                        status: 503
                     })
                 })
         )
@@ -132,17 +133,27 @@ self.addEventListener('fetch', (event) => {
     if (!isSameOrigin) {
         if (isImage(url) || isFont(url)) {
             event.respondWith(
-                caches.match(request).then(cached => {
+                caches.match(request).then(async cached => {
                     if (cached) return cached
-                    return fetch(request).then(response => {
+                    try {
+                        const response = await fetch(request)
                         if (response && response.status === 200) {
-                            const type = isImage(url) ? 'images' : 'fonts'
-                            caches.open(cacheName(type)).then(cache => {
-                                cache.put(request, response.clone()).catch(() => {})
-                            })
+                            try {
+                                const type = isImage(url) ? 'images' : 'fonts'
+                                const cache = await caches.open(cacheName(type))
+                                cache.put(request, response.clone())
+                            } catch (e) { /* quota exceeded */ }
                         }
                         return response
-                    }).catch(() => new Response('Offline', { status: 503 }))
+                    } catch () {
+                        if (isImage(url)) {
+                            return new Response(
+                                'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"><rect width="1" height="1" fill="transparent"/></svg>',
+                                { headers: { 'Content-Type': 'image/svg+xml' }, status: 503 }
+                            )
+                        }
+                        return new Response('Offline', { status: 503 })
+                    }
                 })
             )
         }
@@ -151,16 +162,18 @@ self.addEventListener('fetch', (event) => {
 
     if (isImage(url) || isFont(url)) {
         event.respondWith(
-            caches.open(cacheName(isImage(url) ? 'images' : 'fonts')).then(cache => {
-                return cache.match(request).then(cached => {
-                    if (cached) return cached
-                    return fetch(request).then(response => {
-                        if (response && response.status === 200) {
-                            cache.put(request, response.clone())
-                        }
-                        return response
-                    }).catch(() => new Response('Offline', { status: 503 }))
-                })
+            caches.open(cacheName(isImage(url) ? 'images' : 'fonts')).then(async cache => {
+                const cached = await cache.match(request)
+                if (cached) return cached
+                try {
+                    const response = await fetch(request)
+                    if (response && response.status === 200) {
+                        cache.put(request, response.clone())
+                    }
+                    return response
+                } catch () {
+                    return new Response('Offline', { status: 503 })
+                }
             })
         )
         return
@@ -168,15 +181,20 @@ self.addEventListener('fetch', (event) => {
 
     if (isStaticAsset(url)) {
         event.respondWith(
-            caches.match(request).then(cached => {
+            caches.match(request).then(async cached => {
                 if (cached) return cached
-                return fetch(request).then(response => {
+                try {
+                    const response = await fetch(request)
                     if (response && response.status === 200) {
-                        const clone = response.clone()
-                        caches.open(cacheName('static')).then(cache => cache.put(request, clone)).catch(() => {})
+                        try {
+                            const cache = await caches.open(cacheName('static'))
+                            cache.put(request, response.clone())
+                        } catch (e) { /* quota exceeded */ }
                     }
                     return response
-                }).catch(() => new Response('Offline', { status: 503 }))
+                } catch () {
+                    return new Response('Offline', { status: 503 })
+                }
             })
         )
         return
@@ -186,21 +204,25 @@ self.addEventListener('fetch', (event) => {
     if (isHTML) {
         event.respondWith(
             fetch(request)
-                .then(response => {
+                .then(async response => {
                     if (response && response.status === 200) {
-                        const clone = response.clone()
-                        caches.open(cacheName('pages')).then(cache => cache.put(request, clone)).catch(() => {})
+                        try {
+                            const cache = await caches.open(cacheName('pages'))
+                            cache.put(request, response.clone())
+                        } catch (e) { /* quota exceeded */ }
                     }
                     return response
                 })
-                .catch(() => {
-                    return caches.match('/offline.html').then(cached => {
-                        if (cached) return cached
-                        if (url.pathname.startsWith('/admin/')) {
-                            return caches.match('/admin/index.html')
-                        }
-                        return caches.match('/index.html')
-                    }).catch(() => new Response('Offline', { status: 503 }))
+                .catch(async () => {
+                    const cached = await caches.match('/offline.html', { cacheName: cacheName('pages') })
+                    if (cached) return cached
+                    if (url.pathname.startsWith('/admin/')) {
+                        const adminCached = await caches.match('/admin/index.html', { cacheName: cacheName('pages') })
+                        if (adminCached) return adminCached
+                    }
+                    const indexCached = await caches.match('/index.html', { cacheName: cacheName('pages') })
+                    if (indexCached) return indexCached
+                    return new Response('Offline', { status: 503 })
                 })
         )
         return
