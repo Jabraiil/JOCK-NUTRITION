@@ -1068,7 +1068,7 @@ async function loadCategories() {
         }
     } catch (error) {
         console.error('Error loading categories:', error)
-        alert('Ошибка загрузки категорий: ' + error.message)
+        showError('Ошибка загрузки категорий: ' + error.message)
     }
 }
 
@@ -1209,7 +1209,7 @@ async function loadBrands() {
         }
     } catch (error) {
         console.error('Error loading brands:', error)
-        alert('Ошибка загрузки брендов: ' + error.message)
+        showError('Ошибка загрузки брендов: ' + error.message)
     }
 }
 
