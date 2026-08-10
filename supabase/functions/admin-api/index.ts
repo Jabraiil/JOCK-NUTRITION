@@ -40,27 +40,81 @@ serve(async (req) => {
       await supabase.from("product_related").insert(rows)
     }
 
-    async function callDeepSeek(apiKey: string, messages: any[], params: any) {
-      const response = await fetch("https://api.deepseek.com/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${apiKey}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          model: "deepseek-v4-flash",
-          messages,
-          stream: false,
-          ...params
-        })
-      })
-
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({}))
-        throw new Error(errData.error?.message || errData.error || `AI API error: ${response.status}`)
+    async function callGemini(apiKey: string, prompt: string, params: any = {}, attempts = 3) {
+      const body: any = {
+        contents: [
+          {
+            parts: [{ text: prompt }]
+          }
+        ],
+        generationConfig: {
+          temperature: params.temperature ?? 0.3,
+          maxOutputTokens: params.maxOutputTokens ?? 1500,
+          responseMimeType: params.responseMimeType || 'text/plain'
+        }
       }
 
-      return await response.json()
+      if (params.responseMimeType === 'application/json') {
+        body.generationConfig.responseSchema = params.responseSchema || {
+          type: 'object',
+          properties: {
+            description: { type: 'string' },
+            full_description: { type: 'string' },
+            composition: { type: 'string' },
+            dosage: { type: 'string' },
+            usage: { type: 'string' },
+            contraindications: { type: 'string' }
+          },
+          required: ['description', 'full_description', 'composition', 'dosage', 'usage', 'contraindications']
+        }
+      }
+
+      for (let i = 0; i < attempts; i++) {
+        try {
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`
+          const response = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+          })
+
+          if (response.ok) {
+            const data = await response.json()
+            const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
+            
+            if (!text) {
+              console.warn(`Empty Gemini response for attempt ${i + 1}`)
+              if (i < attempts - 1) {
+                await new Promise(r => setTimeout(r, Math.pow(2, i) * 2000))
+                continue
+              }
+              throw new Error('Empty response from AI')
+            }
+            
+            return { text, raw: data }
+          }
+
+          const errData = await response.json().catch(() => ({}))
+          const errorMsg = errData.error?.message || errData.error || `AI API error: ${response.status}`
+
+          if ((response.status === 429 || response.status === 503) && i < attempts - 1) {
+            const delay = Math.pow(2, i) * 3000
+            console.warn(`Gemini rate limit/server busy, retrying in ${delay}ms...`)
+            await new Promise(r => setTimeout(r, delay))
+            continue
+          }
+
+          throw new Error(errorMsg)
+        } catch (err) {
+          if (i < attempts - 1) {
+            const delay = Math.pow(2, i) * 2000
+            console.warn(`Gemini call failed, retrying in ${delay}ms...`)
+            await new Promise(r => setTimeout(r, delay))
+            continue
+          }
+          throw err
+        }
+      }
     }
 
     async function detectProductType(name: string): Promise<{ type: string; category: string }> {
@@ -89,14 +143,7 @@ serve(async (req) => {
       const isPharmacy = productType === 'pharmacy'
       const isSupplement = productType === 'supplement'
 
-      const messages = [
-        {
-          role: 'system',
-          content: 'Ты профессиональный копирайтер для интернет-магазина. Всегда отвечай только валидным JSON, без markdown, без объяснений.'
-        },
-        {
-          role: 'user',
-          content: `Создай описание для товара в интернет-магазине.
+      const prompt = `Создай описание для товара в интернет-магазине.
 
 Название: "${productName}"
 Бренд: "${brandName}"
@@ -123,17 +170,26 @@ ${isSupplement && composition ? `Состав по умолчанию для э�
 - usage: способ применения как на упаковке, переведённый на русский, кратко
 - contraindications: ${isPerfume ? 'пусто для парфюма' : 'только фактические, без выдуманных'}
 - Не придумывай состав, дозировку и способ применения — используй только общеизвестные стандартные данные для этого типа товара и информации из названия/объёма.`
-        }
-      ]
 
-      const data = await callDeepSeek(apiKey, messages, {
+      const data = await callGemini(apiKey, prompt, {
         temperature: 0.3,
-        max_tokens: 1000,
-        response_format: { type: 'json_object' },
-        thinking: { type: 'disabled' }
+        maxOutputTokens: 1500,
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: 'object',
+          properties: {
+            description: { type: 'string' },
+            full_description: { type: 'string' },
+            composition: { type: 'string' },
+            dosage: { type: 'string' },
+            usage: { type: 'string' },
+            contraindications: { type: 'string' }
+          },
+          required: ['description', 'full_description', 'composition', 'dosage', 'usage', 'contraindications']
+        }
       })
 
-      const rawText = data?.choices?.[0]?.message?.content?.trim()
+      const rawText = data.text
       if (!rawText) throw new Error('Empty response from AI')
 
       let parsed
@@ -144,14 +200,7 @@ ${isSupplement && composition ? `Состав по умолчанию для э�
         return null
       }
 
-      const auditMessages = [
-        {
-          role: 'system',
-          content: 'Ты проверяешь качество описания товара для магазина. Отвечай только "OK" или "ERROR: причина".'
-        },
-        {
-          role: 'user',
-          content: `Проверь описание товара.
+      const auditPrompt = `Проверь описание товара.
 
 Название: "${productName}"
 Категория: "${categoryName}"
@@ -172,16 +221,14 @@ Contraindications: "${parsed.contraindications || ''}"
 - contraindications: для парфюма пусто, для остальных — стандартные
 
 Ответь "OK" если всё хорошо, или "ERROR: причина" если есть проблемы.`
-        }
-      ]
 
-      const auditData = await callDeepSeek(apiKey, auditMessages, {
+      const auditData = await callGemini(apiKey, auditPrompt, {
         temperature: 0.1,
-        max_tokens: 100,
-        thinking: { type: 'disabled' }
+        maxOutputTokens: 100,
+        responseMimeType: 'text/plain'
       })
 
-      const auditResult = auditData?.choices?.[0]?.message?.content?.trim() || ''
+      const auditResult = auditData.text?.trim() || ''
       if (auditResult.toLowerCase().includes('error:')) {
         console.warn('Self-audit failed for product:', productName, auditResult)
         return null
@@ -1093,7 +1140,10 @@ Contraindications: "${parsed.contraindications || ''}"
       let totalSuccess = 0
       let totalError = 0
 
-      for (const chunk of chunks) {
+      for (let c = 0; c < chunks.length; c++) {
+        const chunk = chunks[c]
+        console.log(`Processing chunk ${c + 1}/${chunks.length}, ${chunk.length} products`)
+
         for (const product of chunk) {
           try {
             const result = await generateProductDescription(product, apiKey)
@@ -1115,9 +1165,11 @@ Contraindications: "${parsed.contraindications || ''}"
                 console.error(`Failed to update product ${product.id}:`, updateError)
               } else {
                 totalSuccess++
+                console.log(`✓ Generated description for: ${product.name}`)
               }
             } else {
               totalError++
+              console.warn(`✗ Failed to generate description for: ${product.name}`)
             }
           } catch (err) {
             totalError++
@@ -1127,7 +1179,7 @@ Contraindications: "${parsed.contraindications || ''}"
           await new Promise(r => setTimeout(r, 300))
         }
 
-        if (chunks.length > 1) {
+        if (chunks.length > 1 && c < chunks.length - 1) {
           await new Promise(r => setTimeout(r, 2000))
         }
       }

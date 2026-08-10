@@ -2019,20 +2019,26 @@ function setupGlobalTooltip() {
     if (!tooltip) return
 
     let activeHint = null
+    let showTimeout = null
     let hideTimeout = null
+    let isHoveringTooltip = false
 
-    function showTooltip(hint) {
-        if (hideTimeout) {
-            clearTimeout(hideTimeout)
-            hideTimeout = null
+    function getPlacement(hintRect) {
+        const tooltipRect = tooltip.getBoundingClientRect()
+        const viewportH = window.innerHeight
+        const gap = 10
+        const padding = 16
+
+        const spaceAbove = hintRect.top - padding
+        const spaceBelow = viewportH - hintRect.bottom - padding
+
+        if (spaceAbove >= tooltipRect.height + gap || spaceAbove >= spaceBelow) {
+            return 'top'
         }
+        return 'bottom'
+    }
 
-        const text = hint.dataset.tooltip || ''
-        if (!text) return
-
-        tooltip.textContent = text
-        tooltip.classList.add('visible')
-
+    function positionTooltip(hint) {
         const hintRect = hint.getBoundingClientRect()
         const tooltipRect = tooltip.getBoundingClientRect()
         const viewportW = window.innerWidth
@@ -2040,12 +2046,16 @@ function setupGlobalTooltip() {
         const gap = 10
         const padding = 16
 
-        let top = hintRect.top - tooltipRect.height - gap
-        let left = hintRect.left + hintRect.width / 2 - tooltipRect.width / 2
+        const placement = getPlacement(hintRect)
 
-        if (top < padding) {
+        let top
+        if (placement === 'top') {
+            top = hintRect.top - tooltipRect.height - gap
+        } else {
             top = hintRect.bottom + gap
         }
+
+        let left = hintRect.left + hintRect.width / 2 - tooltipRect.width / 2
 
         if (left < padding) {
             left = padding
@@ -2053,40 +2063,105 @@ function setupGlobalTooltip() {
             left = viewportW - padding - tooltipRect.width
         }
 
+        if (top < padding) {
+            top = padding
+        } else if (top + tooltipRect.height > viewportH - padding) {
+            top = viewportH - padding - tooltipRect.height
+        }
+
         tooltip.style.top = `${top}px`
         tooltip.style.left = `${left}px`
-        activeHint = hint
+        tooltip.setAttribute('data-placement', placement)
+    }
+
+    function showTooltip(hint) {
+        if (hideTimeout) {
+            clearTimeout(hideTimeout)
+            hideTimeout = null
+        }
+
+        if (showTimeout) {
+            clearTimeout(showTimeout)
+        }
+
+        const text = hint.dataset.tooltip || ''
+        if (!text) return
+
+        showTimeout = setTimeout(() => {
+            tooltip.textContent = text
+            tooltip.classList.add('visible')
+            tooltip.setAttribute('aria-hidden', 'false')
+            positionTooltip(hint)
+            activeHint = hint
+            showTimeout = null
+        }, 400)
     }
 
     function hideTooltip() {
+        if (showTimeout) {
+            clearTimeout(showTimeout)
+            showTimeout = null
+        }
+
         hideTimeout = setTimeout(() => {
-            tooltip.classList.remove('visible')
-            activeHint = null
-        }, 80)
+            if (!isHoveringTooltip) {
+                tooltip.classList.remove('visible')
+                tooltip.setAttribute('aria-hidden', 'true')
+                activeHint = null
+            }
+            hideTimeout = null
+        }, 100)
     }
 
     document.querySelectorAll('.field-hint').forEach(hint => {
+        hint.setAttribute('aria-describedby', 'globalTooltip')
         hint.addEventListener('mouseenter', () => showTooltip(hint))
         hint.addEventListener('mouseleave', hideTooltip)
         hint.addEventListener('focus', () => showTooltip(hint))
         hint.addEventListener('blur', hideTooltip)
     })
 
-    document.addEventListener('scroll', () => {
-        if (activeHint) {
+    tooltip.addEventListener('mouseenter', () => {
+        isHoveringTooltip = true
+        if (hideTimeout) {
+            clearTimeout(hideTimeout)
+            hideTimeout = null
+        }
+    })
+
+    tooltip.addEventListener('mouseleave', () => {
+        isHoveringTooltip = false
+        hideTooltip()
+    })
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && tooltip.classList.contains('visible')) {
             tooltip.classList.remove('visible')
-            setTimeout(() => {
-                if (activeHint) showTooltip(activeHint)
-            }, 50)
+            tooltip.setAttribute('aria-hidden', 'true')
+            if (activeHint) {
+                activeHint.focus()
+                activeHint = null
+            }
+            if (showTimeout) {
+                clearTimeout(showTimeout)
+                showTimeout = null
+            }
+            if (hideTimeout) {
+                clearTimeout(hideTimeout)
+                hideTimeout = null
+            }
+        }
+    })
+
+    document.addEventListener('scroll', () => {
+        if (activeHint && tooltip.classList.contains('visible')) {
+            positionTooltip(activeHint)
         }
     }, true)
 
     window.addEventListener('resize', () => {
-        if (activeHint) {
-            tooltip.classList.remove('visible')
-            setTimeout(() => {
-                if (activeHint) showTooltip(activeHint)
-            }, 50)
+        if (activeHint && tooltip.classList.contains('visible')) {
+            positionTooltip(activeHint)
         }
     })
 }
@@ -2836,7 +2911,7 @@ async function handleBackupSql() {
 async function handleGenerateDescriptions() {
     const apiKey = document.getElementById('geminiApiKey')?.value || localStorage.getItem('gemini-api-key') || ''
     if (!apiKey) {
-        showError('Введите DeepSeek API ключ в настройках')
+        showError('Введите Gemini API ключ в настройках')
         return
     }
 
@@ -3181,7 +3256,7 @@ async function startFallbackScanner() {
 }
 
 async function handleAdminFileUpload(e) {
-    const file = e.target?.target?.files?.[0] || e.target?.files?.[0]
+    const file = (e.target && e.target.files && e.target.files[0]) || (e.target.target && e.target.target.files && e.target.target.files[0])
     if (!file) return
 
     const statusEl = document.getElementById('adminScannerStatus')
@@ -3205,8 +3280,10 @@ async function handleAdminFileUpload(e) {
             }
         }
 
-        if (typeof Html5Qrcode !== 'undefined' && Html5Qrcode.getFileFormats) {
-            const result = await Html5Qrcode.scanFile(file, true)
+        if (typeof Html5Qrcode !== 'undefined') {
+            const fileScanner = new Html5Qrcode('adminScannerFileContainer')
+            const result = await fileScanner.scanFile(file, true)
+            fileScanner.clear()
             if (result) {
                 handleAdminBarcodeDetected(result)
                 return

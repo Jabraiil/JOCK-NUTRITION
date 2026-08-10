@@ -1828,11 +1828,13 @@ let bannerInterval = null
 let bannerPaused = false
 
 const BANNER_INTERVAL_MS = 5000
+const BANNER_AUTOPLAY_MIN_WIDTH = 768
 
 function initBanner() {
     const banner = document.getElementById('promoBanner')
     const track = document.getElementById('promoBannerTrack')
     const dotsContainer = document.getElementById('promoBannerDots')
+    const pauseBtn = document.getElementById('bannerPauseBtn')
     if (!banner || !track || !dotsContainer) return
 
     bannerSlides = getBannerSlides()
@@ -1843,6 +1845,8 @@ function initBanner() {
 
     banner.classList.remove('hidden')
 
+    const isMobile = window.innerWidth < BANNER_AUTOPLAY_MIN_WIDTH
+
     track.innerHTML = bannerSlides.map((slide, idx) => {
         const isSplit = slide.layout === 'split'
         const imagePosition = slide.image_position || 'center'
@@ -1852,6 +1856,7 @@ function initBanner() {
         const textHtml = slide.text ? `<div class="promo-text">${escapeHtml(slide.text)}</div>` : ''
         const activeClass = idx === 0 ? 'active' : ''
         const splitPosClass = isSplit ? `split-${imagePosition}` : ''
+        const inertAttr = idx === 0 ? '' : 'inert'
 
         let imageHtml = ''
         let styleAttr = ''
@@ -1864,7 +1869,7 @@ function initBanner() {
         }
 
         return `
-            <div class="promo-banner-slide ${activeClass} ${splitPosClass}" data-index="${idx}" data-link="${escapeHtml(slide.link || '')}" data-product-id="${escapeHtml(slide.product_id || '')}" style="${styleAttr}">
+            <div class="promo-banner-slide ${activeClass} ${splitPosClass}" data-index="${idx}" data-link="${escapeHtml(slide.link || '')}" data-product-id="${escapeHtml(slide.product_id || '')}" style="${styleAttr}" role="group" aria-roledescription="slide" aria-label="Слайд ${idx + 1} из ${bannerSlides.length}" ${inertAttr}>
                 ${imageHtml}
                 <div class="promo-content">
                     ${badgeHtml}
@@ -1880,12 +1885,24 @@ function initBanner() {
     const newDotsContainer = document.getElementById('promoBannerDots')
     if (newDotsContainer) {
         newDotsContainer.innerHTML = bannerSlides.map((_, idx) =>
-            `<button class="promo-banner-dot${idx === 0 ? ' active' : ''}" data-index="${idx}" aria-label="Слайд ${idx + 1}"></button>`
+            `<button class="promo-banner-dot${idx === 0 ? ' active' : ''}" data-index="${idx}" aria-label="Слайд ${idx + 1}" aria-controls="promoBannerTrack"></button>`
         ).join('')
     }
 
     bannerCurrentIndex = 0
-    startBannerAutoplay()
+
+    if (!isMobile) {
+        startBannerAutoplay()
+        if (pauseBtn) {
+            pauseBtn.classList.add('playing')
+            pauseBtn.setAttribute('aria-label', 'Пауза автопролистывания')
+        }
+    } else {
+        if (pauseBtn) {
+            pauseBtn.classList.remove('playing')
+            pauseBtn.setAttribute('aria-label', 'Автопролистывание отключено на мобильных')
+        }
+    }
 
     track.addEventListener('mouseenter', () => { bannerPaused = true })
     track.addEventListener('mouseleave', () => { bannerPaused = false })
@@ -1917,6 +1934,43 @@ function initBanner() {
                 }
             }
         })
+    })
+
+    if (pauseBtn) {
+        pauseBtn.addEventListener('click', () => {
+            if (bannerInterval) {
+                stopBannerAutoplay()
+                pauseBtn.classList.remove('playing')
+                pauseBtn.setAttribute('aria-label', 'Старт автопролистывания')
+                bannerPaused = true
+            } else {
+                bannerPaused = false
+                startBannerAutoplay()
+                pauseBtn.classList.add('playing')
+                pauseBtn.setAttribute('aria-label', 'Пауза автопролистывания')
+            }
+        })
+    }
+
+    track.setAttribute('tabindex', '0')
+    track.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft') {
+            e.preventDefault()
+            goToBannerSlide(bannerCurrentIndex - 1)
+            resetBannerAutoplay()
+        } else if (e.key === 'ArrowRight') {
+            e.preventDefault()
+            goToBannerSlide(bannerCurrentIndex + 1)
+            resetBannerAutoplay()
+        } else if (e.key === 'Home') {
+            e.preventDefault()
+            goToBannerSlide(0)
+            resetBannerAutoplay()
+        } else if (e.key === 'End') {
+            e.preventDefault()
+            goToBannerSlide(bannerSlides.length - 1)
+            resetBannerAutoplay()
+        }
     })
 }
 
@@ -2024,25 +2078,47 @@ function goToBannerSlide(index) {
     const dots = track.querySelectorAll('.promo-banner-dot')
 
     slides.forEach((slide, i) => {
-        slide.classList.toggle('active', i === bannerCurrentIndex)
+        const isActive = i === bannerCurrentIndex
+        slide.classList.toggle('active', isActive)
+        if (isActive) {
+            slide.removeAttribute('inert')
+        } else {
+            slide.setAttribute('inert', '')
+        }
+        slide.setAttribute('aria-label', `Слайд ${i + 1} из ${total}`)
     })
     dots.forEach((dot, i) => {
         dot.classList.toggle('active', i === bannerCurrentIndex)
+        dot.setAttribute('aria-label', `Слайд ${i + 1} из ${total}`)
     })
 }
 
 function startBannerAutoplay() {
     stopBannerAutoplay()
+    if (window.innerWidth < BANNER_AUTOPLAY_MIN_WIDTH) return
+
     bannerInterval = setInterval(() => {
         if (bannerPaused) return
         goToBannerSlide(bannerCurrentIndex + 1)
     }, BANNER_INTERVAL_MS)
+
+    const pauseBtn = document.getElementById('bannerPauseBtn')
+    if (pauseBtn) {
+        pauseBtn.classList.add('playing')
+        pauseBtn.setAttribute('aria-label', 'Пауза автопролистывания')
+    }
 }
 
 function stopBannerAutoplay() {
     if (bannerInterval) {
         clearInterval(bannerInterval)
         bannerInterval = null
+    }
+
+    const pauseBtn = document.getElementById('bannerPauseBtn')
+    if (pauseBtn) {
+        pauseBtn.classList.remove('playing')
+        pauseBtn.setAttribute('aria-label', 'Старт автопролистывания')
     }
 }
 
@@ -2205,7 +2281,7 @@ function showUpdateNotification() {
                     } else {
                         window.location.reload()
                     }
-                })
+                }).catch(() => {})
             } else {
                 window.location.reload()
             }

@@ -34,11 +34,11 @@
 - В проекте используется реальный `anon key`, он прописан в `app.js` и `admin/app.js`
 - Обе Edge Functions развёрнуты, `create-order` имеет рабочий эндпоинт `/health`
 - В репозитории есть `.nojekyll` для отключения Jekyll на GitHub Pages
-- Service Worker версия: `jock-nutrition-v37-2026-08-09`
-- `manifest.json` cache bust: `2026-08-09-v3`
-- `index.html` deploy marker: `2026-08-09-v3`
-- Версии статики в query params: `styles.css?v=36`, `app.js?v=36`
-- Админка: `admin/styles.css?v=34`, `admin/app.js?v=34`
+- Service Worker версия: `jock-nutrition-v40-2026-08-10`
+- `manifest.json` cache bust: `2026-08-10-v6`
+- `index.html` deploy marker: `2026-08-10-v6`
+- Версии статики в query params: `styles.css?v=38`, `app.js?v=38`
+- Админка: `admin/styles.css` (без version query), `admin/app.js?v=36`
 
 ---
 
@@ -1278,3 +1278,19 @@ const CONFIG = {
 ---
 
 *Документ создан на основе анализа кодовой базы репозитория `Jabraiil/JOCK-NUTRITION`. Обновлён 2026-08-07.*
+
+---
+
+## Исправления (2026-08-11)
+
+### Исправлены ошибки:
+1. **sw.js**: Исправлено невалидное использование `caches.match(url, { cacheName: ... })`. Опция `cacheName` не существует в Cache Storage API — заменено на `caches.open(cacheName('pages')).then(cache => cache.match(url))`. Без этого исправления офлайн-режим возвращал 503 вместо кэшированных страниц.
+2. **app.js**: Добавлен `.catch(() => {})` к `navigator.serviceWorker.getRegistrations().then(...)` для предотвращения необработанных отклонений промисов.
+3. **PROJECT_CONTEXT.md**: Актуализированы версионные маркеры (Service Worker, manifest, deploy marker, версии статики).
+
+### Проверено:
+- Синтаксис всех JS-файлов проходит `node --check`
+- Все ID элементов, referenced в `app.js` и `admin/app.js`, существуют в соответствующих HTML-файлах
+- Все fetch-запросы включают необходимые заголовки авторизации
+- Отсутствуют вызовы `eval()`, `new Function()`, `document.write()`
+- Внешние ссылки используют `rel="noopener"` / `noopener,noreferrer`

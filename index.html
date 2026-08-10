@@ -189,10 +189,15 @@
                 </div>
             </div>
 
-            <div id="promoBanner" class="promo-banner hidden">
-                <div class="promo-banner-track" id="promoBannerTrack">
-                    <div class="promo-banner-dots" id="promoBannerDots"></div>
+            <div id="promoBanner" class="promo-banner hidden" role="region" aria-label="Промо-баннер" aria-roledescription="carousel">
+                <div class="promo-banner-track" id="promoBannerTrack" aria-live="polite">
                 </div>
+                <button id="bannerPauseBtn" class="promo-banner-pause" aria-label="Пауза автопролистывания" title="Пауза">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                        <rect x="6" y="4" width="4" height="16" rx="1"></rect>
+                        <rect x="14" y="4" width="4" height="16" rx="1"></rect>
+                    </svg>
+                </button>
             </div>
 
             <div id="catalog" class="catalog">

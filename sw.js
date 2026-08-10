@@ -221,13 +221,13 @@ self.addEventListener('fetch', (event) => {
                     return response
                 })
                 .catch(async () => {
-                    const cached = await caches.match('offline.html', { cacheName: cacheName('pages') })
+                    const cached = await caches.open(cacheName('pages')).then(cache => cache.match('offline.html'))
                     if (cached) return cached
                     if (url.pathname === `${BASE_PATH}admin/` || url.pathname.startsWith(`${BASE_PATH}admin/`)) {
-                        const adminCached = await caches.match(`${BASE_PATH}admin/index.html`.replace(/^\//, ''), { cacheName: cacheName('pages') })
+                        const adminCached = await caches.open(cacheName('pages')).then(cache => cache.match(`${BASE_PATH}admin/index.html`.replace(/^\//, '')))
                         if (adminCached) return adminCached
                     }
-                    const indexCached = await caches.match('index.html', { cacheName: cacheName('pages') })
+                    const indexCached = await caches.open(cacheName('pages')).then(cache => cache.match('index.html'))
                     if (indexCached) return indexCached
                     return new Response('Offline', { status: 503 })
                 })

@@ -1307,6 +1307,52 @@ select:focus:not(:focus-visible) {
     background: rgba(255, 255, 255, 0.85);
 }
 
+.promo-banner-pause {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 4;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, transform 0.15s;
+}
+
+.promo-banner-pause:hover {
+    background: rgba(0, 0, 0, 0.55);
+}
+
+.promo-banner-pause:active {
+    transform: scale(0.92);
+}
+
+.promo-banner-pause.playing svg {
+    display: none;
+}
+
+.promo-banner-pause.playing::after {
+    content: '';
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 6px 0 6px 10px;
+    border-color: transparent transparent transparent #fff;
+}
+
+.promo-banner-slide[inert] {
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
 @media (max-width: 480px) {
     .promo-banner-slide .promo-content {
         max-width: 85%;

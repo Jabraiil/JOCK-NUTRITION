@@ -1351,7 +1351,7 @@ body {
     white-space: normal;
     width: max(240px, 260px);
     max-width: calc(100vw - 48px);
-    pointer-events: none;
+    pointer-events: auto;
     text-align: left;
     box-shadow: 0 8px 24px rgba(0,0,0,0.35);
     opacity: 0;
@@ -1362,6 +1362,30 @@ body {
 .global-tooltip.visible {
     opacity: 1;
     visibility: visible;
+}
+
+.global-tooltip::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 0;
+    border: 6px solid transparent;
+}
+
+.global-tooltip[data-placement="top"]::after {
+    bottom: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-top-color: rgba(28, 28, 30, 0.96);
+    border-bottom: none;
+}
+
+.global-tooltip[data-placement="bottom"]::after {
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-bottom-color: rgba(28, 28, 30, 0.96);
+    border-top: none;
 }
 
 @media (max-width: 768px) {
@@ -1675,6 +1699,15 @@ body {
 
 .admin-scanner-file-input {
     display: none;
+}
+
+.admin-scanner-file-container {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
 }
 
 /* ============================================================
