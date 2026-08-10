@@ -252,16 +252,23 @@ select:focus:not(:focus-visible) {
 }
 
 /* ---------- Bottom Navigation Bar ---------- */
+/* ---------- Floating Dock (iOS-style) ---------- */
 .bottom-nav {
     position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    display: none;
-    background: var(--bg-elevated);
-    border-top: 1px solid var(--border);
+    bottom: 16px;
+    left: 16px;
+    right: 16px;
+    display: flex;
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
     z-index: 200;
-    padding-bottom: env(safe-area-inset-bottom);
+    padding: 6px env(safe-area-inset-bottom);
+    margin: 0 auto;
+    max-width: 496px;
     transform: translateZ(0);
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
@@ -274,15 +281,21 @@ select:focus:not(:focus-visible) {
     justify-content: center;
     gap: 2px;
     flex: 1;
-    padding: 6px 0 8px;
+    padding: 8px 0 10px;
     color: var(--text-secondary);
     text-decoration: none;
     font-size: 0.7rem;
     font-family: var(--font);
     cursor: pointer;
-    min-height: 56px;
+    min-height: 52px;
     position: relative;
-    transition: color 0.2s;
+    transition: color 0.2s, background 0.2s;
+    border-radius: 16px;
+    margin: 2px;
+}
+
+.bottom-nav-item:hover {
+    background: rgba(0, 0, 0, 0.04);
 }
 
 .bottom-nav-item svg {
@@ -293,6 +306,7 @@ select:focus:not(:focus-visible) {
 
 .bottom-nav-item.active {
     color: var(--primary);
+    background: rgba(52, 199, 89, 0.12);
 }
 
 .bottom-nav-badge {
@@ -317,19 +331,26 @@ select:focus:not(:focus-visible) {
     display: none;
 }
 
-@media (max-width: 768px) {
+@media (prefers-color-scheme: dark) {
     .bottom-nav {
-        display: flex;
+        background: rgba(30, 30, 30, 0.75);
+        border-color: var(--border);
     }
+}
 
+@media (max-width: 768px) {
     .main {
-        padding-bottom: calc(60px + env(safe-area-inset-bottom));
+        padding-bottom: calc(84px + env(safe-area-inset-bottom));
     }
 }
 
 @media (min-width: 769px) {
     .bottom-nav {
-        display: flex;
+        max-width: 420px;
+    }
+
+    .main {
+        padding-bottom: calc(84px + env(safe-area-inset-bottom));
     }
 }
 
@@ -2225,7 +2246,7 @@ select:focus:not(:focus-visible) {
 /* ---------- Add to Home Screen Banner ---------- */
 .a2hs-banner {
     position: fixed;
-    bottom: calc(var(--bottom-nav-height, 64px) + 8px + env(safe-area-inset-bottom));
+bottom: calc(84px + env(safe-area-inset-bottom));
     left: 12px;
     right: 12px;
     background: rgba(255, 255, 255, 0.92);

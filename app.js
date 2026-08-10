@@ -1598,7 +1598,7 @@ function closeBarcodeScanner() {
 
 async function searchByBarcode(barcode) {
     try {
-        const response = await fetchWithTimeout(`${CONFIG.supabaseUrl}/rest/v1/products?barcode=eq.${encodeURIComponent(barcode)}&select=*`, {
+        const response = await fetchWithTimeout(`${CONFIG.supabaseUrl}/rest/v1/products?barcode=eq.${encodeURIComponent(barcode)}&is_visible=eq.true&select=*,categories(name),brands(name),product_images(*)`, {
             headers: {
                 'apikey': CONFIG.supabaseAnonKey,
                 'Authorization': `Bearer ${CONFIG.supabaseAnonKey}`
@@ -1613,7 +1613,11 @@ async function searchByBarcode(barcode) {
         const products = await response.json()
 
         if (products.length > 0) {
-            openProductModal(products[0].id)
+            const product = products[0]
+            if (!allProducts.find(p => p.id === product.id)) {
+                allProducts.unshift(product)
+            }
+            openProductModal(product.id)
             return true
         }
         return false
