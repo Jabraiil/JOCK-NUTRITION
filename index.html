@@ -259,35 +259,43 @@
 
 <!-- Bottom Navigation Bar (mobile) -->
 <nav class="bottom-nav" id="bottomNav">
-    <button type="button" class="bottom-nav-item" data-nav="catalog" role="button" tabindex="0">
+    <button type="button" class="bottom-nav-item" data-nav="catalog" id="navCatalog" role="button" tabindex="0" aria-label="Главная">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
             <polyline points="9 22 9 12 15 12 15 22"></polyline>
         </svg>
-        <span>Главная</span>
+        <span class="nav-label">Главная</span>
     </button>
-    <button type="button" class="bottom-nav-item" id="navSearch" data-nav="search" role="button" tabindex="0">
+    <button type="button" class="bottom-nav-item" id="navSearch" data-nav="search" role="button" tabindex="0" aria-label="Поиск">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="11" cy="11" r="8"></circle>
             <path d="m21 21-4.35-4.35"></path>
         </svg>
-        <span>Поиск</span>
+        <span class="nav-label">Поиск</span>
     </button>
-    <button type="button" class="bottom-nav-item" id="navFavorites" data-nav="favorites" role="button" tabindex="0">
+    <button type="button" class="bottom-nav-item" id="navFavorites" data-nav="favorites" role="button" tabindex="0" aria-label="Избранное">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78a5.5 5.5 0 0 0 0-7.78z"></path>
         </svg>
-        <span>Избранное</span>
+        <span class="nav-label">Избранное</span>
     </button>
-    <button type="button" class="bottom-nav-item" id="navCart" data-nav="cart" role="button" tabindex="0">
+    <button type="button" class="bottom-nav-item" id="navCart" data-nav="cart" role="button" tabindex="0" aria-label="Корзина">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="9" cy="21" r="1"></circle>
             <circle cx="20" cy="21" r="1"></circle>
             <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
         </svg>
-        <span>Корзина</span>
-        <span id="bottomCartCount" class="bottom-nav-badge hidden">0</span>
+        <span class="nav-label">Корзина</span>
+        <span id="bottomCartCount" class="bottom-nav-badge hidden" aria-label="Количество товаров в корзине">0</span>
     </button>
+        <button type="button" class="bottom-nav-item" id="navAdmin" data-nav="admin" role="button" tabindex="0" aria-label="Админка">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+                <path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16z"></path>
+                <path d="M9.7 9.7a4 4 0 1 1 5.6 5.6"></path>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <span class="nav-label">Админка</span>
+        </button>
 </nav>
 
     <div id="a2hsModal" class="a2hs-modal hidden" role="dialog" aria-modal="true" aria-labelledby="a2hsModalHeading">

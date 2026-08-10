@@ -1064,6 +1064,8 @@ function switchSection(nav) {
         openCart()
     } else if (nav === 'favorites') {
         toggleFavoritesView()
+    } else if (nav === 'admin') {
+        window.location.href = './admin/'
     }
 }
 
