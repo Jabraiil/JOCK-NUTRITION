@@ -2,12 +2,16 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 serve(async (req) => {
-  const origin = req.headers.get("origin") || "*"
+  const origin = req.headers.get("origin") || ""
+  const allowedOrigins = [
+      "https://jabraiil.github.io",
+      "https://jabraiil.github.io/JOCK-NUTRITION"
+  ]
   const corsHeaders = {
-    "Access-Control-Allow-Origin": origin,
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Max-Age": "86400"
+      "Access-Control-Allow-Origin": allowedOrigins.includes(origin) ? origin : allowedOrigins[0],
+      "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Max-Age": "86400"
   }
 
   if (req.method === "OPTIONS") {
@@ -167,7 +171,21 @@ serve(async (req) => {
     const year = dateParts.find(p => p.type === "year")?.value || String(now.getFullYear()).slice(-2)
     const orderNumber = `${day}${month}${year}/${String(newCounter).padStart(3, "0")}`
 
-    await supabase.from("order_counter").update({ counter: newCounter }).eq("id", 1)
+    const { data: updatedCounter, error: updateCounterError } = await supabase
+      .from("order_counter")
+      .update({ counter: newCounter })
+      .eq("id", 1)
+      .eq("counter", counter.counter)
+      .select("counter")
+      .single()
+
+    if (updateCounterError || !updatedCounter) {
+      console.error("Counter update error:", updateCounterError)
+      return new Response(
+        JSON.stringify({ error: "Ошибка генерации номера заказа" }),
+        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      )
+    }
     await supabase.from("orders_analytics").insert({ order_number: orderNumber, items: orderItems, total })
 
     const storeName = settingsMap.store_name || "JACK NUTRITION"

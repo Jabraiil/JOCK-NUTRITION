@@ -1,13 +1,13 @@
 const CACHE_VERSION = 'jack-nutrition-v37-2026-08-09'
 const PRECACHE_URLS = [
-    '/',
     '/index.html',
     '/offline.html',
-    '/styles.css',
-    '/app.js',
+    '/styles.css?v=36',
+    '/app.js?v=36',
     '/scanner-worker.js',
     '/manifest.json',
     '/favicon.ico',
+    '/privacy.html',
     '/assets/icons/icon-192.png',
     '/assets/icons/icon-192-maskable.png',
     '/assets/icons/icon-512.png',
@@ -20,7 +20,9 @@ const PRECACHE_URLS = [
     '/icons/icon-512.svg',
     '/icons/favicon.svg',
     '/admin/styles.css',
-    '/admin/app.js'
+    '/admin/app.js?v=34',
+    '/admin/index.html',
+    '/sitemap.xml'
 ]
 
 const CACHE_STRATEGIES = {
@@ -46,7 +48,8 @@ function isFont(url) {
 function isAPI(url) {
     return url.pathname.startsWith('/rest/') ||
            url.pathname.startsWith('/functions/') ||
-           url.pathname.startsWith('/auth/')
+           url.pathname.startsWith('/auth/') ||
+           url.pathname.startsWith('/storage/')
 }
 
 function isStaticAsset(url) {
@@ -55,13 +58,27 @@ function isStaticAsset(url) {
 
 async function precache() {
     const cache = await caches.open(cacheName('precache'))
-    await cache.addAll(PRECACHE_URLS)
+    const results = await Promise.allSettled(
+        PRECACHE_URLS.map(url =>
+            cache.add(url).catch(err => {
+                console.warn('Precache failed for', url, err)
+            })
+        )
+    )
+    const failed = results.filter(r => r.status === 'rejected').length
+    if (failed > 0) {
+        console.warn(`Precache: ${failed} resources failed to cache`)
+    }
 }
 
 async function cleanOldCaches() {
     const keys = await caches.keys()
+    const currentPrefixes = ['images', 'api', 'pages', 'static'].map(
+        type => `${type}-${CACHE_VERSION}`
+    )
     await Promise.all(
-        keys.filter(key => key !== cacheName('precache') && !key.startsWith('images-') && !key.startsWith('api-') && !key.startsWith('pages-'))
+        keys
+            .filter(key => key !== cacheName('precache') && !currentPrefixes.includes(key))
             .map(key => caches.delete(key))
     )
 }
@@ -86,27 +103,6 @@ self.addEventListener('fetch', (event) => {
     if (request.method !== 'GET') return
 
     const url = new URL(request.url)
-    const isSameOrigin = url.origin === self.location.origin
-
-    if (!isSameOrigin) {
-        if (isImage(url) || isFont(url)) {
-            event.respondWith(
-                caches.match(request).then(cached => {
-                    if (cached) return cached
-                    return fetch(request).then(response => {
-                        if (response && response.status === 200) {
-                            const type = isImage(url) ? 'images' : 'fonts'
-                            caches.open(cacheName(type)).then(cache => {
-                                cache.put(request, response.clone()).catch(() => {})
-                            })
-                        }
-                        return response
-                    })
-                }).catch(() => new Response('Offline', { status: 503 }))
-            )
-        }
-        return
-    }
 
     if (isAPI(url)) {
         event.respondWith(
@@ -128,6 +124,28 @@ self.addEventListener('fetch', (event) => {
                     })
                 })
         )
+        return
+    }
+
+    const isSameOrigin = url.origin === self.location.origin
+
+    if (!isSameOrigin) {
+        if (isImage(url) || isFont(url)) {
+            event.respondWith(
+                caches.match(request).then(cached => {
+                    if (cached) return cached
+                    return fetch(request).then(response => {
+                        if (response && response.status === 200) {
+                            const type = isImage(url) ? 'images' : 'fonts'
+                            caches.open(cacheName(type)).then(cache => {
+                                cache.put(request, response.clone()).catch(() => {})
+                            })
+                        }
+                        return response
+                    }).catch(() => new Response('Offline', { status: 503 }))
+                })
+            )
+        }
         return
     }
 
@@ -178,6 +196,9 @@ self.addEventListener('fetch', (event) => {
                 .catch(() => {
                     return caches.match('/offline.html').then(cached => {
                         if (cached) return cached
+                        if (url.pathname.startsWith('/admin/')) {
+                            return caches.match('/admin/index.html')
+                        }
                         return caches.match('/index.html')
                     }).catch(() => new Response('Offline', { status: 503 }))
                 })

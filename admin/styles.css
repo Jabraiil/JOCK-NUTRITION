@@ -20,6 +20,9 @@
     --error: #FF3B30;
     --warning: #FF9500;
     --shadow: rgba(0, 0, 0, 0.08);
+    --shadow-sm: rgba(0, 0, 0, 0.08);
+    --shadow-md: rgba(0, 0, 0, 0.12);
+    --shadow-lg: rgba(0, 0, 0, 0.16);
 
     --sidebar-width: 250px;
     --header-height: 56px;
@@ -43,6 +46,9 @@
     --primary: #0A84FF;
     --primary-hover: #409CFF;
     --shadow: rgba(0, 0, 0, 0.5);
+    --shadow-sm: rgba(0, 0, 0, 0.5);
+    --shadow-md: rgba(0, 0, 0, 0.6);
+    --shadow-lg: rgba(0, 0, 0, 0.7);
 }
 
 * {
@@ -54,6 +60,20 @@
 
 html {
     scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
 }
 
 body {
@@ -69,6 +89,24 @@ body {
 
 .hidden {
     display: none !important;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.divider {
+    margin: 20px 0;
+    border: none;
+    border-top: 1px solid var(--border);
 }
 
 /* ---------- Shared keyframes (match storefront) ---------- */
@@ -417,7 +455,7 @@ body {
 }
 
 .pagination button {
-    min-height: 40px;
+    min-height: 44px;
     padding: 0 16px;
     border: 1px solid var(--border);
     background: var(--bg-elevated);
@@ -697,8 +735,8 @@ body {
     position: absolute;
     top: -8px;
     right: -8px;
-    width: 24px;
-    height: 24px;
+    min-width: 44px;
+    min-height: 44px;
     border-radius: 50%;
     border: none;
     background: var(--error);

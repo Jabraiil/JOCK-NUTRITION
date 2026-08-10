@@ -69,6 +69,7 @@ const PRODUCTS_PER_PAGE = 20
 let ordersPage = 1
 let ordersTotal = 0
 const ORDERS_PER_PAGE = 50
+let initialized = false
 
 function handleAuthError(message) {
     localStorage.removeItem('admin-token')
@@ -100,7 +101,16 @@ function translateError(message) {
     return message
 }
 
+function showError(message) {
+    const errorEl = document.getElementById('productError')
+    if (!errorEl) return
+    errorEl.textContent = message
+    errorEl.classList.remove('hidden')
+}
+
 function init() {
+    if (initialized) return
+    initialized = true
     try {
         const hash = window.location.hash
         if (hash.includes('access_token=')) {
@@ -426,8 +436,12 @@ async function handleLogin(e) {
 }
 
 async function handleForgotPassword() {
-    const email = prompt('Введите email для сброса пароля:')
+    const email = await openNameModal('Сброс пароля', 'Email')
     if (!email) return
+        if (!email.includes('@')) {
+            showError('Введите корректный email')
+            return
+        }
     
     try {
         const response = await fetchWithTimeout(`${CONFIG.supabaseUrl}/auth/v1/recover`, {
@@ -440,17 +454,21 @@ async function handleForgotPassword() {
         })
         
         if (response.ok) {
-            alert('Письмо для сброса пароля отправлено на почту')
+            showError('Письмо для сброса пароля отправлено на почту')
         } else {
             const result = await response.json().catch(() => ({}))
-            alert(translateError(result.msg || result.error || result.error_description || 'Ошибка отправки письма'))
+            showError(translateError(result.msg || result.error || result.error_description || 'Ошибка отправки письма'))
         }
     } catch (error) {
-        alert('Ошибка: ' + translateError(error.message))
+        showError('Ошибка: ' + translateError(error.message))
     }
 }
 
 function handleLogout() {
+    if (monitorInterval) {
+        clearInterval(monitorInterval)
+        monitorInterval = null
+    }
     localStorage.removeItem('admin-token')
     showAuthPage()
 }
@@ -519,7 +537,11 @@ async function loadProducts() {
         
         if (!response.ok) {
             const result = await response.json().catch(() => ({}))
-            alert(translateError(result.error) || 'Ошибка загрузки товаров')
+            const errorEl = document.getElementById('loginError')
+            if (errorEl) {
+                errorEl.textContent = translateError(result.error) || 'Ошибка загрузки товаров'
+                errorEl.classList.remove('hidden')
+            }
             return
         }
         
@@ -557,7 +579,7 @@ async function loadProducts() {
         renderProductsPagination()
     } catch (error) {
         console.error('Error loading products:', error)
-        alert('Ошибка загрузки товаров: ' + error.message)
+        showError('Ошибка загрузки товаров: ' + error.message)
     }
 }
 
@@ -610,7 +632,7 @@ async function openProductModal(productId = null) {
             })
             if (!response.ok) {
                 const result = await response.json().catch(() => ({}))
-                alert(translateError(result.error) || 'Ошибка загрузки товара')
+                showError(translateError(result.error) || 'Ошибка загрузки товара')
                 closeProductModal()
                 return
             }
@@ -688,7 +710,7 @@ async function openProductModal(productId = null) {
             }
         } catch (error) {
             console.error('Error loading product:', error)
-            alert('Ошибка загрузки товара: ' + error.message)
+            showError('Ошибка загрузки товара: ' + error.message)
             closeProductModal()
             return
         }
@@ -759,15 +781,17 @@ async function loadFormOptions() {
         return true
     } catch (error) {
         console.error('Error loading form options:', error)
-        alert('Ошибка загрузки справочников: ' + error.message)
+        showError('Ошибка загрузки справочников: ' + error.message)
         return false
     }
 }
 
 async function handleProductSubmit(e) {
     e.preventDefault()
-    const errorEl = document.getElementById('productError')
-    if (!errorEl) return
+        const errorEl = document.getElementById('productError')
+        if (!errorEl) return
+
+        errorEl.classList.add('hidden')
 
     const prodName = document.getElementById('prodName')
     const prodPrice = document.getElementById('prodPrice')
@@ -831,7 +855,7 @@ async function handleProductSubmit(e) {
             const formData = new FormData()
             formData.append('file', file)
 
-            const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}-${file.name}`
+            const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
             const uploadRes = await fetchWithTimeout(`${CONFIG.supabaseUrl}/storage/v1/object/product-images/${fileName}`, {
                 method: 'POST',
                 headers: {
@@ -903,11 +927,11 @@ async function deleteProduct(id) {
             loadProducts()
         } else {
             const result = await response.json().catch(() => ({}))
-            alert(translateError(result.error) || 'Ошибка удаления товара')
+            showError(translateError(result.error) || 'Ошибка удаления товара')
         }
     } catch (error) {
         console.error('Error deleting product:', error)
-        alert('Ошибка удаления товара: ' + error.message)
+        showError('Ошибка удаления товара: ' + error.message)
     }
 }
 
@@ -934,7 +958,7 @@ async function duplicateProduct(id) {
         })
         if (!response.ok) {
             const result = await response.json().catch(() => ({}))
-            alert(translateError(result.error) || 'Ошибка загрузки товара')
+            showError(translateError(result.error) || 'Ошибка загрузки товара')
             return
         }
         const product = await response.json()
@@ -1008,7 +1032,7 @@ async function duplicateProduct(id) {
     document.getElementById('productModal')?.classList.remove('hidden')
     } catch (error) {
         console.error('Error duplicating product:', error)
-        alert('Ошибка дублирования товара: ' + error.message)
+        showError('Ошибка дублирования товара: ' + error.message)
     }
 }
 
@@ -1024,7 +1048,7 @@ async function loadCategories() {
         
         if (!response.ok) {
             const result = await response.json().catch(() => ({}))
-            alert(translateError(result.error) || 'Ошибка загрузки категорий')
+            showError(translateError(result.error) || 'Ошибка загрузки категорий')
             return
         }
         
@@ -1121,11 +1145,11 @@ async function openCategoryModal(categoryId = null) {
             loadCategories()
         } else {
             const result = await response.json().catch(() => ({}))
-            alert(translateError(result.error) || 'Ошибка сохранения категории')
+            showError(translateError(result.error) || 'Ошибка сохранения категории')
         }
     } catch (error) {
         console.error('Error saving category:', error)
-        alert('Ошибка сохранения категории: ' + error.message)
+        showError('Ошибка сохранения категории: ' + error.message)
     }
 }
 
@@ -1141,11 +1165,11 @@ async function deleteCategory(id) {
             loadCategories()
         } else {
             const result = await response.json().catch(() => ({}))
-            alert(translateError(result.error) || 'Ошибка удаления категории')
+            showError(translateError(result.error) || 'Ошибка удаления категории')
         }
     } catch (error) {
         console.error('Error deleting category:', error)
-        alert('Ошибка удаления категории: ' + error.message)
+        showError('Ошибка удаления категории: ' + error.message)
     }
 }
 
@@ -1165,7 +1189,7 @@ async function loadBrands() {
 
         if (!response.ok) {
             const result = await response.json().catch(() => ({}))
-            alert(translateError(result.error) || 'Ошибка загрузки брендов')
+            showError(translateError(result.error) || 'Ошибка загрузки брендов')
             return
         }
 
@@ -1232,11 +1256,11 @@ async function openBrandModal(brandId = null) {
             loadBrands()
         } else {
             const result = await response.json().catch(() => ({}))
-            alert(translateError(result.error) || 'Ошибка сохранения бренда')
+            showError(translateError(result.error) || 'Ошибка сохранения бренда')
         }
     } catch (error) {
         console.error('Error saving brand:', error)
-        alert('Ошибка сохранения бренда: ' + error.message)
+        showError('Ошибка сохранения бренда: ' + error.message)
     }
 }
 
@@ -1252,11 +1276,11 @@ async function deleteBrand(id) {
             loadBrands()
         } else {
             const result = await response.json().catch(() => ({}))
-            alert(translateError(result.error) || 'Ошибка удаления бренда')
+            showError(translateError(result.error) || 'Ошибка удаления бренда')
         }
     } catch (error) {
         console.error('Error deleting brand:', error)
-        alert('Ошибка удаления бренда: ' + error.message)
+        showError('Ошибка удаления бренда: ' + error.message)
     }
 }
 
@@ -1279,7 +1303,7 @@ async function loadAnalytics() {
         
         if (!response.ok) {
             const result = await response.json().catch(() => ({}))
-            alert(translateError(result.error) || 'Ошибка загрузки статистики')
+            showError(translateError(result.error) || 'Ошибка загрузки статистики')
             return
         }
         
@@ -1313,7 +1337,7 @@ async function loadAnalytics() {
         
         if (!ordersRes.ok) {
             const result = await ordersRes.json().catch(() => ({}))
-            alert(translateError(result.error) || 'Ошибка загрузки заказов')
+            showError(translateError(result.error) || 'Ошибка загрузки заказов')
             return
         }
         
@@ -1338,7 +1362,7 @@ async function loadAnalytics() {
         renderOrdersPagination()
     } catch (error) {
         console.error('Error loading analytics:', error)
-        alert('Ошибка загрузки статистики: ' + error.message)
+        showError('Ошибка загрузки статистики: ' + error.message)
     }
 }
 
@@ -1385,11 +1409,11 @@ async function deleteOrder(id) {
             loadAnalytics()
         } else {
             const result = await response.json().catch(() => ({}))
-            alert(translateError(result.error) || 'Ошибка удаления заказа')
+            showError(translateError(result.error) || 'Ошибка удаления заказа')
         }
     } catch (error) {
         console.error('Error deleting order:', error)
-        alert('Ошибка удаления заказа: ' + error.message)
+        showError('Ошибка удаления заказа: ' + error.message)
     }
 }
 
@@ -1408,12 +1432,12 @@ async function deleteSelectedOrders() {
         ))
         const failed = results.filter(r => r.status === 'rejected')
         if (failed.length > 0) {
-            alert(`Удалено: ${results.length - failed.length}. Ошибок: ${failed.length}`)
+            showError(`Удалено: ${results.length - failed.length}. Ошибок: ${failed.length}`)
         }
         loadAnalytics()
     } catch (error) {
         console.error('Error deleting orders:', error)
-        alert('Ошибка удаления заказов: ' + error.message)
+        showError('Ошибка удаления заказов: ' + error.message)
     }
 }
 
@@ -1472,7 +1496,7 @@ async function loadSettings() {
         
         if (!response.ok) {
             const result = await response.json().catch(() => ({}))
-            alert(translateError(result.error) || 'Ошибка загрузки настроек')
+            showError(translateError(result.error) || 'Ошибка загрузки настроек')
             return
         }
         
@@ -1509,7 +1533,7 @@ async function loadSettings() {
         if (geminiApiKeyEl) geminiApiKeyEl.value = settings.gemini_api_key || ''
     } catch (error) {
         console.error('Error loading settings:', error)
-        alert('Ошибка загрузки настроек: ' + error.message)
+        showError('Ошибка загрузки настроек: ' + error.message)
     }
 }
 
@@ -1545,14 +1569,14 @@ async function handleSettingsSave(e) {
     
     if (response.ok) {
         localStorage.setItem('gemini-api-key', settings.gemini_api_key)
-        alert('Настройки сохранены')
+        showError('Настройки сохранены')
     } else {
         const result = await response.json().catch(() => ({}))
-        alert(translateError(result.error) || 'Ошибка сохранения настроек')
+        showError(translateError(result.error) || 'Ошибка сохранения настроек')
     }
     } catch (err) {
         console.error('Settings save error:', err)
-        alert('Ошибка сохранения настроек: ' + err.message)
+        showError('Ошибка сохранения настроек: ' + err.message)
     }
 }
 
@@ -1570,7 +1594,7 @@ async function handleChangePassword(e) {
     const confirmPassword = confirmPasswordEl.value
     
     if (newPassword !== confirmPassword) {
-        alert('Пароли не совпадают')
+        showError('Пароли не совпадают')
         return
     }
     
@@ -1589,15 +1613,15 @@ async function handleChangePassword(e) {
         })
         
         if (response.ok) {
-            alert('Пароль изменён')
+            showError('Пароль изменён')
             const changePasswordForm = document.getElementById('changePasswordForm')
             if (changePasswordForm) changePasswordForm.reset()
         } else {
             const data = await response.json().catch(() => ({}))
-            alert(translateError(data.msg || data.error || data.error_description) || 'Ошибка изменения пароля')
+            showError(translateError(data.msg || data.error || data.error_description) || 'Ошибка изменения пароля')
         }
     } catch (error) {
-        alert('Ошибка: ' + translateError(error.message))
+        showError('Ошибка: ' + translateError(error.message))
     }
 }
 
@@ -1617,7 +1641,7 @@ async function handleImport() {
     if (!importFile) return
     
     if (typeof XLSX === 'undefined') {
-        alert('Библиотека Excel не загружена. Проверьте подключение к интернету и обновите страницу.')
+        showError('Библиотека Excel не загружена. Проверьте подключение к интернету и обновите страницу.')
         return
     }
     
@@ -1682,7 +1706,7 @@ async function handleImport() {
 async function handleExport() {
     try {
         if (typeof XLSX === 'undefined') {
-            alert('Библиотека Excel не загружена. Проверьте подключение к интернету и обновите страницу.')
+            showError('Библиотека Excel не загружена. Проверьте подключение к интернету и обновите страницу.')
             return
         }
         
@@ -1692,7 +1716,7 @@ async function handleExport() {
         
         if (!response.ok) {
             const result = await response.json().catch(() => ({}))
-            alert(translateError(result.error) || 'Ошибка экспорта')
+            showError(translateError(result.error) || 'Ошибка экспорта')
             return
         }
         
@@ -1715,11 +1739,11 @@ async function handleExport() {
             volume: p.volume || '',
             sku: p.sku || '',
             barcode: p.barcode || '',
-            is_hit: p.is_hit ? 'TRUE' : '',
-            is_new: p.is_new ? 'TRUE' : '',
-            is_discount: p.is_discount ? 'TRUE' : '',
+            is_hit: p.is_hit ? 'TRUE' : 'FALSE',
+            is_new: p.is_new ? 'TRUE' : 'FALSE',
+            is_discount: p.is_discount ? 'TRUE' : 'FALSE',
             is_visible: p.is_visible ? 'TRUE' : 'FALSE',
-            is_related_enabled: p.is_related_enabled ? 'TRUE' : '',
+            is_related_enabled: p.is_related_enabled ? 'TRUE' : 'FALSE',
             shelf_life: p.shelf_life || '',
         }))
         
@@ -1729,14 +1753,14 @@ async function handleExport() {
         XLSX.writeFile(wb, 'jack-nutrition-catalog.xlsx')
     } catch (error) {
         console.error('Error exporting:', error)
-        alert('Ошибка экспорта: ' + error.message)
+        showError('Ошибка экспорта: ' + error.message)
     }
 }
 
 async function handleExportTemplate() {
     try {
         if (typeof XLSX === 'undefined') {
-            alert('Библиотека Excel не загружена. Проверьте подключение к интернету и обновите страницу.')
+            showError('Библиотека Excel не загружена. Проверьте подключение к интернету и обновите страницу.')
             return
         }
 
@@ -1788,7 +1812,7 @@ async function handleExportTemplate() {
         XLSX.writeFile(wb, 'jack-nutrition-template.xlsx')
     } catch (error) {
         console.error('Error exporting template:', error)
-        alert('Ошибка создания шаблона: ' + error.message)
+        showError('Ошибка создания шаблона: ' + error.message)
     }
 }
 
@@ -1801,7 +1825,7 @@ async function handleBackup() {
         
         if (!response.ok) {
             const result = await response.json().catch(() => ({}))
-            alert(translateError(result.error) || 'Ошибка резервного копирования')
+            showError(translateError(result.error) || 'Ошибка резервного копирования')
             return
         }
         
@@ -1813,7 +1837,7 @@ async function handleBackup() {
         a.click()
     } catch (error) {
         console.error('Error backup:', error)
-        alert('Ошибка резервного копирования: ' + error.message)
+        showError('Ошибка резервного копирования: ' + error.message)
     }
 }
 
@@ -1825,7 +1849,7 @@ async function handleBackupSql() {
 
         if (!response.ok) {
             const result = await response.json().catch(() => ({}))
-            alert(translateError(result.error) || 'Ошибка SQL-дампа')
+            showError(translateError(result.error) || 'Ошибка SQL-дампа')
             return
         }
 
@@ -1837,7 +1861,7 @@ async function handleBackupSql() {
         a.click()
     } catch (error) {
         console.error('Error SQL backup:', error)
-        alert('Ошибка SQL-дампа: ' + error.message)
+        showError('Ошибка SQL-дампа: ' + error.message)
     }
 }
 
@@ -1848,7 +1872,7 @@ async function handleBackupSql() {
 async function handleGenerateDescriptions() {
     const apiKey = document.getElementById('geminiApiKey')?.value || localStorage.getItem('gemini-api-key') || ''
     if (!apiKey) {
-        alert('Введите DeepSeek API ключ в настройках')
+        showError('Введите DeepSeek API ключ в настройках')
         return
     }
 
@@ -1873,7 +1897,7 @@ async function handleGenerateDescriptions() {
         const products = await productsRes.json()
 
         if (products.length === 0) {
-            alert('Все товары уже имеют описания')
+            showError('Все товары уже имеют описания')
             btn.disabled = false
             btn.textContent = originalText
             return
@@ -1937,9 +1961,9 @@ async function handleGenerateDescriptions() {
             }
         }
 
-        alert(`Генерация завершена: ${totalSuccess} успешно, ${totalError} ошибок`)
+        showError(`Генерация завершена: ${totalSuccess} успешно, ${totalError} ошибок`)
     } catch (error) {
-        alert('Ошибка при генерации описаний: ' + error.message)
+        showError('Ошибка при генерации описаний: ' + error.message)
         console.error(error)
     } finally {
         btn.disabled = false
@@ -2176,7 +2200,12 @@ function registerServiceWorker() {
 }
 
 // Initialize
-document.addEventListener('DOMContentLoaded', () => {
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        init()
+        registerServiceWorker()
+    })
+} else {
     init()
     registerServiceWorker()
-})
+}

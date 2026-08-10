@@ -87,7 +87,11 @@ const apiCache = {
     brands: { data: null, ts: 0, ttl: 60000 },
 }
 
+let initialized = false
+
 function init() {
+    if (initialized) return
+    initialized = true
     try {
         applyTheme()
         loadSettings()
@@ -278,6 +282,10 @@ function setupEventListeners() {
             if (e.key === 'Escape') {
                 const drawer = document.getElementById('cartDrawer')
                 if (drawer && drawer.classList.contains('open')) closeCart()
+                const filters = document.getElementById('filterSidebar')
+                if (filters && filters.classList.contains('open')) closeFilters()
+                const scanner = document.getElementById('barcodeScanner')
+                if (scanner && !scanner.classList.contains('hidden')) closeBarcodeScanner()
                 const welcome = document.getElementById('welcomeModal')
                 if (welcome && !welcome.classList.contains('hidden')) hideWelcomeModal()
                 const privacy = document.getElementById('privacyModal')
@@ -425,11 +433,6 @@ async function loadSettings() {
                 if (logo) logo.textContent = settings.logo_text
             }
 
-            const cartWhatsAppType = document.getElementById('cartWhatsAppType')
-            if (cartWhatsAppType) {
-                cartWhatsAppType.classList.add('hidden')
-            }
-
             checkOrderTime()
         }
     } catch (error) {
@@ -493,7 +496,7 @@ async function loadProducts(reset = true) {
             updatePagination()
         }
     } catch (error) {
-        showError('Ошибка загрузки товаров')
+        showError(error.message)
         console.error(error)
     } finally {
         if (reset) showLoading(false)
@@ -1047,8 +1050,6 @@ function saveCart() {
 
 function updateCartCount() {
     const count = cart.reduce((sum, c) => sum + c.quantity, 0)
-    const cartCountEl = document.getElementById('cartCount')
-    if (cartCountEl) cartCountEl.textContent = count
     const badge = document.getElementById('bottomCartCount')
     if (badge) {
         if (count > 0) {
@@ -1086,11 +1087,6 @@ function toggleFavorite(productId) {
 
 function updateFavoritesCount() {
     const count = favorites.length
-    const el = document.getElementById('favoritesCount')
-    if (el) {
-        el.textContent = count
-        el.classList.toggle('hidden', count === 0)
-    }
 }
 
 function toggleFavoritesView() {
@@ -1162,7 +1158,7 @@ function renderCart() {
 
 async function checkout() {
     if (cart.length === 0) {
-        alert('Корзина пуста')
+        showError('Корзина пуста')
         return
     }
 
@@ -1217,7 +1213,7 @@ async function checkout() {
         applyFilters()
 
     } catch (error) {
-        alert(error.message)
+        showError(error.message)
     } finally {
         if (checkoutBtn) {
             checkoutBtn.disabled = false

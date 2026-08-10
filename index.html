@@ -24,6 +24,7 @@
     <link rel="canonical" href="https://jabraiil.github.io/JOCK-NUTRITION/">
     <title>JACK NUTRITION</title>
     <link rel="stylesheet" href="styles.css?v=36">
+    <link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml">
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
@@ -86,7 +87,7 @@
     <main class="main">
         <div class="container">
             <div id="searchBar" class="search-bar hidden">
-                <input type="text" id="searchInput" placeholder="Поиск по названию и бренду...">
+                <input type="text" id="searchInput" placeholder="Поиск по названию и бренду..." autocomplete="off">
                 <button id="barcodeToggle" class="icon-btn" aria-label="Сканировать штрих-код" title="Сканировать штрих-код">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                         <path d="M3 5v14"></path>
@@ -102,10 +103,10 @@
                         <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"></path>
                     </svg>
                 </button>
-                <button id="searchClear" class="icon-btn">&times;</button>
+                <button id="searchClear" class="icon-btn" aria-label="Очистить поиск">&times;</button>
             </div>
 
-            <div id="barcodeScanner" class="barcode-scanner hidden">
+            <div id="barcodeScanner" class="barcode-scanner hidden" role="dialog" aria-modal="true" aria-label="Сканер штрих-кодов">
                 <button id="closeScannerX" class="scanner-close" aria-label="Закрыть сканер">&times;</button>
                 <video id="scannerVideo" playsinline muted autoplay></video>
                 <div class="scanner-overlay">
@@ -127,34 +128,34 @@
             </div>
 
             <div id="filterSidebarOverlay" class="sidebar-overlay"></div>
-            <aside id="filterSidebar" class="sidebar-drawer">
+            <div id="filterSidebar" class="sidebar-drawer" role="dialog" aria-modal="true" aria-label="Фильтры">
                 <div class="sidebar-drawer-header">
                     <h2>Фильтры</h2>
-                    <button id="filterSidebarClose" class="sidebar-drawer-close">&times;</button>
+                    <button id="filterSidebarClose" class="sidebar-drawer-close" aria-label="Закрыть фильтры">&times;</button>
                 </div>
                 <div class="filters">
                     <div class="filter-group">
-                        <label>Категория</label>
+                        <label for="categoryFilter">Категория</label>
                         <select id="categoryFilter">
                             <option value="">Все</option>
                         </select>
                     </div>
                     <div class="filter-group">
-                        <label>Бренд</label>
+                        <label for="brandFilter">Бренд</label>
                         <select id="brandFilter">
                             <option value="">Все</option>
                         </select>
                     </div>
                     <div class="filter-group">
-                        <label>Цена от</label>
-                        <input type="number" id="priceFrom" placeholder="0">
+                        <label for="priceFrom">Цена от</label>
+                        <input type="number" id="priceFrom" placeholder="0" inputmode="numeric">
                     </div>
                     <div class="filter-group">
-                        <label>Цена до</label>
-                        <input type="number" id="priceTo" placeholder="∞">
+                        <label for="priceTo">Цена до</label>
+                        <input type="number" id="priceTo" placeholder="∞" inputmode="numeric">
                     </div>
                     <div class="filter-group">
-                        <label>Сортировка</label>
+                        <label for="sortFilter">Сортировка</label>
                         <select id="sortFilter">
                             <option value="newest">По новизне</option>
                             <option value="price-asc">Цена по возр.</option>
@@ -170,10 +171,10 @@
             </aside>
 
             <div id="cartDrawerOverlay" class="cart-drawer-overlay"></div>
-            <div id="cartDrawer" class="cart-drawer">
+            <div id="cartDrawer" class="cart-drawer" role="dialog" aria-modal="true" aria-label="Корзина">
                 <div class="cart-drawer-header">
                     <h2>Корзина</h2>
-                    <button id="cartDrawerClose" class="cart-drawer-close">&times;</button>
+                     <button id="cartDrawerClose" class="cart-drawer-close" aria-label="Закрыть корзину">&times;</button>
                 </div>
                 <div class="cart-drawer-body">
                     <div id="cartItems"></div>
@@ -201,7 +202,7 @@
         </div>
     </main>
 
-    <div id="productModal" class="modal hidden">
+    <div id="productModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalBody">
         <div class="modal-content">
             <button class="modal-close">&times;</button>
             <div id="modalBody"></div>
@@ -217,7 +218,7 @@
         </div>
     </div>
 
-    <div id="welcomeModal" class="welcome-modal hidden">
+    <div id="welcomeModal" class="welcome-modal hidden" role="dialog" aria-modal="true" aria-labelledby="welcomeModalHeading">
         <div class="welcome-modal-backdrop"></div>
         <div class="welcome-modal-content">
             <button id="welcomeModalClose" class="welcome-modal-close" aria-label="Закрыть">&times;</button>
@@ -227,7 +228,7 @@
                     <polyline points="22 4 12 14.01 9 11.01"></polyline>
                 </svg>
             </div>
-            <h2>Добро пожаловать!</h2>
+            <h2 id="welcomeModalHeading">Добро пожаловать!</h2>
             <p>Мы заботимся о вашей приватности. Вся информация хранится только на вашем устройстве.</p>
             <div class="welcome-hint">
                 <span>Ваши настройки и политика конфиденциальности всегда доступны здесь:</span>
@@ -239,11 +240,11 @@
         </div>
     </div>
 
-    <div id="privacyModal" class="privacy-modal hidden">
+    <div id="privacyModal" class="privacy-modal hidden" role="dialog" aria-modal="true" aria-labelledby="privacyModalHeading">
         <div class="privacy-modal-backdrop"></div>
         <div class="privacy-modal-content">
             <button id="privacyModalClose" class="privacy-modal-close" aria-label="Закрыть">&times;</button>
-            <h2>Политика конфиденциальности</h2>
+            <h2 id="privacyModalHeading">Политика конфиденциальности</h2>
             <div class="privacy-modal-body" id="privacyModalBody"></div>
             <button id="privacyModalCloseBtn" class="btn btn-secondary btn-block">Закрыть</button>
         </div>
@@ -258,27 +259,27 @@
 
 <!-- Bottom Navigation Bar (mobile) -->
 <nav class="bottom-nav" id="bottomNav">
-    <a href="javascript:void(0)" class="bottom-nav-item" data-nav="catalog" role="button" tabindex="0">
+    <button type="button" class="bottom-nav-item" data-nav="catalog" role="button" tabindex="0">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
             <polyline points="9 22 9 12 15 12 15 22"></polyline>
         </svg>
         <span>Главная</span>
-    </a>
-    <a href="javascript:void(0)" class="bottom-nav-item" id="navSearch" data-nav="search" role="button" tabindex="0">
+    </button>
+    <button type="button" class="bottom-nav-item" id="navSearch" data-nav="search" role="button" tabindex="0">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="11" cy="11" r="8"></circle>
             <path d="m21 21-4.35-4.35"></path>
         </svg>
         <span>Поиск</span>
-    </a>
-    <a href="javascript:void(0)" class="bottom-nav-item" id="navFavorites" data-nav="favorites" role="button" tabindex="0">
+    </button>
+    <button type="button" class="bottom-nav-item" id="navFavorites" data-nav="favorites" role="button" tabindex="0">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78a5.5 5.5 0 0 0 0-7.78z"></path>
         </svg>
         <span>Избранное</span>
-    </a>
-    <a href="javascript:void(0)" class="bottom-nav-item" id="navCart" data-nav="cart" role="button" tabindex="0">
+    </button>
+    <button type="button" class="bottom-nav-item" id="navCart" data-nav="cart" role="button" tabindex="0">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="9" cy="21" r="1"></circle>
             <circle cx="20" cy="21" r="1"></circle>
@@ -286,10 +287,10 @@
         </svg>
         <span>Корзина</span>
         <span id="bottomCartCount" class="bottom-nav-badge hidden">0</span>
-    </a>
+    </button>
 </nav>
 
-    <div id="a2hsModal" class="a2hs-modal hidden">
+    <div id="a2hsModal" class="a2hs-modal hidden" role="dialog" aria-modal="true" aria-labelledby="a2hsModalHeading">
         <div class="a2hs-modal-backdrop"></div>
         <div class="a2hs-modal-content">
             <button id="a2hsModalClose" class="a2hs-modal-close" aria-label="Закрыть">&times;</button>
@@ -298,7 +299,7 @@
                     <path d="M12 5v14M5 12h14"/>
                 </svg>
             </div>
-            <h2>Добавить JACK NUTRITION на главный экран?</h2>
+            <h2 id="a2hsModalHeading">Добавить JACK NUTRITION на главный экран?</h2>
             <div class="a2hs-modal-hint">
                 <p><strong>iOS Safari:</strong> Нажмите «Поделиться» → «Добавить на главный экран»</p>
                 <p><strong>Android:</strong> Откройте меню браузера → «Добавить на главный экран»</p>

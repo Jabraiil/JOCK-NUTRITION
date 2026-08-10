@@ -2,12 +2,16 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 serve(async (req) => {
-  const origin = req.headers.get("origin") || "*"
+  const origin = req.headers.get("origin") || ""
+  const allowedOrigins = [
+      "https://jabraiil.github.io",
+      "https://jabraiil.github.io/JOCK-NUTRITION"
+  ]
   const corsHeaders = {
-    "Access-Control-Allow-Origin": origin,
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-    "Access-Control-Max-Age": "86400"
+      "Access-Control-Allow-Origin": allowedOrigins.includes(origin) ? origin : allowedOrigins[0],
+      "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+      "Access-Control-Max-Age": "86400"
   }
 
   if (req.method === "OPTIONS") {
@@ -19,7 +23,7 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    async function saveRelated(productId: string, related: any) {
+    async function saveRelated(productId: string, related: string[]) {
       if (!Array.isArray(related)) return
 
       await supabase.from("product_related").delete().eq("product_id", productId)

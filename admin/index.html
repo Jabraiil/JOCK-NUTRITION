@@ -3,8 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Admin - JACK NUTRITION</title>
-    <link rel="stylesheet" href="styles.css?v=34">
+    <meta name="description" content="Админ-панель JACK NUTRITION — управление каталогом, заказами и настройками магазина.">
+    <meta name="theme-color" content="#007AFF">
+    <meta name="color-scheme" content="light dark">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="JACK ADMIN">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="manifest" href="../manifest.json">
+    <link rel="icon" type="image/svg+xml" href="../icons/favicon.svg">
+    <link rel="icon" type="image/png" sizes="16x16" href="../assets/icons/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="../assets/icons/favicon-32x32.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="../assets/icons/apple-touch-icon.png">
+    <link rel="mask-icon" href="../icons/icon-192.svg" color="#007AFF">
+    <link rel="preconnect" href="https://hpphfeojjejculvdundj.supabase.co">
+    <link rel="dns-prefetch" href="https://hpphfeojjejculvdundj.supabase.co">
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="canonical" href="https://jabraiil.github.io/JACK-NUTRITION/admin/">
+    <title>JACK NUTRITION — Админ-панель</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div id="authPage" class="auth-page">
@@ -12,8 +29,10 @@
             <h1>JACK NUTRITION</h1>
             <h2>Админ-панель</h2>
             <form id="loginForm">
-                <input type="email" id="loginEmail" placeholder="Email" required>
-                <input type="password" id="loginPassword" placeholder="Пароль" required>
+                <label for="loginEmail" class="sr-only">Email</label>
+                <input type="email" id="loginEmail" placeholder="Email" required autocomplete="email">
+                <label for="loginPassword" class="sr-only">Пароль</label>
+                <input type="password" id="loginPassword" placeholder="Пароль" required autocomplete="current-password">
                 <button type="submit" class="btn btn-primary btn-block">Войти</button>
             </form>
             <button id="forgotPassword" class="btn btn-secondary btn-block">Забыли пароль?</button>
@@ -65,7 +84,8 @@
             <div id="productsPage" class="page active">
                 <div class="page-header">
                     <div class="search-box">
-                        <input type="text" id="productSearch" placeholder="Поиск товаров...">
+                        <label for="productSearch" class="sr-only">Поиск товаров</label>
+                        <input type="text" id="productSearch" placeholder="Поиск товаров..." autocomplete="off">
                     </div>
                     <button id="generateDescBtn" class="btn btn-secondary">🤖 Сгенерировать описания</button>
                     <button id="addProductBtn" class="btn btn-primary">+ Добавить товар</button>
@@ -191,30 +211,30 @@
             <div id="settingsPage" class="page">
                 <form id="settingsForm" class="settings-form">
                     <div class="form-group">
-                        <label>WhatsApp номер (обычный)</label>
-                        <input type="text" id="whatsappNumber" placeholder="79991234567">
+                        <label for="whatsappNumber">WhatsApp номер (обычный)</label>
+                        <input type="text" id="whatsappNumber" placeholder="79991234567" autocomplete="tel">
                     </div>
                     <div class="form-group">
-                        <label>WhatsApp Business номер</label>
-                        <input type="text" id="whatsappBusinessNumber" placeholder="79991234567">
+                        <label for="whatsappBusinessNumber">WhatsApp Business номер</label>
+                        <input type="text" id="whatsappBusinessNumber" placeholder="79991234567" autocomplete="tel">
                     </div>
                     <div class="form-group">
-                        <label>Тип WhatsApp по умолчанию</label>
+                        <label for="whatsappAccountType">Тип WhatsApp по умолчанию</label>
                         <select id="whatsappAccountType">
                             <option value="personal">Обычный WhatsApp</option>
                             <option value="business">WhatsApp Business</option>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Название магазина</label>
-                        <input type="text" id="storeName" value="JACK NUTRITION">
+                        <label for="storeName">Название магазина</label>
+                        <input type="text" id="storeName" value="JACK NUTRITION" autocomplete="off">
                     </div>
                     <div class="form-group">
-                        <label>Логотип (текст)</label>
-                        <input type="text" id="logoText" value="JACK NUTRITION">
+                        <label for="logoText">Логотип (текст)</label>
+                        <input type="text" id="logoText" value="JACK NUTRITION" autocomplete="off">
                     </div>
                     <div class="form-group">
-                        <label>Часовой пояс</label>
+                        <label for="timezone">Часовой пояс</label>
                         <select id="timezone">
                             <option value="Europe/Moscow" selected>Europe/Moscow (UTC+3)</option>
                             <option value="Europe/Kiev">Europe/Kiev (UTC+2)</option>
@@ -235,19 +255,19 @@
                         </label>
                     </div>
                     <div class="form-group">
-                        <label>Начало рабочего дня</label>
+                        <label for="orderStartHour">Начало рабочего дня</label>
                         <input type="time" id="orderStartHour" value="09:00">
                     </div>
                     <div class="form-group">
-                        <label>Конец рабочего дня</label>
+                        <label for="orderEndHour">Конец рабочего дня</label>
                         <input type="time" id="orderEndHour" value="20:00">
                     </div>
                     <div class="form-group">
-                        <label>Шаблон текста ошибки (спецкод)</label>
-                        <input type="text" id="orderErrorCode" value="[!CHECK!]">
+                        <label for="orderErrorCode">Шаблон текста ошибки (спецкод)</label>
+                        <input type="text" id="orderErrorCode" value="[!CHECK!]" autocomplete="off">
                     </div>
                     <div class="form-group">
-                        <label>Валюта</label>
+                        <label for="currency">Валюта</label>
                         <select id="currency">
                             <option value="₽">Рубли (₽)</option>
                             <option value="$">Доллары ($)</option>
@@ -255,12 +275,12 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Шаблон текста заказа (опционально)</label>
+                        <label for="orderTemplate">Шаблон текста заказа (опционально)</label>
                         <textarea id="orderTemplate" rows="5" placeholder="Дополнительный текст к заказу..."></textarea>
                     </div>
                     <div class="form-group">
-                        <label>DeepSeek API Key</label>
-                        <input type="password" id="geminiApiKey" placeholder="Введите DeepSeek API ключ">
+                        <label for="geminiApiKey">DeepSeek API Key</label>
+                        <input type="password" id="geminiApiKey" placeholder="Введите DeepSeek API ключ" autocomplete="current-password">
                         <small class="hint">Используется для генерации описаний товаров. Хранится только в localStorage браузера.</small>
                     </div>
                     <button type="submit" class="btn btn-primary">Сохранить</button>
@@ -270,15 +290,15 @@
                     <h3>Смена пароля</h3>
                     <form id="changePasswordForm">
                         <div class="form-group">
-                            <label>Текущий пароль</label>
+                            <label for="currentPassword">Текущий пароль</label>
                             <input type="password" id="currentPassword" required>
                         </div>
                         <div class="form-group">
-                            <label>Новый пароль</label>
+                            <label for="newPassword">Новый пароль</label>
                             <input type="password" id="newPassword" required>
                         </div>
                         <div class="form-group">
-                            <label>Подтвердите пароль</label>
+                            <label for="confirmPassword">Подтвердите пароль</label>
                             <input type="password" id="confirmPassword" required>
                         </div>
                         <button type="submit" class="btn btn-primary">Изменить пароль</button>
@@ -303,7 +323,7 @@
                     <h3>Экспорт в Excel</h3>
                     <p>Выгрузка всего каталога в .xlsx</p>
                     <button id="exportBtn" class="btn btn-primary">Скачать каталог</button>
-                    <hr style="margin: 20px 0; border: none; border-top: 1px solid var(--border-color);">
+                    <hr class="divider">
                     <h3>Шаблон для импорта</h3>
                     <p>Скачайте шаблон, заполните его и загрузите через «Импорт». Поля со <strong>*</strong> обязательны.</p>
                     <button id="exportTemplateBtn" class="btn btn-secondary">Скачать шаблон (Excel)</button>
@@ -322,35 +342,35 @@
         </main>
     </div>
 
-    <div id="productModal" class="modal hidden">
+    <div id="productModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
         <div class="modal-content">
             <button class="modal-close">&times;</button>
             <h2 id="modalTitle">Добавить товар</h2>
             <div id="productError" class="error hidden"></div>
             <form id="productForm">
                 <div class="form-group">
-                    <label>Название *</label>
-                    <input type="text" id="prodName" required>
+                    <label for="prodName">Название *</label>
+                    <input type="text" id="prodName" required autocomplete="off">
                 </div>
                 <div class="form-group">
-                    <label>Краткое описание</label>
-                    <input type="text" id="prodDescription">
+                    <label for="prodDescription">Краткое описание</label>
+                    <input type="text" id="prodDescription" autocomplete="off">
                 </div>
                 <div class="form-group">
-                    <label>Полное описание</label>
+                    <label for="prodFullDescription">Полное описание</label>
                     <textarea id="prodFullDescription" rows="3"></textarea>
                 </div>
                 <div class="form-group">
-                    <label>Состав</label>
-                    <textarea id="prodComposition" rows="2"></textarea>
+                    <label for="prodComposition">Состав</label>
+                        <textarea id="prodComposition" rows="2"></textarea>
                 </div>
                 <div class="form-group">
-                    <label>Дозировка</label>
-                    <input type="text" id="prodDosage">
+                    <label for="prodDosage">Дозировка</label>
+                    <input type="text" id="prodDosage" autocomplete="off">
                 </div>
                 <div class="form-group">
-                    <label>Способ применения</label>
-                    <textarea id="prodUsage" rows="2"></textarea>
+                    <label for="prodUsage">Способ применения</label>
+                        <textarea id="prodUsage" rows="2"></textarea>
                 </div>
                 <div class="form-group">
                     <label class="checkbox-label">
@@ -359,56 +379,56 @@
                     </label>
                 </div>
                 <div class="form-group" id="contraindicationsGroup" style="display: none;">
-                    <label>Противопоказания</label>
-                    <textarea id="prodContraindications" rows="2"></textarea>
+                    <label for="prodContraindications">Противопоказания</label>
+                        <textarea id="prodContraindications" rows="2"></textarea>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Категория</label>
+                        <label for="prodCategory">Категория</label>
                         <select id="prodCategory"></select>
                     </div>
                     <div class="form-group">
-                        <label>Бренд</label>
+                        <label for="prodBrand">Бренд</label>
                         <select id="prodBrand"></select>
                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Цена *</label>
-                        <input type="number" id="prodPrice" required>
+                        <label for="prodPrice">Цена *</label>
+                        <input type="number" id="prodPrice" required autocomplete="off" inputmode="numeric">
                     </div>
                     <div class="form-group">
-                        <label>Старая цена</label>
-                        <input type="number" id="prodOldPrice">
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Остаток</label>
-                        <input type="number" id="prodStock" value="0">
-                    </div>
-                    <div class="form-group">
-                        <label>Объём</label>
-                        <input type="text" id="prodVolume" placeholder="30 капсул">
+                        <label for="prodOldPrice">Старая цена</label>
+                        <input type="number" id="prodOldPrice" autocomplete="off" inputmode="numeric">
                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Артикул</label>
-                        <input type="text" id="prodSku">
+                        <label for="prodStock">Остаток</label>
+                        <input type="number" id="prodStock" value="0" autocomplete="off" inputmode="numeric">
                     </div>
                     <div class="form-group">
-                        <label>Штрих-код</label>
-                        <input type="text" id="prodBarcode">
+                        <label for="prodVolume">Объём</label>
+                        <input type="text" id="prodVolume" placeholder="30 капсул" autocomplete="off">
                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Срок годности</label>
-                        <input type="text" id="prodShelfLife">
+                        <label for="prodSku">Артикул</label>
+                        <input type="text" id="prodSku" autocomplete="off">
                     </div>
                     <div class="form-group">
-                        <label>Видимость</label>
+                        <label for="prodBarcode">Штрих-код</label>
+                        <input type="text" id="prodBarcode" autocomplete="off">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="prodShelfLife">Срок годности</label>
+                        <input type="text" id="prodShelfLife" autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label for="prodIsVisible">Видимость</label>
                         <select id="prodIsVisible">
                             <option value="true">Показывать</option>
                             <option value="false">Скрыть</option>
@@ -433,12 +453,12 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>Фото (до 4)</label>
+                    <label for="prodImages">Фото (до 4)</label>
                     <input type="file" id="prodImages" accept="image/*" multiple>
                     <div id="imagePreview" class="image-preview"></div>
                 </div>
                 <div class="form-group">
-                    <label>Связанные товары (явный список)</label>
+                    <label for="prodRelated">Связанные товары (явный список)</label>
                     <select id="prodRelated" multiple size="5"></select>
                     <small class="hint">Ctrl/Cmd + клик — выбор нескольких. Если пусто и включён чекбокс «Связанные товары» — подставятся похожие по категории/бренду.</small>
                 </div>
@@ -450,7 +470,7 @@
         </div>
     </div>
 
-    <div id="nameModal" class="modal hidden">
+    <div id="nameModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="nameModalTitle">
         <div class="modal-content">
             <button class="modal-close" id="nameModalClose">&times;</button>
             <h2 id="nameModalTitle">Название</h2>
