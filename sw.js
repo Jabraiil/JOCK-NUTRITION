@@ -145,7 +145,7 @@ self.addEventListener('fetch', (event) => {
                             } catch (e) { /* quota exceeded */ }
                         }
                         return response
-                    } catch () {
+                    } catch (err) {
                         if (isImage(url)) {
                             return new Response(
                                 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"><rect width="1" height="1" fill="transparent"/></svg>',
@@ -171,7 +171,7 @@ self.addEventListener('fetch', (event) => {
                         cache.put(request, response.clone())
                     }
                     return response
-                } catch () {
+                } catch (err) {
                     return new Response('Offline', { status: 503 })
                 }
             })
@@ -192,7 +192,7 @@ self.addEventListener('fetch', (event) => {
                         } catch (e) { /* quota exceeded */ }
                     }
                     return response
-                } catch () {
+                } catch (err) {
                     return new Response('Offline', { status: 503 })
                 }
             })

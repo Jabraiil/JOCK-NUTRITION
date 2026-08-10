@@ -1820,10 +1820,19 @@ function initA2HS() {
     const showTarget = isSecondVisit ? showA2HSModal : showA2HSBanner
     const iosDelay = isSecondVisit ? 5000 : 5000
 
-    window.addEventListener('beforeinstallprompt', (e) => {
+    window.addEventListener('beforeinstallprompt', async (e) => {
         e.preventDefault()
         deferredPrompt = e
-        setTimeout(showTarget, 3000)
+        setTimeout(async () => {
+            showTarget()
+            if (deferredPrompt) {
+                try {
+                    await deferredPrompt.prompt()
+                } catch (err) {
+                    console.error('A2HS prompt failed:', err)
+                }
+            }
+        }, 3000)
     })
 
     window.addEventListener('appinstalled', () => {
