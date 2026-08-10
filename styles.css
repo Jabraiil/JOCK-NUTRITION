@@ -2340,6 +2340,20 @@ select:focus:not(:focus-visible) {
     background: var(--border);
 }
 
+.a2hs-install {
+    min-height: 36px;
+    padding: 0 12px;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+.a2hs-modal-install {
+    width: 100%;
+    margin-top: 12px;
+    padding: 14px;
+    font-size: 1rem;
+}
+
 @keyframes slideUp {
     from {
         transform: translateY(20px);

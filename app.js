@@ -1806,6 +1806,27 @@ function showA2HSBanner() {
     if (!banner) return
     banner.classList.remove('hidden')
 
+    const installBtn = document.getElementById('a2hsInstall')
+    if (installBtn && !installBtn.dataset.a2hsListener) {
+        installBtn.dataset.a2hsListener = 'true'
+        installBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                try {
+                    deferredPrompt.prompt()
+                    const { outcome } = await deferredPrompt.userChoice
+                    if (outcome === 'accepted') {
+                        trackPWAInstall()
+                    }
+                    deferredPrompt = null
+                } catch (err) {
+                    console.error('A2HS prompt failed:', err)
+                }
+            }
+            banner.classList.add('hidden')
+            sessionStorage.setItem('a2hs-dismissed', 'true')
+        })
+    }
+
     const closeBtn = document.getElementById('a2hsClose')
     if (closeBtn && !closeBtn.dataset.a2hsListener) {
         closeBtn.dataset.a2hsListener = 'true'
@@ -1821,6 +1842,27 @@ function showA2HSModal() {
     const modal = document.getElementById('a2hsModal')
     if (!modal) return
     modal.classList.remove('hidden')
+
+    const installBtn = document.getElementById('a2hsModalInstall')
+    if (installBtn && !installBtn.dataset.a2hsListener) {
+        installBtn.dataset.a2hsListener = 'true'
+        installBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                try {
+                    deferredPrompt.prompt()
+                    const { outcome } = await deferredPrompt.userChoice
+                    if (outcome === 'accepted') {
+                        trackPWAInstall()
+                    }
+                    deferredPrompt = null
+                } catch (err) {
+                    console.error('A2HS prompt failed:', err)
+                }
+            }
+            modal.classList.add('hidden')
+            sessionStorage.setItem('a2hs-modal-dismissed', 'true')
+        })
+    }
 
     const closeBtn = document.getElementById('a2hsModalClose')
     if (closeBtn && !closeBtn.dataset.a2hsListener) {
@@ -1850,19 +1892,10 @@ function initA2HS() {
     const showTarget = isSecondVisit ? showA2HSModal : showA2HSBanner
     const iosDelay = isSecondVisit ? 5000 : 5000
 
-    window.addEventListener('beforeinstallprompt', async (e) => {
+    window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault()
         deferredPrompt = e
-        setTimeout(async () => {
-            showTarget()
-            if (deferredPrompt) {
-                try {
-                    await deferredPrompt.prompt()
-                } catch (err) {
-                    console.error('A2HS prompt failed:', err)
-                }
-            }
-        }, 3000)
+        showTarget()
     })
 
     window.addEventListener('appinstalled', () => {

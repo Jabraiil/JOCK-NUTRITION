@@ -147,6 +147,7 @@
 
             <div id="analyticsPage" class="page">
                 <div class="analytics-filters">
+                    <label for="analyticsPeriod" class="sr-only">Период аналитики</label>
                     <select id="analyticsPeriod">
                         <option value="day">День</option>
                         <option value="week">Неделя</option>
@@ -191,7 +192,7 @@
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th style="width: 40px;"><input type="checkbox" id="selectAllOrders" title="Выбрать все"></th>
+                                <th style="width: 40px;"><label for="selectAllOrders" class="sr-only">Выбрать все</label><input type="checkbox" id="selectAllOrders" title="Выбрать все"></th>
                                 <th>Номер</th>
                                 <th>Товары</th>
                                 <th>Сумма</th>
@@ -311,7 +312,7 @@
                     <h3>Импорт из Excel</h3>
                     <p>Поддерживаемые форматы: .xlsx, .xls</p>
                     <p>При совпадении артикула — обновление. Пустые поля не затирают существующие.</p>
-                    <input type="file" id="importFile" accept=".xlsx,.xls" class="hidden">
+                    <input type="file" id="importFile" accept=".xlsx,.xls" class="hidden" aria-label="Импорт из Excel">
                     <button id="importFileBtn" class="btn btn-secondary">Выбрать файл</button>
                     <button id="importBtn" class="btn btn-primary" disabled>Импортировать</button>
                     <div id="importStatus" class="status-message"></div>
@@ -476,7 +477,7 @@
             <h2 id="nameModalTitle">Название</h2>
             <form id="nameModalForm">
                 <div class="form-group">
-                    <span id="nameModalLabel">Название</span>
+                    <label for="nameModalInput" id="nameModalLabel">Название</label>
                     <input type="text" id="nameModalInput" required>
                 </div>
                 <div class="form-actions">
