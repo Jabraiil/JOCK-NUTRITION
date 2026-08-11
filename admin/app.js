@@ -322,10 +322,16 @@ function setupEventListeners() {
     if (selectAllProducts) {
         selectAllProducts.addEventListener('change', (e) => {
             const checkboxes = document.querySelectorAll('.product-select-cb')
+            const checked = e.target.checked
             checkboxes.forEach(cb => {
-                cb.checked = e.target.checked
-                toggleProductSelection(cb.dataset.id, e.target.checked)
+                cb.checked = checked
+                if (checked) {
+                    selectedProductIds.add(cb.dataset.id)
+                } else {
+                    selectedProductIds.delete(cb.dataset.id)
+                }
             })
+            updateBulkActionsBar()
         })
     }
 
@@ -1255,7 +1261,9 @@ async function bulkToggleAllVisibility() {
         showError('Сессия истекла. Войдите снова.')
         return
     }
-    if (!confirm('Переключить видимость ВСЕХ товаров?\n\nСейчас видимые станут скрытыми, а скрытые — видимыми.')) return
+    const toggle = document.getElementById('bulkToggleVisibilityBtn')
+    if (!toggle) return
+    const makeVisible = toggle.checked
     try {
         const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/products?limit=1000&page=1`, {
             headers: { 'Authorization': `Bearer ${token}` }
@@ -1268,15 +1276,15 @@ async function bulkToggleAllVisibility() {
         const products = Array.isArray(data) ? data : []
         let errors = 0
         for (const product of products) {
+            if (product.is_visible === makeVisible) continue
             try {
-                const newVisibility = !product.is_visible
                 const res = await fetchWithTimeout(`${CONFIG.adminApiUrl}/products/${product.id}`, {
                     method: 'PUT',
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ is_visible: newVisibility })
+                    body: JSON.stringify({ is_visible: makeVisible })
                 })
                 if (!res.ok) errors++
             } catch (err) {
@@ -1285,9 +1293,9 @@ async function bulkToggleAllVisibility() {
         }
         loadProducts()
         if (errors === 0) {
-            showError(`Видимость переключена для ${products.length} товаров`)
+            showError(makeVisible ? `Все товары показаны (${products.length})` : `Все товары скрыты (${products.length})`)
         } else {
-            showError(`Переключено с ошибками: ${errors} из ${products.length}`)
+            showError(`Обновлено с ошибками: ${errors} из ${products.length}`)
         }
     } catch (error) {
         showError('Ошибка: ' + (error && error.message ? error.message : String(error)))
