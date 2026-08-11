@@ -71,7 +71,7 @@ serve(async (req) => {
 
       for (let i = 0; i < attempts; i++) {
         try {
-          const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(apiKey)}`
           const response = await fetch(url, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -141,39 +141,37 @@ serve(async (req) => {
 
       const isPerfume = productType === 'perfume'
       const isPharmacy = productType === 'pharmacy'
-      const isSupplement = productType === 'supplement'
 
-      const prompt = `Создай описание для товара в интернет-магазине.
+      const prompt = `Создай описание для товара в интернет-магазине питания/спорта.
 
 Название: "${productName}"
 Бренд: "${brandName}"
 Категория: "${categoryName}"
-Объём/количество в упаковке: "${volume || 'не указан'}"
-${isSupplement && composition ? `Состав по умолчанию для этого типа: "${composition}"` : ''}
+Объём: "${volume || 'не указан'}"
+${composition ? `Состав: "${composition}"` : ''}
 
-Ответь ТОЛЬКО валидным JSON с точными полями:
-
+Ответь ТОЛЬКО валидным JSON без markdown:
 {
-  "description": "Краткое описание 3-4 строки. Без воды, без рекламных фраз. Просто и понятно: для чего этот товар, какой эффект даёт, кто его обычно покупает. Язычком для обычного человека.",
-  "full_description": "Развёрнутое описание 5-7 строк. Удобное для чтения на мобильном и ПК. Короткие абзацы. Объясни простым языком: что это, как работает, что даст пользователю. Если указан объём/количество в упаковке — используй его для расчёта 'хватит на X дней' на основе типовой дозировки для этого типа товара.",
-  "composition": "Состав. Для БАДов и аптечных товаров — перечисли основные активные компоненты с дозировками как на упаковке, переведя на русский. Для парфюма — перечисли аромат, семейство, ноты как на упаковке, переведя на русский.",
-  "dosage": "Дозировка с упаковки, переведённая на русский. Для парфюма — объём флакона. Если есть информация по объёму — оформи красиво с расчётом на сколько дней хватит.",
-  "usage": "Способ применения дословно с упаковки, переведённый на русский язык. Для парфюма — способ нанесения.",
-  "contraindications": "${isPerfume ? 'Для парфюма не указывай противопоказания. Оставь пустым.' : 'Стандартные противопоказания: индивидуальная непереносимость, беременность, кормление грудью. Для аптечных товаров добавь характерные противопоказания для этого типа препарата.'}"
+  "description": "Краткое описание 3-4 строки. Без воды, понятно каждому.",
+  "full_description": "Развёрнутое описание 5-7 строк. Короткие абзацы, удобно на телефоне.",
+  "composition": "Состав. Для БАДов/аптечных — основные компоненты с дозировками на русском. Для парфюма — аромат/семейство/ноты на русском.",
+  "dosage": "Дозировка с упаковки на русском. Для парфюма — объём флакона.",
+  "usage": "Способ применения на русском. Для парфюма — способ нанесения.",
+  "contraindications": "${isPerfume ? 'Пусто' : 'Индивидуальная непереносимость, беременность, кормление грудью. Для аптечных добавь характерные.'}"
 }
 
 Правила:
-- description: максимум 4 строки, без воды, понятно каждому
-- full_description: 5-7 строк, короткие абзацы, удобно читать на телефоне
-- composition: точный состав как на упаковке, переведённый на русский
-- dosage: дозировка как на упаковке, переведённая на русский, красиво отформатировать
-- usage: способ применения как на упаковке, переведённый на русский, кратко
-- contraindications: ${isPerfume ? 'пусто для парфюма' : 'только фактические, без выдуманных'}
-- Не придумывай состав, дозировку и способ применения — используй только общеизвестные стандартные данные для этого типа товара и информации из названия/объёма.`
+- description: максимум 4 строки, без воды
+- full_description: 5-7 строк, короткие абзацы
+- composition: точный состав как на упаковке, на русском
+- dosage: дозировка как на упаковке, на русском
+- usage: кратко, на русском
+- contraindications: ${isPerfume ? 'пусто' : 'только фактические, без выдуманных'}
+- Не придумывай состав/дозировку — только общеизвестные стандартные данные.`
 
       const data = await callGemini(apiKey, prompt, {
         temperature: 0.3,
-        maxOutputTokens: 1500,
+        maxOutputTokens: 1200,
         responseMimeType: 'application/json',
         responseSchema: {
           type: 'object',
@@ -190,51 +188,25 @@ ${isSupplement && composition ? `Состав по умолчанию для э�
       })
 
       const rawText = data.text
-      if (!rawText) throw new Error('Empty response from AI')
+      if (!rawText) return null
 
       let parsed
       try {
-        parsed = JSON.parse(rawText)
+        const cleaned = rawText.replace(/```json\n?|\n?```/g, '').trim()
+        parsed = JSON.parse(cleaned)
       } catch (e) {
-        console.error('Failed to parse AI response:', rawText)
+        console.error('Failed to parse AI response for', productName, ':', rawText)
         return null
       }
 
-      const auditPrompt = `Проверь описание товара.
-
-Название: "${productName}"
-Категория: "${categoryName}"
-
-Description: "${parsed.description || ''}"
-Full description: "${parsed.full_description || ''}"
-Composition: "${parsed.composition || ''}"
-Dosage: "${parsed.dosage || ''}"
-Usage: "${parsed.usage || ''}"
-Contraindications: "${parsed.contraindications || ''}"
-
-Правила проверки:
-- description максимум 4 строки, без воды, понятно
-- full_description 5-7 строк, короткие абзацы, удобно для телефона
-- composition соответствует типу товара
-- dosage переведён на русский
-- usage переведён на русский
-- contraindications: для парфюма пусто, для остальных — стандартные
-
-Ответь "OK" если всё хорошо, или "ERROR: причина" если есть проблемы.`
-
-      const auditData = await callGemini(apiKey, auditPrompt, {
-        temperature: 0.1,
-        maxOutputTokens: 100,
-        responseMimeType: 'text/plain'
-      })
-
-      const auditResult = auditData.text?.trim() || ''
-      if (auditResult.toLowerCase().includes('error:')) {
-        console.warn('Self-audit failed for product:', productName, auditResult)
-        return null
+      return {
+        description: parsed.description || '',
+        full_description: parsed.full_description || '',
+        composition: parsed.composition || '',
+        dosage: parsed.dosage || '',
+        usage: parsed.usage || '',
+        contraindications: parsed.contraindications || ''
       }
-
-      return parsed
     }
 
     // Verify JWT token
@@ -1139,7 +1111,7 @@ Contraindications: "${parsed.contraindications || ''}"
       const { data: products, error: productsError } = await supabase
         .from("products")
         .select("id, name, volume, composition, brands(name)")
-        .is("full_description", null)
+        .or("full_description.is.null,full_description.eq.")
 
       if (productsError) throw productsError
 

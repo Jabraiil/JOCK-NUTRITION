@@ -3275,7 +3275,8 @@ async function handleGenerateDescriptions() {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ apiKey })
-            }
+            },
+            120000
         )
 
         if (!productsRes.ok) {
