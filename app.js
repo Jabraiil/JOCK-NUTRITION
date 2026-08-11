@@ -62,7 +62,12 @@ try {
     console.error('Failed to parse favorites from localStorage:', e)
 }
 let favoritesOnly = false
-let darkMode = localStorage.getItem('jock-theme') === 'dark'
+let darkMode = false
+try {
+    darkMode = localStorage.getItem('jock-theme') === 'dark'
+} catch (e) {
+    console.error('localStorage not available:', e)
+}
 let barcodeStream = null
 let scannerFlashOn = false
 let scannerMode = 'camera'
@@ -2387,9 +2392,14 @@ function initA2HS() {
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true
     if (isStandalone) return
 
-    let visitCount = parseInt(localStorage.getItem('jock-visit-count') || '0', 10)
-    visitCount++
-    localStorage.setItem('jock-visit-count', String(visitCount))
+    let visitCount = 0
+    try {
+        visitCount = parseInt(localStorage.getItem('jock-visit-count') || '0', 10)
+        visitCount++
+        localStorage.setItem('jock-visit-count', String(visitCount))
+    } catch (e) {
+        console.error('localStorage not available in initA2HS:', e)
+    }
     const isSecondVisit = visitCount >= 2
 
     const showTarget = isSecondVisit ? showA2HSModal : showA2HSBanner

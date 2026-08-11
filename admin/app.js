@@ -174,7 +174,12 @@ function init() {
 }
 
 function applyTheme() {
-    const darkMode = localStorage.getItem('jock-theme') === 'dark'
+    let darkMode = false
+    try {
+        darkMode = localStorage.getItem('jock-theme') === 'dark'
+    } catch (e) {
+        console.error('localStorage not available in applyTheme:', e)
+    }
     if (darkMode) {
         document.documentElement.setAttribute('data-theme', 'dark')
     } else {
@@ -183,8 +188,13 @@ function applyTheme() {
 }
 
 function toggleTheme() {
-    const darkMode = localStorage.getItem('jock-theme') === 'dark'
-    localStorage.setItem('jock-theme', darkMode ? 'light' : 'dark')
+    let darkMode = false
+    try {
+        darkMode = localStorage.getItem('jock-theme') === 'dark'
+        localStorage.setItem('jock-theme', darkMode ? 'light' : 'dark')
+    } catch (e) {
+        console.error('localStorage not available in toggleTheme:', e)
+    }
     applyTheme()
 }
 
