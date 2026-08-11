@@ -2108,30 +2108,52 @@ function openBannerSlideModal(slideIndex = null) {
 
     if (slide) {
         title.textContent = 'Редактировать слайд'
-        document.getElementById('bannerSlideType').value = slide.type || 'promo'
-        document.getElementById('bannerProduct').value = slide.product_id || ''
-        document.getElementById('bannerImage').value = slide.image || ''
-        document.getElementById('bannerTitle').value = slide.title || ''
-        document.getElementById('bannerSubtitle').value = slide.subtitle || ''
-        document.getElementById('bannerText').value = slide.text || ''
-        document.getElementById('bannerBadge').value = slide.badge || ''
-        document.getElementById('bannerLink').value = slide.link || ''
-        document.getElementById('bannerLayout').value = slide.layout || 'full'
-        document.getElementById('bannerImagePosition').value = slide.image_position || 'center'
-        document.getElementById('bannerSort').value = slide.sort_order ?? 0
+        const bannerSlideType = document.getElementById('bannerSlideType')
+        const bannerProduct = document.getElementById('bannerProduct')
+        const bannerImage = document.getElementById('bannerImage')
+        const bannerTitle = document.getElementById('bannerTitle')
+        const bannerSubtitle = document.getElementById('bannerSubtitle')
+        const bannerText = document.getElementById('bannerText')
+        const bannerBadge = document.getElementById('bannerBadge')
+        const bannerLink = document.getElementById('bannerLink')
+        const bannerLayout = document.getElementById('bannerLayout')
+        const bannerImagePosition = document.getElementById('bannerImagePosition')
+        const bannerSort = document.getElementById('bannerSort')
+        if (bannerSlideType) bannerSlideType.value = slide.type || 'promo'
+        if (bannerProduct) bannerProduct.value = slide.product_id || ''
+        if (bannerImage) bannerImage.value = slide.image || ''
+        if (bannerTitle) bannerTitle.value = slide.title || ''
+        if (bannerSubtitle) bannerSubtitle.value = slide.subtitle || ''
+        if (bannerText) bannerText.value = slide.text || ''
+        if (bannerBadge) bannerBadge.value = slide.badge || ''
+        if (bannerLink) bannerLink.value = slide.link || ''
+        if (bannerLayout) bannerLayout.value = slide.layout || 'full'
+        if (bannerImagePosition) bannerImagePosition.value = slide.image_position || 'center'
+        if (bannerSort) bannerSort.value = slide.sort_order ?? 0
     } else {
         title.textContent = 'Новый слайд'
-        document.getElementById('bannerSlideType').value = 'promo'
-        document.getElementById('bannerProduct').value = ''
-        document.getElementById('bannerImage').value = ''
-        document.getElementById('bannerTitle').value = ''
-        document.getElementById('bannerSubtitle').value = ''
-        document.getElementById('bannerText').value = ''
-        document.getElementById('bannerBadge').value = ''
-        document.getElementById('bannerLink').value = ''
-        document.getElementById('bannerLayout').value = 'full'
-        document.getElementById('bannerImagePosition').value = 'center'
-        document.getElementById('bannerSort').value = '0'
+        const bannerSlideType = document.getElementById('bannerSlideType')
+        const bannerProduct = document.getElementById('bannerProduct')
+        const bannerImage = document.getElementById('bannerImage')
+        const bannerTitle = document.getElementById('bannerTitle')
+        const bannerSubtitle = document.getElementById('bannerSubtitle')
+        const bannerText = document.getElementById('bannerText')
+        const bannerBadge = document.getElementById('bannerBadge')
+        const bannerLink = document.getElementById('bannerLink')
+        const bannerLayout = document.getElementById('bannerLayout')
+        const bannerImagePosition = document.getElementById('bannerImagePosition')
+        const bannerSort = document.getElementById('bannerSort')
+        if (bannerSlideType) bannerSlideType.value = 'promo'
+        if (bannerProduct) bannerProduct.value = ''
+        if (bannerImage) bannerImage.value = ''
+        if (bannerTitle) bannerTitle.value = ''
+        if (bannerSubtitle) bannerSubtitle.value = ''
+        if (bannerText) bannerText.value = ''
+        if (bannerBadge) bannerBadge.value = ''
+        if (bannerLink) bannerLink.value = ''
+        if (bannerLayout) bannerLayout.value = 'full'
+        if (bannerImagePosition) bannerImagePosition.value = 'center'
+        if (bannerSort) bannerSort.value = '0'
     }
 
     updateBannerFormVisibility()
@@ -2664,7 +2686,12 @@ async function undoLastImport() {
         return
     }
 
-    const token = localStorage.getItem('admin-token')
+    let token = null
+    try {
+        token = localStorage.getItem('admin-token')
+    } catch (e) {
+        console.error('localStorage not available in undoLastImport:', e)
+    }
     if (!token) {
         showError('Сессия истекла. Войдите снова.')
         return
