@@ -88,7 +88,11 @@ let adminHtml5QrCode = null
 const ADMIN_SCAN_INTERVAL_MS = 250
 
 function handleAuthError(message) {
-    localStorage.removeItem('admin-token')
+    try {
+        localStorage.removeItem('admin-token')
+    } catch (e) {
+        console.error('localStorage not available in handleAuthError:', e)
+    }
     showAuthPage()
     const errorEl = document.getElementById('loginError')
     if (errorEl) {
@@ -668,7 +672,11 @@ function handleLogout() {
         clearInterval(monitorInterval)
         monitorInterval = null
     }
-    localStorage.removeItem('admin-token')
+    try {
+        localStorage.removeItem('admin-token')
+    } catch (e) {
+        console.error('localStorage not available in handleLogout:', e)
+    }
     showAuthPage()
 }
 
@@ -767,20 +775,20 @@ async function loadProducts() {
             tbody.innerHTML = data.map(product => {
                 const isSelected = selectedProductIds.has(product.id)
                 return `<tr>
-                    <td><input type="checkbox" class="product-select-cb" data-id="${escapeHtml(String(product.id))}" ${isSelected ? 'checked' : ''} aria-label="Выбрать товар"></td>
-                    <td>${product.product_images?.[0]?.url ? `<img src="${escapeHtml(product.product_images[0].url)}" alt="" decoding="async" width="80" height="80">` : '<span style="color:var(--text-secondary)">—</span>'}</td>
-                    <td>${escapeHtml(cleanProductName(product.name, product.brands?.name))}</td>
-                    <td>${escapeHtml(product.categories?.name || '-')}</td>
-                    <td>${escapeHtml(product.brands?.name || '-')}</td>
-                    <td>${product.price} ₽</td>
-                    <td>${product.stock}</td>
-                    <td>${product.is_visible ? '✅' : '❌'}</td>
-                <td>
-                    ${product.is_hit ? '<span class="badge-text badge-hit">HIT</span>' : ''}
-                    ${product.is_new ? '<span class="badge-text badge-new">NEW</span>' : ''}
-                    ${product.is_discount ? '<span class="badge-text badge-discount">SALE</span>' : ''}
-                </td>
-                    <td>
+                    <td class="checkbox-cell"><input type="checkbox" class="product-select-cb" data-id="${escapeHtml(String(product.id))}" ${isSelected ? 'checked' : ''} aria-label="Выбрать товар"></td>
+                    <td data-label="Фото">${product.product_images?.[0]?.url ? `<img src="${escapeHtml(product.product_images[0].url)}" alt="" decoding="async" width="80" height="80">` : '<span style="color:var(--text-secondary)">—</span>'}</td>
+                    <td data-label="Название">${escapeHtml(cleanProductName(product.name, product.brands?.name))}</td>
+                    <td data-label="Категория">${escapeHtml(product.categories?.name || '-')}</td>
+                    <td data-label="Бренд">${escapeHtml(product.brands?.name || '-')}</td>
+                    <td data-label="Цена">${product.price} ₽</td>
+                    <td data-label="Остаток">${product.stock}</td>
+                    <td data-label="Статус">${product.is_visible ? '✅' : '❌'}</td>
+                    <td data-label="Бейджи">
+                        ${product.is_hit ? '<span class="badge-text badge-hit">HIT</span>' : ''}
+                        ${product.is_new ? '<span class="badge-text badge-new">NEW</span>' : ''}
+                        ${product.is_discount ? '<span class="badge-text badge-discount">SALE</span>' : ''}
+                    </td>
+                    <td class="actions-cell" data-label="Действия">
                         <button class="btn btn-sm btn-secondary" data-action="edit-product" data-id="${escapeHtml(String(product.id))}">✏️</button>
                         <button class="btn btn-sm btn-primary" data-action="duplicate-product" data-id="${escapeHtml(String(product.id))}">⧉</button>
                         <button class="btn btn-sm btn-accent" data-action="copy-image-url" data-id="${escapeHtml(String(product.id))}" data-url="${escapeHtml(product.product_images?.[0]?.url || '')}" title="Скопировать ссылку на фото">🔗</button>
@@ -1185,7 +1193,14 @@ function toggleProductSelection(id, checked) {
 
 async function bulkToggleVisibility(visible) {
     if (selectedProductIds.size === 0) return
-    const token = localStorage.getItem('admin-token')
+    let token
+    try {
+        token = localStorage.getItem('admin-token')
+    } catch (e) {
+        console.error('localStorage not available in bulkToggleVisibility:', e)
+        showError('Сессия истекла. Войдите снова.')
+        return
+    }
     if (!token) {
         showError('Сессия истекла. Войдите снова.')
         return
@@ -1221,7 +1236,14 @@ async function bulkDeleteSelected() {
     if (selectedProductIds.size === 0) return
     const count = selectedProductIds.size
     if (!confirm(`Удалить ${count} выбранных товаров?`)) return
-    const token = localStorage.getItem('admin-token')
+    let token
+    try {
+        token = localStorage.getItem('admin-token')
+    } catch (e) {
+        console.error('localStorage not available in bulkDeleteSelected:', e)
+        showError('Сессия истекла. Войдите снова.')
+        return
+    }
     if (!token) {
         showError('Сессия истекла. Войдите снова.')
         return
@@ -1256,7 +1278,14 @@ function bulkClearSelection() {
 }
 
 async function bulkToggleAllVisibility() {
-    const token = localStorage.getItem('admin-token')
+    let token
+    try {
+        token = localStorage.getItem('admin-token')
+    } catch (e) {
+        console.error('localStorage not available in bulkToggleAllVisibility:', e)
+        showError('Сессия истекла. Войдите снова.')
+        return
+    }
     if (!token) {
         showError('Сессия истекла. Войдите снова.')
         return
@@ -1444,8 +1473,8 @@ async function loadCategories() {
         if (categoriesTable) {
             categoriesTable.innerHTML = data.map(cat => `
                 <tr>
-                    <td>${escapeHtml(cat.name)}</td>
-                    <td>
+                    <td data-label="Название">${escapeHtml(cat.name)}</td>
+                    <td data-label="Действия" class="actions-cell">
                         <button class="btn btn-sm btn-secondary" data-action="edit-category" data-id="${escapeHtml(String(cat.id))}">✏️</button>
                         <button class="btn btn-sm btn-danger" data-action="delete-category" data-id="${escapeHtml(String(cat.id))}">🗑️</button>
                     </td>
@@ -1585,8 +1614,8 @@ async function loadBrands() {
         if (brandsTable) {
             brandsTable.innerHTML = data.map(brand => `
             <tr>
-                <td>${escapeHtml(brand.name)}</td>
-                <td>
+                <td data-label="Название">${escapeHtml(brand.name)}</td>
+                <td data-label="Действия" class="actions-cell">
                     <button class="btn btn-sm btn-secondary" data-action="edit-brand" data-id="${escapeHtml(String(brand.id))}">✏️</button>
                     <button class="btn btn-sm btn-danger" data-action="delete-brand" data-id="${escapeHtml(String(brand.id))}">🗑️</button>
                 </td>
@@ -1706,9 +1735,9 @@ async function loadAnalytics() {
             const topProducts = Array.isArray(data.topProducts) ? data.topProducts : []
             topProductsTable.innerHTML = topProducts.map(p => `
                 <tr>
-                    <td>${escapeHtml(p.name)}</td>
-                    <td>${escapeHtml(String(p.quantity))}</td>
-                    <td>${escapeHtml(String(p.total))} ₽</td>
+                    <td data-label="Товар">${escapeHtml(p.name)}</td>
+                    <td data-label="Продано">${escapeHtml(String(p.quantity))}</td>
+                    <td data-label="Выручка">${escapeHtml(String(p.total))} ₽</td>
                 </tr>
             `).join('')
         }
@@ -1735,12 +1764,12 @@ async function loadAnalytics() {
             const orders = Array.isArray(ordersData.data) ? ordersData.data : []
             ordersTable.innerHTML = orders.map(order => `
                 <tr>
-                    <td><input type="checkbox" data-order-id="${escapeHtml(String(order.id))}"></td>
-                    <td>${escapeHtml(String(order.order_number))}</td>
-                    <td>${escapeHtml((order.items || []).map(i => `${i.name} (${i.quantity})`).join(', '))}</td>
-                    <td>${escapeHtml(String(order.total))} ₽</td>
-                    <td>${escapeHtml(new Date(order.created_at).toLocaleString('ru-RU'))}</td>
-                    <td><button class="btn btn-sm btn-danger" data-action="delete-order" data-id="${escapeHtml(String(order.id))}">🗑️</button></td>
+                    <td class="checkbox-cell"><input type="checkbox" data-order-id="${escapeHtml(String(order.id))}"></td>
+                    <td data-label="Номер">${escapeHtml(String(order.order_number))}</td>
+                    <td data-label="Товары">${escapeHtml((order.items || []).map(i => `${i.name} (${i.quantity})`).join(', '))}</td>
+                    <td data-label="Сумма">${escapeHtml(String(order.total))} ₽</td>
+                    <td data-label="Дата">${escapeHtml(new Date(order.created_at).toLocaleString('ru-RU'))}</td>
+                    <td class="actions-cell" data-label="Действия"><button class="btn btn-sm btn-danger" data-action="delete-order" data-id="${escapeHtml(String(order.id))}">🗑️</button></td>
                 </tr>
             `).join('')
         }
