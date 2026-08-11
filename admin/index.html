@@ -249,8 +249,17 @@
 
             <div id="bannerPage" class="page">
                 <div class="page-header">
-                    <button id="addBannerSlideBtn" class="btn btn-primary">+ Добавить слайд <span class="field-hint" data-tooltip="Создаёт новый слайд для баннера. Вы сможете выбрать товар, загрузить фото, добавить текст и ссылку.">?</span></button>
-                    <button id="saveBannerBtn" class="btn btn-secondary">Сохранить баннер <span class="field-hint" data-tooltip="Сохраняет все слайды в настройки. После сохранения изменения сразу появятся на сайте.">?</span></button>
+                    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                        <label class="toggle-switch" title="Показать/скрыть баннер на сайте">
+                            <input type="checkbox" id="bannerEnabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span style="font-size: 0.9rem; color: var(--text-secondary);">Баннер включён</span>
+                    </div>
+                    <div class="page-header-actions">
+                        <button id="addBannerSlideBtn" class="btn btn-primary">+ Добавить слайд <span class="field-hint" data-tooltip="Создаёт новый слайд для баннера. Вы сможете выбрать товар, загрузить фото, добавить текст и ссылку.">?</span></button>
+                        <button id="saveBannerBtn" class="btn btn-secondary">Сохранить баннер <span class="field-hint" data-tooltip="Сохраняет все слайды в настройки. После сохранения изменения сразу появятся на сайте.">?</span></button>
+                    </div>
                 </div>
                 <div id="bannerSlidesList" class="banner-slides-list"></div>
                 <div id="bannerError" class="error hidden"></div>

@@ -1876,6 +1876,13 @@ function initBanner() {
     const pauseBtn = document.getElementById('bannerPauseBtn')
     if (!banner || !track) return
 
+    const settings = window.__storeSettings || {}
+    if (settings.promo_banner_enabled === 'false') {
+        banner.classList.add('hidden')
+        stopBannerAutoplay()
+        return
+    }
+
     stopBannerAutoplay()
     bannerPaused = false
 
@@ -2165,6 +2172,12 @@ function resetBannerAutoplay() {
 function updateBannerVisibility() {
     const banner = document.getElementById('promoBanner')
     if (!banner) return
+    const settings = window.__storeSettings || {}
+    if (settings.promo_banner_enabled === 'false') {
+        banner.classList.add('hidden')
+        stopBannerAutoplay()
+        return
+    }
     if (favoritesOnly) {
         banner.classList.add('hidden')
         stopBannerAutoplay()

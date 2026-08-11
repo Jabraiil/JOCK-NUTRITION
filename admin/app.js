@@ -1931,6 +1931,7 @@ async function loadSettings() {
         const currencyEl = document.getElementById('currency')
         const orderTemplateEl = document.getElementById('orderTemplate')
         const geminiApiKeyEl = document.getElementById('geminiApiKey')
+        const bannerEnabledEl = document.getElementById('bannerEnabled')
 
         if (whatsappNumberEl) whatsappNumberEl.value = settings.whatsapp_number || ''
         if (whatsappBusinessNumberEl) whatsappBusinessNumberEl.value = settings.whatsapp_business_number || ''
@@ -1946,6 +1947,7 @@ async function loadSettings() {
         if (currencyEl) currencyEl.value = settings.currency || '₽'
         if (orderTemplateEl) orderTemplateEl.value = settings.order_template || ''
         if (geminiApiKeyEl) geminiApiKeyEl.value = settings.gemini_api_key || ''
+        if (bannerEnabledEl) bannerEnabledEl.checked = settings.promo_banner_enabled !== 'false'
     } catch (error) {
         console.error('Error loading settings:', error)
         showError('Ошибка загрузки настроек: ' + (error && error.message ? error.message : String(error)))
@@ -1970,7 +1972,8 @@ async function handleSettingsSave(e) {
         order_error_code: document.getElementById('orderErrorCode')?.value || '[!CHECK!]',
         currency: document.getElementById('currency')?.value || '₽',
         order_template: document.getElementById('orderTemplate')?.value || '',
-        gemini_api_key: document.getElementById('geminiApiKey')?.value || ''
+        gemini_api_key: document.getElementById('geminiApiKey')?.value || '',
+        promo_banner_enabled: document.getElementById('bannerEnabled')?.checked ? 'true' : 'false'
     }
     
     const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/settings`, {
@@ -2066,6 +2069,11 @@ async function loadBannerSlides() {
             bannerSlidesData = JSON.parse(raw)
         } catch (e) {
             bannerSlidesData = []
+        }
+
+        const bannerEnabledEl = document.getElementById('bannerEnabled')
+        if (bannerEnabledEl) {
+            bannerEnabledEl.checked = settings.promo_banner_enabled !== 'false'
         }
 
         renderBannerSlidesList()
@@ -2272,8 +2280,10 @@ async function saveBannerSlide(e) {
 
 async function saveBannerSettings() {
     try {
+        const bannerEnabledEl = document.getElementById('bannerEnabled')
         const payload = {
-            promo_banner_slides: JSON.stringify(bannerSlidesData)
+            promo_banner_slides: JSON.stringify(bannerSlidesData),
+            promo_banner_enabled: bannerEnabledEl?.checked ? 'true' : 'false'
         }
 
         const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/settings`, {
