@@ -410,8 +410,12 @@ function closeFilters() {
 
 
 function toggleTheme() {
-    darkMode = !darkMode
-    localStorage.setItem('jock-theme', darkMode ? 'dark' : 'light')
+    try {
+        darkMode = !darkMode
+        localStorage.setItem('jock-theme', darkMode ? 'dark' : 'light')
+    } catch (e) {
+        console.error('localStorage not available in toggleTheme:', e)
+    }
     applyTheme()
 }
 
@@ -1161,7 +1165,11 @@ function updateProductCardCart(productId) {
 }
 
 function saveCart() {
-    localStorage.setItem('jock-cart', JSON.stringify(cart))
+    try {
+        localStorage.setItem('jock-cart', JSON.stringify(cart))
+    } catch (e) {
+        console.error('localStorage not available in saveCart:', e)
+    }
 }
 
 function updateCartCount() {
@@ -1178,7 +1186,11 @@ function updateCartCount() {
 }
 
 function saveFavorites() {
-    localStorage.setItem('jock-favorites', JSON.stringify(favorites))
+    try {
+        localStorage.setItem('jock-favorites', JSON.stringify(favorites))
+    } catch (e) {
+        console.error('localStorage not available in saveFavorites:', e)
+    }
 }
 
 function isFavorited(productId) {
@@ -2168,18 +2180,31 @@ function updateBannerVisibility() {
 function checkCookieConsent() {
     const banner = document.getElementById('cookieBanner')
     if (!banner) return
-    const consent = localStorage.getItem('jock-cookie-consent')
-    if (!consent) {
-        banner.classList.remove('hidden')
+    try {
+        const consent = localStorage.getItem('jock-cookie-consent')
+        if (!consent) {
+            banner.classList.remove('hidden')
+        }
+    } catch (e) {
+        console.error('localStorage not available in checkCookieConsent:', e)
     }
 }
 
 function acceptCookies() {
-    localStorage.setItem('jock-cookie-consent', 'true')
+    try {
+        localStorage.setItem('jock-cookie-consent', 'true')
+    } catch (e) {
+        console.error('localStorage not available in acceptCookies:', e)
+    }
     const banner = document.getElementById('cookieBanner')
     if (banner) banner.classList.add('hidden')
 
-    const welcomeShown = localStorage.getItem('jock-welcome-shown')
+    let welcomeShown = false
+    try {
+        welcomeShown = !!localStorage.getItem('jock-welcome-shown')
+    } catch (e) {
+        console.error('localStorage not available in acceptCookies:', e)
+    }
     if (!welcomeShown) {
         setTimeout(() => {
             showWelcomeModal()
@@ -2196,7 +2221,11 @@ function showWelcomeModal() {
 }
 
 function hideWelcomeModal() {
-    localStorage.setItem('jock-welcome-shown', 'true')
+    try {
+        localStorage.setItem('jock-welcome-shown', 'true')
+    } catch (e) {
+        console.error('localStorage not available in hideWelcomeModal:', e)
+    }
     const modal = document.getElementById('welcomeModal')
     if (modal) modal.classList.add('hidden')
     const privacyBtn = document.getElementById('privacyToggle')
