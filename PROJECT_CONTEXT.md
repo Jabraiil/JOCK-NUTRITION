@@ -37,8 +37,8 @@
 - Service Worker версия: `jock-nutrition-v40-2026-08-10`
 - `manifest.json` cache bust: `2026-08-10-v6`
 - `index.html` deploy marker: `2026-08-10-v6`
-- Версии статики в query params: `styles.css?v=38`, `app.js?v=38`
-- Админка: `admin/styles.css` (без version query), `admin/app.js?v=36`
+- Версии статики в query params: `styles.css?v=38`, `app.js?v=39`
+- Админка: `admin/styles.css` (без version query), `admin/app.js?v=37`
 
 ---
 

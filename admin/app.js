@@ -3655,7 +3655,7 @@ function adminScanLoop(timestamp) {
                 const crop = getCachedAdminScanCrop()
                 if (crop && crop.w > 0 && crop.h > 0) {
                     createImageBitmap(video).then(bitmap => {
-                        if (adminWorkerBusy || !adminScannerWorker) {
+                        if (!adminScannerWorker) {
                             bitmap.close()
                             adminWorkerBusy = false
                         } else {

@@ -1555,7 +1555,7 @@ function scanLoop(timestamp) {
                 const crop = getCachedScanCrop()
                 if (crop && crop.w > 0 && crop.h > 0) {
                     createImageBitmap(video).then(bitmap => {
-                        if (workerBusy || !scannerWorker) {
+                        if (!scannerWorker) {
                             bitmap.close()
                             workerBusy = false
                         } else {
