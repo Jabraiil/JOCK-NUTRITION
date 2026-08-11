@@ -386,19 +386,50 @@ select:focus:not(:focus-visible) {
 }
 
 .search-bar {
-    margin-bottom: 16px;
+    margin-bottom: 20px;
     display: flex;
-    gap: 8px;
+    gap: 10px;
     align-items: center;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 8px;
+    box-shadow: 0 2px 12px var(--shadow-sm);
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.search-bar:focus-within {
+    border-color: var(--primary);
+    box-shadow: 0 4px 20px var(--shadow-md), 0 0 0 3px rgba(0, 122, 255, 0.12);
+}
+
+.search-input-wrapper {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.search-icon {
+    position: absolute;
+    left: 14px;
+    color: var(--text-secondary);
+    pointer-events: none;
+    transition: color 0.2s ease;
+}
+
+.search-bar:focus-within .search-icon {
+    color: var(--primary);
 }
 
 .search-bar input {
     flex: 1;
-    height: var(--touch);
-    padding: 0 16px;
-    border: 1px solid var(--border);
+    width: 100%;
+    height: 44px;
+    padding: 0 16px 0 44px;
+    border: none;
     border-radius: var(--radius-md);
-    background: var(--bg-elevated);
+    background: transparent;
     color: var(--text);
     font-size: 1rem;
     font-family: var(--font);
@@ -406,7 +437,45 @@ select:focus:not(:focus-visible) {
 
 .search-bar input:focus {
     outline: none;
-    border-color: var(--primary);
+}
+
+.search-bar input::placeholder {
+    color: var(--text-secondary);
+}
+
+.search-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.search-actions .icon-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-md);
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease, color 0.2s ease, transform 0.1s ease;
+}
+
+.search-actions .icon-btn:hover {
+    background: var(--border);
+    color: var(--text);
+}
+
+.search-actions .icon-btn:active {
+    transform: scale(0.94);
+}
+
+.search-clear {
+    font-size: 1.4rem;
+    line-height: 1;
+    font-weight: 300;
 }
 
 .barcode-scanner {

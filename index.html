@@ -86,24 +86,43 @@
 
     <main class="main">
         <div class="container">
+            <div id="promoBanner" class="promo-banner hidden" role="region" aria-label="Промо-баннер" aria-roledescription="carousel">
+                <div class="promo-banner-track" id="promoBannerTrack" aria-live="polite">
+                </div>
+                <button id="bannerPauseBtn" class="promo-banner-pause" aria-label="Пауза автопролистывания" title="Пауза">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                        <rect x="6" y="4" width="4" height="16" rx="1"></rect>
+                        <rect x="14" y="4" width="4" height="16" rx="1"></rect>
+                    </svg>
+                </button>
+            </div>
+
             <div id="searchBar" class="search-bar hidden">
-                <input type="text" id="searchInput" placeholder="Поиск по названию и бренду..." autocomplete="off">
-                <button id="barcodeToggle" class="icon-btn" aria-label="Сканировать штрих-код" title="Сканировать штрих-код">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                        <path d="M3 5v14"></path>
-                        <path d="M7 5v14"></path>
-                        <path d="M11 5v14"></path>
-                        <path d="M15 5v14"></path>
-                        <path d="M19 5v14"></path>
-                        <path d="M21 5v14"></path>
+                <div class="search-input-wrapper">
+                    <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
                     </svg>
-                </button>
-                <button id="filterToggle" class="icon-btn" aria-label="Фильтры" title="Фильтры">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"></path>
-                    </svg>
-                </button>
-                <button id="searchClear" class="icon-btn" aria-label="Очистить поиск">&times;</button>
+                    <input type="text" id="searchInput" placeholder="Поиск по названию и бренду..." autocomplete="off">
+                </div>
+                <div class="search-actions">
+                    <button id="barcodeToggle" class="icon-btn" aria-label="Сканировать штрих-код" title="Сканировать штрих-код">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                            <path d="M3 5v14"></path>
+                            <path d="M7 5v14"></path>
+                            <path d="M11 5v14"></path>
+                            <path d="M15 5v14"></path>
+                            <path d="M19 5v14"></path>
+                            <path d="M21 5v14"></path>
+                        </svg>
+                    </button>
+                    <button id="filterToggle" class="icon-btn" aria-label="Фильтры" title="Фильтры">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"></path>
+                        </svg>
+                    </button>
+                    <button id="searchClear" class="icon-btn" aria-label="Очистить поиск">&times;</button>
+                </div>
             </div>
 
             <div id="barcodeScanner" class="barcode-scanner hidden" role="dialog" aria-modal="true" aria-label="Сканер штрих-кодов">
@@ -187,17 +206,6 @@
                     <button id="checkoutBtn" class="btn btn-primary btn-block">Оформить заказ</button>
                     <div id="orderTimeMessage" class="order-time-message hidden"></div>
                 </div>
-            </div>
-
-            <div id="promoBanner" class="promo-banner hidden" role="region" aria-label="Промо-баннер" aria-roledescription="carousel">
-                <div class="promo-banner-track" id="promoBannerTrack" aria-live="polite">
-                </div>
-                <button id="bannerPauseBtn" class="promo-banner-pause" aria-label="Пауза автопролистывания" title="Пауза">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                        <rect x="6" y="4" width="4" height="16" rx="1"></rect>
-                        <rect x="14" y="4" width="4" height="16" rx="1"></rect>
-                    </svg>
-                </button>
             </div>
 
             <div id="catalog" class="catalog">

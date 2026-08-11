@@ -66,6 +66,7 @@ let salesChart = null
 let productsPage = 1
 let productsTotal = 0
 const PRODUCTS_PER_PAGE = 20
+let selectedProductIds = new Set()
 let ordersPage = 1
 let ordersTotal = 0
 const ORDERS_PER_PAGE = 50
@@ -246,6 +247,11 @@ function setupEventListeners() {
             if (copyBtn) copyImageUrl(copyBtn.dataset.url, copyBtn)
             if (delBtn) deleteProduct(delBtn.dataset.id)
         })
+        productsTable.addEventListener('change', (e) => {
+            if (e.target.type === 'checkbox' && e.target.classList.contains('product-select-cb')) {
+                toggleProductSelection(e.target.dataset.id, e.target.checked)
+            }
+        })
     }
 
     // Categories table actions (event delegation)
@@ -310,6 +316,31 @@ function setupEventListeners() {
             productsPage = 1
             loadProducts()
         }, 300))
+    }
+
+    const selectAllProducts = document.getElementById('selectAllProducts')
+    if (selectAllProducts) {
+        selectAllProducts.addEventListener('change', (e) => {
+            const checkboxes = document.querySelectorAll('.product-select-cb')
+            checkboxes.forEach(cb => {
+                cb.checked = e.target.checked
+                toggleProductSelection(cb.dataset.id, e.target.checked)
+            })
+        })
+    }
+
+    const bulkShowBtn = document.getElementById('bulkShowBtn')
+    if (bulkShowBtn) bulkShowBtn.addEventListener('click', () => bulkToggleVisibility(true))
+    const bulkHideBtn = document.getElementById('bulkHideBtn')
+    if (bulkHideBtn) bulkHideBtn.addEventListener('click', () => bulkToggleVisibility(false))
+    const bulkDeleteBtn = document.getElementById('bulkDeleteBtn')
+    if (bulkDeleteBtn) bulkDeleteBtn.addEventListener('click', bulkDeleteSelected)
+    const bulkClearBtn = document.getElementById('bulkClearBtn')
+    if (bulkClearBtn) bulkClearBtn.addEventListener('click', bulkClearSelection)
+
+    const bulkToggleVisibilityBtn = document.getElementById('bulkToggleVisibilityBtn')
+    if (bulkToggleVisibilityBtn) {
+        bulkToggleVisibilityBtn.addEventListener('click', bulkToggleAllVisibility)
     }
 
     const ordersPagination = document.getElementById('ordersPagination')
@@ -651,7 +682,7 @@ async function switchPage(page) {
     }
     
     if (page === 'import') {
-        updateUndoImportButton()
+        await updateUndoImportButton()
     }
     
     const titles = {
@@ -725,10 +756,12 @@ async function loadProducts() {
         const tbody = document.getElementById('productsTable')
         const products = Array.isArray(data) ? data : []
         if (products.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-secondary)">Товары не найдены</td></tr>'
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text-secondary)">Товары не найдены</td></tr>'
         } else {
-            tbody.innerHTML = data.map(product => `
-                <tr>
+            tbody.innerHTML = data.map(product => {
+                const isSelected = selectedProductIds.has(product.id)
+                return `<tr>
+                    <td><input type="checkbox" class="product-select-cb" data-id="${escapeHtml(String(product.id))}" ${isSelected ? 'checked' : ''} aria-label="Выбрать товар"></td>
                     <td>${product.product_images?.[0]?.url ? `<img src="${escapeHtml(product.product_images[0].url)}" alt="" decoding="async" width="80" height="80">` : '<span style="color:var(--text-secondary)">—</span>'}</td>
                     <td>${escapeHtml(cleanProductName(product.name, product.brands?.name))}</td>
                     <td>${escapeHtml(product.categories?.name || '-')}</td>
@@ -748,10 +781,11 @@ async function loadProducts() {
                         <button class="btn btn-sm btn-danger" data-action="delete-product" data-id="${escapeHtml(String(product.id))}">🗑️</button>
                     </td>
                 </tr>
-            `).join('')
+            `}).join('')
         }
         
         renderProductsPagination()
+        updateBulkActionsBar()
     } catch (error) {
         console.error('Error loading products:', error)
         showError('Ошибка загрузки товаров: ' + (error && error.message ? error.message : String(error)))
@@ -1100,6 +1134,8 @@ async function deleteProduct(id) {
         })
         
         if (response.ok) {
+            selectedProductIds.delete(String(id))
+            updateBulkActionsBar()
             loadProducts()
         } else {
             const result = await response.json().catch(() => ({}))
@@ -1108,6 +1144,153 @@ async function deleteProduct(id) {
     } catch (error) {
         console.error('Error deleting product:', error)
         showError('Ошибка удаления товара: ' + (error && error.message ? error.message : String(error)))
+    }
+}
+
+function updateBulkActionsBar() {
+    const bar = document.getElementById('bulkActionsBar')
+    const countEl = document.getElementById('bulkActionsCount')
+    const selectAll = document.getElementById('selectAllProducts')
+    if (bar) {
+        if (selectedProductIds.size > 0) {
+            bar.classList.remove('hidden')
+            if (countEl) countEl.textContent = `Выбрано: ${selectedProductIds.size}`
+        } else {
+            bar.classList.add('hidden')
+        }
+    }
+    if (selectAll) {
+        const currentPageIds = Array.from(document.querySelectorAll('.product-select-cb')).map(cb => cb.dataset.id)
+        const allChecked = currentPageIds.length > 0 && currentPageIds.every(id => selectedProductIds.has(id))
+        const someChecked = currentPageIds.some(id => selectedProductIds.has(id))
+        selectAll.checked = allChecked
+        selectAll.indeterminate = !allChecked && someChecked
+    }
+}
+
+function toggleProductSelection(id, checked) {
+    if (checked) {
+        selectedProductIds.add(String(id))
+    } else {
+        selectedProductIds.delete(String(id))
+    }
+    updateBulkActionsBar()
+}
+
+async function bulkToggleVisibility(visible) {
+    if (selectedProductIds.size === 0) return
+    const token = localStorage.getItem('admin-token')
+    if (!token) {
+        showError('Сессия истекла. Войдите снова.')
+        return
+    }
+    const ids = Array.from(selectedProductIds)
+    let errors = 0
+    for (const id of ids) {
+        try {
+            const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/products/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ is_visible: visible })
+            })
+            if (!response.ok) errors++
+        } catch (err) {
+            errors++
+        }
+    }
+    selectedProductIds.clear()
+    updateBulkActionsBar()
+    loadProducts()
+    if (errors === 0) {
+        showError(visible ? 'Товары показаны' : 'Товары скрыты')
+    } else {
+        showError(`Обновлено с ошибками: ${errors} из ${ids.length}`)
+    }
+}
+
+async function bulkDeleteSelected() {
+    if (selectedProductIds.size === 0) return
+    const count = selectedProductIds.size
+    if (!confirm(`Удалить ${count} выбранных товаров?`)) return
+    const token = localStorage.getItem('admin-token')
+    if (!token) {
+        showError('Сессия истекла. Войдите снова.')
+        return
+    }
+    const ids = Array.from(selectedProductIds)
+    let errors = 0
+    for (const id of ids) {
+        try {
+            const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/products/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            if (!response.ok) errors++
+        } catch (err) {
+            errors++
+        }
+    }
+    selectedProductIds.clear()
+    updateBulkActionsBar()
+    loadProducts()
+    if (errors === 0) {
+        showError(`Удалено ${count} товаров`)
+    } else {
+        showError(`Удалено с ошибками: ${count - errors} из ${count}`)
+    }
+}
+
+function bulkClearSelection() {
+    selectedProductIds.clear()
+    updateBulkActionsBar()
+    loadProducts()
+}
+
+async function bulkToggleAllVisibility() {
+    const token = localStorage.getItem('admin-token')
+    if (!token) {
+        showError('Сессия истекла. Войдите снова.')
+        return
+    }
+    if (!confirm('Переключить видимость ВСЕХ товаров?\n\nСейчас видимые станут скрытыми, а скрытые — видимыми.')) return
+    try {
+        const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/products?limit=1000&page=1`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        })
+        if (!response.ok) {
+            showError('Ошибка загрузки товаров')
+            return
+        }
+        const { data } = await response.json()
+        const products = Array.isArray(data) ? data : []
+        let errors = 0
+        for (const product of products) {
+            try {
+                const newVisibility = !product.is_visible
+                const res = await fetchWithTimeout(`${CONFIG.adminApiUrl}/products/${product.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ is_visible: newVisibility })
+                })
+                if (!res.ok) errors++
+            } catch (err) {
+                errors++
+            }
+        }
+        loadProducts()
+        if (errors === 0) {
+            showError(`Видимость переключена для ${products.length} товаров`)
+        } else {
+            showError(`Переключено с ошибками: ${errors} из ${products.length}`)
+        }
+    } catch (error) {
+        showError('Ошибка: ' + (error && error.message ? error.message : String(error)))
     }
 }
 
@@ -2397,38 +2580,69 @@ let importFile = null
 
 const IMPORT_HISTORY_KEY = 'jock-import-history'
 
-function saveImportHistory(data) {
+function openImportHistoryDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open('jock-admin-db', 1)
+        request.onupgradeneeded = (event) => {
+            const db = event.target.result
+            if (!db.objectStoreNames.contains('importHistory')) {
+                db.createObjectStore('importHistory', { keyPath: 'key' })
+            }
+        }
+        request.onsuccess = () => resolve(request.result)
+        request.onerror = () => reject(request.error)
+    })
+}
+
+async function saveImportHistory(data) {
     try {
-        localStorage.setItem(IMPORT_HISTORY_KEY, JSON.stringify({
-            ...data,
-            timestamp: Date.now()
-        }))
+        const db = await openImportHistoryDB()
+        const tx = db.transaction('importHistory', 'readwrite')
+        const store = tx.objectStore('importHistory')
+        store.put({ key: IMPORT_HISTORY_KEY, ...data, timestamp: Date.now() })
+        await new Promise((resolve, reject) => {
+            tx.oncomplete = resolve
+            tx.onerror = () => reject(tx.error)
+        })
     } catch (e) {
-        console.error('Error saving import history:', e)
+        console.error('Error saving import history to IndexedDB:', e)
     }
 }
 
-function loadImportHistory() {
+async function loadImportHistory() {
     try {
-        const stored = localStorage.getItem(IMPORT_HISTORY_KEY)
-        if (stored) return JSON.parse(stored)
+        const db = await openImportHistoryDB()
+        const tx = db.transaction('importHistory', 'readonly')
+        const store = tx.objectStore('importHistory')
+        const request = store.get(IMPORT_HISTORY_KEY)
+        return new Promise((resolve, reject) => {
+            request.onsuccess = () => resolve(request.result || null)
+            request.onerror = () => reject(request.error)
+        })
     } catch (e) {
-        console.error('Error loading import history:', e)
-    }
-    return null
-}
-
-function clearImportHistory() {
-    try {
-        localStorage.removeItem(IMPORT_HISTORY_KEY)
-    } catch (e) {
-        console.error('Error clearing import history:', e)
+        console.error('Error loading import history from IndexedDB:', e)
+        return null
     }
 }
 
-function updateUndoImportButton() {
+async function clearImportHistory() {
+    try {
+        const db = await openImportHistoryDB()
+        const tx = db.transaction('importHistory', 'readwrite')
+        const store = tx.objectStore('importHistory')
+        store.delete(IMPORT_HISTORY_KEY)
+        await new Promise((resolve, reject) => {
+            tx.oncomplete = resolve
+            tx.onerror = () => reject(tx.error)
+        })
+    } catch (e) {
+        console.error('Error clearing import history from IndexedDB:', e)
+    }
+}
+
+async function updateUndoImportButton() {
     const undoBtn = document.getElementById('undoImportBtn')
-    const history = loadImportHistory()
+    const history = await loadImportHistory()
     if (undoBtn) {
         if (history && history.createdProducts && history.createdProducts.length > 0) {
             undoBtn.style.display = 'inline-flex'
@@ -2440,7 +2654,7 @@ function updateUndoImportButton() {
 }
 
 async function undoLastImport() {
-    const history = loadImportHistory()
+    const history = await loadImportHistory()
     if (!history) {
         showError('Нет данных для отмены импорта')
         return
@@ -2722,7 +2936,7 @@ async function handleImport() {
                     createdProducts: result.createdProducts || [],
                     updatedProducts: result.updatedProducts || []
                 })
-                updateUndoImportButton()
+                await updateUndoImportButton()
             }
             if (statusEl) {
                 statusEl.className = 'status-message success'

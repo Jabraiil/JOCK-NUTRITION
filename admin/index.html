@@ -95,19 +95,27 @@
                     <table class="data-table">
                         <thead>
                             <tr>
+                                <th style="width:40px"><input type="checkbox" id="selectAllProducts" aria-label="Выбрать все"></th>
                                 <th>Фото</th>
                                 <th>Название</th>
                                 <th>Категория</th>
                                 <th>Бренд</th>
                                 <th>Цена</th>
                                 <th>Остаток</th>
-                                <th>Статус</th>
+                                <th>Статус <button type="button" id="bulkToggleVisibilityBtn" class="icon-btn header-icon-btn" title="Показать/скрыть все товары">👁️</button></th>
                                 <th>Бейджи</th>
                                 <th>Действия</th>
                             </tr>
                         </thead>
                         <tbody id="productsTable"></tbody>
                     </table>
+                </div>
+                <div id="bulkActionsBar" class="bulk-actions-bar hidden">
+                    <span id="bulkActionsCount">Выбрано: 0</span>
+                    <button type="button" id="bulkShowBtn" class="btn btn-sm btn-primary">👁️ Показать</button>
+                    <button type="button" id="bulkHideBtn" class="btn btn-sm btn-secondary">👁️‍🗨️ Скрыть</button>
+                    <button type="button" id="bulkDeleteBtn" class="btn btn-sm btn-danger">🗑️ Удалить</button>
+                    <button type="button" id="bulkClearBtn" class="btn btn-sm btn-secondary">✕ Снять выбор</button>
                 </div>
                 <div class="pagination" id="productsPagination"></div>
             </div>

@@ -433,7 +433,8 @@ Contraindications: "${parsed.contraindications || ''}"
         category_id: productData.category_id || null,
         brand_id: productData.brand_id || null,
         sku: productData.sku || null,
-        barcode: productData.barcode || null
+        barcode: productData.barcode || null,
+        is_visible: productData.is_visible !== false
       }
 
       const { data: product, error } = await supabase
