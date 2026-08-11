@@ -156,7 +156,7 @@ function init() {
 
         if (token) {
             showAdminPage()
-            loadPageData(currentPage)
+            loadPageData(currentPage).catch(console.error)
             startMonitor()
         } else {
             showAuthPage()
@@ -460,17 +460,63 @@ function setupEventListeners() {
                 const bannerTitle = document.getElementById('bannerTitle')
                 const bannerSubtitle = document.getElementById('bannerSubtitle')
 
-                if (mainImage?.url && bannerImage && !bannerImage.value) {
+                if (mainImage?.url && bannerImage) {
                     bannerImage.value = mainImage.url
                 }
-                if (product.name && bannerTitle && !bannerTitle.value) {
+                if (product.name && bannerTitle) {
                     bannerTitle.value = product.name
                 }
-                if (product.brands?.name && bannerSubtitle && !bannerSubtitle.value) {
+                if (product.brands?.name && bannerSubtitle) {
                     bannerSubtitle.value = product.brands.name
                 }
             } catch (err) {
                 console.error('Error loading product for banner:', err)
+            }
+        })
+    }
+
+    const bannerUploadBtn = document.getElementById('bannerUploadBtn')
+    const bannerFileInput = document.getElementById('bannerFileInput')
+    if (bannerUploadBtn && bannerFileInput) {
+        bannerUploadBtn.addEventListener('click', () => bannerFileInput.click())
+        bannerFileInput.addEventListener('change', async (e) => {
+            const file = e.target.files?.[0]
+            if (!file) return
+
+            try {
+                bannerUploadBtn.disabled = true
+                bannerUploadBtn.textContent = 'Загрузка...'
+
+                const formData = new FormData()
+                formData.append('file', file)
+
+                const fileName = `banner-${Date.now()}-${Math.random().toString(36).slice(2)}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
+                const uploadRes = await fetchWithTimeout(`${CONFIG.supabaseUrl}/storage/v1/object/product-images/${fileName}`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('admin-token')}`,
+                        'apikey': CONFIG.supabaseAnonKey
+                    },
+                    body: formData
+                })
+
+                if (!uploadRes.ok) {
+                    const text = await uploadRes.text()
+                    throw new Error(`Ошибка загрузки: ${uploadRes.status} ${text}`)
+                }
+
+                const imageUrl = `${CONFIG.supabaseUrl}/storage/v1/object/public/product-images/${fileName}`
+                const bannerImage = document.getElementById('bannerImage')
+                if (bannerImage) {
+                    bannerImage.value = imageUrl
+                }
+            } catch (err) {
+                console.error('Error uploading banner image:', err)
+                showBannerError('Ошибка загрузки изображения: ' + (err && err.message ? err.message : String(err)))
+            } finally {
+                bannerUploadBtn.disabled = false
+                bannerUploadBtn.textContent = '📁 Загрузить'
+                bannerFileInput.value = ''
             }
         })
     }
@@ -540,7 +586,7 @@ async function handleLogin(e) {
         if (response.ok && data.access_token) {
             localStorage.setItem('admin-token', data.access_token)
             showAdminPage()
-            loadPageData('products')
+            loadPageData('products').catch(console.error)
         } else {
             const errorMessage = data.msg || data.error || data.error_description || 'Неверный email или пароль'
             throw new Error(translateError(errorMessage))
@@ -589,7 +635,7 @@ function handleLogout() {
     showAuthPage()
 }
 
-function switchPage(page) {
+async function switchPage(page) {
     currentPage = page
     
     document.querySelectorAll('.nav-item').forEach(item => {
@@ -622,7 +668,7 @@ function switchPage(page) {
     
     const pageTitle = document.getElementById('pageTitle')
     if (pageTitle) pageTitle.textContent = titles[page] || page
-    loadPageData(page)
+    await loadPageData(page)
 }
 
 async function loadPageData(page) {

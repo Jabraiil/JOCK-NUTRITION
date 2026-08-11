@@ -134,7 +134,6 @@ function init() {
         loadSettings()
         loadProducts()
         updateCartCount()
-        initBanner()
         setupEventListeners()
         checkOrderTime()
         setInterval(checkOrderTime, 60000)
@@ -1835,12 +1834,48 @@ let bannerPaused = false
 const BANNER_INTERVAL_MS = 5000
 const BANNER_AUTOPLAY_MIN_WIDTH = 768
 
+function onBannerTrackMouseEnter() { bannerPaused = true }
+function onBannerTrackMouseLeave() { bannerPaused = false }
+function onBannerTrackTouchStart() { bannerPaused = true }
+function onBannerTrackTouchEnd() { bannerPaused = false }
+function onBannerTrackKeyDown(e) {
+    if (e.key === 'ArrowLeft') {
+        e.preventDefault()
+        goToBannerSlide(bannerCurrentIndex - 1)
+        resetBannerAutoplay()
+    } else if (e.key === 'ArrowRight') {
+        e.preventDefault()
+        goToBannerSlide(bannerCurrentIndex + 1)
+        resetBannerAutoplay()
+    } else if (e.key === 'Home') {
+        e.preventDefault()
+        goToBannerSlide(0)
+        resetBannerAutoplay()
+    } else if (e.key === 'End') {
+        e.preventDefault()
+        goToBannerSlide(bannerSlides.length - 1)
+        resetBannerAutoplay()
+    }
+}
+
 function initBanner() {
     const banner = document.getElementById('promoBanner')
     const track = document.getElementById('promoBannerTrack')
-    const dotsContainer = document.getElementById('promoBannerDots')
     const pauseBtn = document.getElementById('bannerPauseBtn')
-    if (!banner || !track || !dotsContainer) return
+    if (!banner || !track) return
+
+    stopBannerAutoplay()
+    bannerPaused = false
+
+    const existingDots = document.getElementById('promoBannerDots')
+    if (existingDots) existingDots.remove()
+
+    track.removeEventListener('mouseenter', onBannerTrackMouseEnter)
+    track.removeEventListener('mouseleave', onBannerTrackMouseLeave)
+    track.removeEventListener('touchstart', onBannerTrackTouchStart)
+    track.removeEventListener('touchend', onBannerTrackTouchEnd)
+    track.removeEventListener('keydown', onBannerTrackKeyDown)
+    track.innerHTML = ''
 
     bannerSlides = getBannerSlides()
     if (!bannerSlides.length) {
@@ -1885,14 +1920,15 @@ function initBanner() {
                 </div>
             </div>
         `
-    }).join('') + '<div class="promo-banner-dots" id="promoBannerDots"></div>'
+    }).join('')
 
-    const newDotsContainer = document.getElementById('promoBannerDots')
-    if (newDotsContainer) {
-        newDotsContainer.innerHTML = bannerSlides.map((_, idx) =>
-            `<button class="promo-banner-dot${idx === 0 ? ' active' : ''}" data-index="${idx}" aria-label="Слайд ${idx + 1}" aria-controls="promoBannerTrack"></button>`
-        ).join('')
-    }
+    const dots = document.createElement('div')
+    dots.className = 'promo-banner-dots'
+    dots.id = 'promoBannerDots'
+    dots.innerHTML = bannerSlides.map((_, idx) =>
+        `<button class="promo-banner-dot${idx === 0 ? ' active' : ''}" data-index="${idx}" aria-label="Слайд ${idx + 1}" aria-controls="promoBannerTrack"></button>`
+    ).join('')
+    banner.insertBefore(dots, pauseBtn ? pauseBtn.nextSibling : null)
 
     bannerCurrentIndex = 0
 
@@ -1909,13 +1945,13 @@ function initBanner() {
         }
     }
 
-    track.addEventListener('mouseenter', () => { bannerPaused = true })
-    track.addEventListener('mouseleave', () => { bannerPaused = false })
-    track.addEventListener('touchstart', () => { bannerPaused = true }, { passive: true })
-    track.addEventListener('touchend', () => { bannerPaused = false })
+    track.addEventListener('mouseenter', onBannerTrackMouseEnter)
+    track.addEventListener('mouseleave', onBannerTrackMouseLeave)
+    track.addEventListener('touchstart', onBannerTrackTouchStart, { passive: true })
+    track.addEventListener('touchend', onBannerTrackTouchEnd)
 
-    const dots = track.querySelectorAll('.promo-banner-dot')
-    dots.forEach(dot => {
+    const dotButtons = dots.querySelectorAll('.promo-banner-dot')
+    dotButtons.forEach(dot => {
         dot.addEventListener('click', (e) => {
             e.stopPropagation()
             const index = parseInt(dot.dataset.index, 10)
@@ -1942,7 +1978,7 @@ function initBanner() {
     })
 
     if (pauseBtn) {
-        pauseBtn.addEventListener('click', () => {
+        pauseBtn.onclick = () => {
             if (bannerInterval) {
                 stopBannerAutoplay()
                 pauseBtn.classList.remove('playing')
@@ -1954,29 +1990,11 @@ function initBanner() {
                 pauseBtn.classList.add('playing')
                 pauseBtn.setAttribute('aria-label', 'Пауза автопролистывания')
             }
-        })
+        }
     }
 
     track.setAttribute('tabindex', '0')
-    track.addEventListener('keydown', (e) => {
-        if (e.key === 'ArrowLeft') {
-            e.preventDefault()
-            goToBannerSlide(bannerCurrentIndex - 1)
-            resetBannerAutoplay()
-        } else if (e.key === 'ArrowRight') {
-            e.preventDefault()
-            goToBannerSlide(bannerCurrentIndex + 1)
-            resetBannerAutoplay()
-        } else if (e.key === 'Home') {
-            e.preventDefault()
-            goToBannerSlide(0)
-            resetBannerAutoplay()
-        } else if (e.key === 'End') {
-            e.preventDefault()
-            goToBannerSlide(bannerSlides.length - 1)
-            resetBannerAutoplay()
-        }
-    })
+    track.addEventListener('keydown', onBannerTrackKeyDown)
 }
 
 function getBannerSlides() {
@@ -2072,7 +2090,8 @@ function getBannerSlides() {
 
 function goToBannerSlide(index) {
     const track = document.getElementById('promoBannerTrack')
-    if (!track) return
+    const dotsContainer = document.getElementById('promoBannerDots')
+    if (!track || !dotsContainer) return
 
     const total = bannerSlides.length
     if (total === 0) return
@@ -2080,7 +2099,7 @@ function goToBannerSlide(index) {
     bannerCurrentIndex = ((index % total) + total) % total
 
     const slides = track.querySelectorAll('.promo-banner-slide')
-    const dots = track.querySelectorAll('.promo-banner-dot')
+    const dots = dotsContainer.querySelectorAll('.promo-banner-dot')
 
     slides.forEach((slide, i) => {
         const isActive = i === bannerCurrentIndex

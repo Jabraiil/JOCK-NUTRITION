@@ -540,7 +540,11 @@
                 </div>
                 <div class="form-group">
                     <label for="bannerImage">URL фото <span class="field-hint" data-tooltip="Ссылка на изображение. Можно вставить ссылку из интернета (https://...). Если поле пустое, для товара подставится главное фото из каталога.">?</span></label>
-                    <input type="text" id="bannerImage" placeholder="https://... или оставьте пустым">
+                    <div style="display: flex; gap: 8px; align-items: flex-start;">
+                        <input type="text" id="bannerImage" placeholder="https://... или оставьте пустым" style="flex: 1;">
+                        <button type="button" id="bannerUploadBtn" class="btn btn-secondary" title="Загрузить фото с устройства" style="white-space: nowrap;">📁 Загрузить</button>
+                        <input type="file" id="bannerFileInput" accept="image/*" style="display: none;">
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="bannerTitle">Заголовок <span class="field-hint" data-tooltip="Главный текст на баннере. Виден всегда. Для типа «Авто» подставляется автоматически, но можно переопределить.">?</span></label>
