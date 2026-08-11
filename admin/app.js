@@ -2645,7 +2645,7 @@ async function handleImport() {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({ products: jsonData })
-        })
+        }, 60000)
         
         if (!response.ok) {
             const result = await response.json().catch(() => ({}))

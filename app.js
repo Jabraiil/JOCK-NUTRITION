@@ -2372,6 +2372,17 @@ function trackPWAInstall() {
     } catch (e) {}
 }
 
+function detectPWA() {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true
+    if (isStandalone) {
+        document.documentElement.classList.add('pwa-standalone')
+        const isIOS = /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase()) && !window.MSStream
+        if (isIOS) {
+            document.documentElement.classList.add('ios')
+        }
+    }
+}
+
 function initA2HS() {
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true
     if (isStandalone) return
@@ -2431,10 +2442,12 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         init()
         registerServiceWorker()
+        detectPWA()
         initA2HS()
     })
 } else {
     init()
     registerServiceWorker()
+    detectPWA()
     initA2HS()
 }

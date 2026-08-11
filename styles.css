@@ -2717,15 +2717,46 @@ select:focus:not(:focus-visible) {
 /* ---------- PWA Safe Areas ---------- */
 @media (display-mode: standalone) {
     body {
+        padding-top: env(safe-area-inset-top, 0px);
         padding-bottom: env(safe-area-inset-bottom, 0px);
     }
     
     .header {
-        top: 0;
+        padding-top: calc(8px + env(safe-area-inset-top, 0px));
     }
     
     .bottom-nav {
         bottom: 0;
+        padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
     }
+    
+    .main {
+        padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+    }
+}
+
+/* ---------- PWA Class-based Adaptation ---------- */
+.pwa-standalone .header {
+    padding-top: calc(8px + env(safe-area-inset-top, 0px));
+}
+
+.pwa-standalone .bottom-nav {
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+}
+
+.pwa-standalone .main {
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+}
+
+.pwa-standalone.ios .header {
+    padding-top: calc(12px + env(safe-area-inset-top, 0px));
+}
+
+.pwa-standalone.ios .bottom-nav {
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+}
+
+.pwa-standalone.ios .main {
+    padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
 }
 

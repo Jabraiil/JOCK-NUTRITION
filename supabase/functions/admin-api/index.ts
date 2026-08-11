@@ -865,151 +865,169 @@ Contraindications: "${parsed.contraindications || ''}"
       const createdProducts = []
       const updatedProducts = []
 
-      for (let i = 0; i < excelProducts.length; i++) {
-        const p = excelProducts[i]
-        
-        try {
-          // Auto-detect category if not provided
-          let categoryName = p.category || ''
-          if (!categoryName) {
-            const detected = detectProductType(p.name || '')
-            categoryName = detected.category
-          }
+      const uniqueCategories = new Set<string>()
+      const uniqueBrands = new Set<string>()
+      const categoryMap: Record<string, string> = {}
+      const brandMap: Record<string, string> = {}
 
-          // Get or create category
-          let categoryId = null
-          if (categoryName) {
-            const { data: existingCategory } = await supabase
-              .from("categories")
-              .select("id")
-              .eq("name", categoryName)
-              .single()
+      for (const p of excelProducts) {
+        let categoryName = p.category || ''
+        if (!categoryName) {
+          const detected = detectProductType(p.name || '')
+          categoryName = detected.category
+        }
+        if (categoryName) uniqueCategories.add(categoryName)
+        if (p.brand) uniqueBrands.add(p.brand)
+      }
 
-            if (existingCategory) {
-              categoryId = existingCategory.id
-            } else {
-              const { data: newCategory } = await supabase
-                .from("categories")
-                .insert({ name: categoryName })
-                .select()
-                .single()
-              categoryId = newCategory.id
-            }
-          }
+      const categoryPromises = [...uniqueCategories].map(async (name) => {
+        const { data: existing } = await supabase.from("categories").select("id").eq("name", name).single()
+        if (existing) {
+          categoryMap[name] = existing.id
+        } else {
+          const { data: newCat } = await supabase.from("categories").insert({ name }).select().single()
+          if (newCat) categoryMap[name] = newCat.id
+        }
+      })
+      const brandPromises = [...uniqueBrands].map(async (name) => {
+        const { data: existing } = await supabase.from("brands").select("id").eq("name", name).single()
+        if (existing) {
+          brandMap[name] = existing.id
+        } else {
+          const { data: newBrand } = await supabase.from("brands").insert({ name }).select().single()
+          if (newBrand) brandMap[name] = newBrand.id
+        }
+      })
+      await Promise.all([...categoryPromises, ...brandPromises])
 
-          // Get or create brand
-          let brandId = null
-          if (p.brand) {
-            const { data: existingBrand } = await supabase
-              .from("brands")
-              .select("id")
-              .eq("name", p.brand)
-              .single()
+      const skuProducts: any[] = []
+      const noSkuProducts: any[] = []
 
-            if (existingBrand) {
-              brandId = existingBrand.id
-            } else {
-              const { data: newBrand } = await supabase
-                .from("brands")
-                .insert({ name: p.brand })
-                .select()
-                .single()
-              brandId = newBrand.id
-            }
-          }
+      for (const p of excelProducts) {
+        let categoryName = p.category || ''
+        if (!categoryName) {
+          const detected = detectProductType(p.name || '')
+          categoryName = detected.category
+        }
+        const categoryId = categoryName ? categoryMap[categoryName] || null : null
+        const brandId = p.brand ? brandMap[p.brand] || null : null
 
-          // Check if product exists by SKU
-          if (p.sku) {
-            const { data: existingProduct } = await supabase
-              .from("products")
-              .select("*")
-              .eq("sku", p.sku)
-              .single()
+        const productData: any = {
+          name: p.name,
+          description: p.description || "",
+          full_description: p.full_description || "",
+          composition: p.composition || "",
+          dosage: p.dosage || "",
+          usage: p.usage || "",
+          contraindications: p.contraindications || "",
+          category_id: categoryId,
+          brand_id: brandId,
+          price: parseInt(p.price) || 0,
+          old_price: p.old_price ? parseInt(p.old_price) : null,
+          stock: parseInt(p.stock) || 0,
+          volume: p.volume || "",
+          sku: p.sku || null,
+          barcode: p.barcode || null,
+          is_hit: p.is_hit === true || p.is_hit === "TRUE" || p.is_hit === "true" || p.is_hit === 1 || p.is_hit === "1",
+          is_new: p.is_new === true || p.is_new === "TRUE" || p.is_new === "true" || p.is_new === 1 || p.is_new === "1",
+          is_discount: p.is_discount === true || p.is_discount === "TRUE" || p.is_discount === "true" || p.is_discount === 1 || p.is_discount === "1",
+          shelf_life: p.shelf_life || "",
+          is_visible: p.is_visible === true || p.is_visible === "TRUE" || p.is_visible === "true" || p.is_visible === 1 || p.is_visible === "1"
+        }
 
-            if (existingProduct) {
-              // Update - only non-empty fields
-              const updateData = {}
-              const fields = [
-                "name", "description", "full_description", "composition",
-                "dosage", "usage", "contraindications", "price", "old_price",
-                "stock", "volume", "barcode", "is_hit", "is_new", "is_discount",
-                "shelf_life", "is_visible"
-              ]
-
-              const previousState = { ...existingProduct }
-
-              for (const field of fields) {
-                if (p[field] !== undefined && p[field] !== null && p[field] !== "") {
-                  if (field === "is_visible" || field === "is_hit" || field === "is_new" || field === "is_discount") {
-                    updateData[field] = p[field] === true || p[field] === "TRUE" || p[field] === "true" || p[field] === 1 || p[field] === "1"
-                  } else {
-                    updateData[field] = p[field]
-                  }
-                }
-              }
-
-              if (categoryId) updateData.category_id = categoryId
-              if (brandId) updateData.brand_id = brandId
-
-              await supabase
-                .from("products")
-                .update(updateData)
-                .eq("id", existingProduct.id)
-
-              updatedProducts.push({
-                id: existingProduct.id,
-                sku: existingProduct.sku,
-                name: existingProduct.name,
-                previous: previousState
-              })
-              results.success++
-              continue
-            }
-          }
-
-          // Create new product
-          const { data: newProduct, error: insertError } = await supabase
-            .from("products")
-            .insert({
-              name: p.name,
-              description: p.description || "",
-              full_description: p.full_description || "",
-              composition: p.composition || "",
-              dosage: p.dosage || "",
-              usage: p.usage || "",
-              contraindications: p.contraindications || "",
-              category_id: categoryId,
-              brand_id: brandId,
-              price: parseInt(p.price) || 0,
-              old_price: p.old_price ? parseInt(p.old_price) : null,
-              stock: parseInt(p.stock) || 0,
-              volume: p.volume || "",
-              sku: p.sku || null,
-              barcode: p.barcode || null,
-              is_hit: p.is_hit === true || p.is_hit === "TRUE" || p.is_hit === "true" || p.is_hit === 1 || p.is_hit === "1",
-              is_new: p.is_new === true || p.is_new === "TRUE" || p.is_new === "true" || p.is_new === 1 || p.is_new === "1",
-              is_discount: p.is_discount === true || p.is_discount === "TRUE" || p.is_discount === "true" || p.is_discount === 1 || p.is_discount === "1",
-              shelf_life: p.shelf_life || "",
-              is_visible: p.is_visible === true || p.is_visible === "TRUE" || p.is_visible === "true" || p.is_visible === 1 || p.is_visible === "1"
-            })
-            .select()
-            .single()
-
-          if (insertError) {
-            results.errors.push({ row: i + 1, error: insertError.message })
-          } else if (newProduct) {
-            results.success++
-            createdProducts.push({
-              id: newProduct.id,
-              sku: newProduct.sku,
-              name: newProduct.name
-            })
-          }
-
-        } catch (error) {
-          results.errors.push({ row: i + 1, error: String(error) })
+        if (p.sku && p.sku.trim() !== '') {
+          skuProducts.push(productData)
+        } else {
+          noSkuProducts.push(productData)
         }
       }
+
+      const existingSkuSet = new Set<string>()
+      const existingSkuMap: Record<string, any> = {}
+
+      if (skuProducts.length > 0) {
+        const allSkus = skuProducts.map(p => p.sku).filter(Boolean)
+        const BATCH_SIZE = 300
+        for (let i = 0; i < allSkus.length; i += BATCH_SIZE) {
+          const batch = allSkus.slice(i, i + BATCH_SIZE)
+          const { data: existing } = await supabase.from("products").select("id,sku").in("sku", batch)
+          if (existing) {
+            for (const row of existing) {
+              existingSkuSet.add(row.sku)
+              existingSkuMap[row.sku] = row
+            }
+          }
+        }
+      }
+
+      const existingSkuProducts: any[] = []
+      const newSkuProducts: any[] = []
+
+      for (const p of skuProducts) {
+        if (existingSkuSet.has(p.sku)) {
+          existingSkuProducts.push({ data: p, prev: existingSkuMap[p.sku] })
+        } else {
+          newSkuProducts.push(p)
+        }
+      }
+
+      const UPDATE_BATCH = 50
+      for (let i = 0; i < existingSkuProducts.length; i += UPDATE_BATCH) {
+        const batch = existingSkuProducts.slice(i, i + UPDATE_BATCH)
+        await Promise.all(batch.map(async ({ data: p, prev }) => {
+          const updateData: any = {}
+          const fields = [
+            "name", "description", "full_description", "composition",
+            "dosage", "usage", "contraindications", "price", "old_price",
+            "stock", "volume", "barcode", "is_hit", "is_new", "is_discount",
+            "shelf_life", "is_visible"
+          ]
+          for (const field of fields) {
+            if (p[field] !== undefined && p[field] !== null && p[field] !== "") {
+              updateData[field] = p[field]
+            }
+          }
+          if (p.category_id) updateData.category_id = p.category_id
+          if (p.brand_id) updateData.brand_id = p.brand_id
+
+          const { error: updateError } = await supabase.from("products").update(updateData).eq("id", prev.id)
+          if (!updateError) {
+            updatedProducts.push({ id: prev.id, sku: p.sku, name: p.name, previous: { ...prev } })
+          }
+        }))
+      }
+
+      if (newSkuProducts.length > 0) {
+        const INSERT_BATCH = 50
+        for (let i = 0; i < newSkuProducts.length; i += INSERT_BATCH) {
+          const batch = newSkuProducts.slice(i, i + INSERT_BATCH)
+          const { data: inserted, error: insertError } = await supabase.from("products").insert(batch).select()
+          if (insertError) {
+            results.errors.push({ row: i + 1, error: insertError.message })
+          } else if (inserted) {
+            for (const row of inserted) {
+              createdProducts.push({ id: row.id, sku: row.sku, name: row.name })
+            }
+          }
+        }
+      }
+
+      if (noSkuProducts.length > 0) {
+        const INSERT_BATCH = 50
+        for (let i = 0; i < noSkuProducts.length; i += INSERT_BATCH) {
+          const batch = noSkuProducts.slice(i, i + INSERT_BATCH)
+          const { error: insertError } = await supabase.from("products").insert(batch)
+          if (insertError) {
+            results.errors.push({ row: i + 1, error: insertError.message })
+          }
+        }
+      }
+
+      for (const p of newSkuProducts) {
+        createdProducts.push({ sku: p.sku, name: p.name })
+      }
+
+      results.success = createdProducts.length + updatedProducts.length
 
       const responseData = {
         success: results.errors.length === 0,
