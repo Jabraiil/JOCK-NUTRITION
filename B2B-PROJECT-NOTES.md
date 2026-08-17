@@ -308,6 +308,35 @@
 
 ---
 
+## Дизайн
+
+- Стиль: iOS-style, mobile-first, как в JOCK NUTRITION
+- Шрифты: system font stack (-apple-system, BlinkMacSystemFont, SF Pro Display, SF Pro Text, Segoe UI)
+- Цвета: iOS system colors (light/dark theme)
+  - --bg: #F2F2F7 (light) / #000000 (dark)
+  - --bg-elevated: #FFFFFF (light) / #1C1C1E (dark)
+  - --text: #1C1C1E (light) / #FFFFFF (dark)
+  - --text-secondary: #8E8E93 (light) / #AEAEB2 (dark)
+  - --border: #E5E5EA (light) / #38383A (dark)
+  - --primary: #007AFF (light) / #0A84FF (dark)
+  - --success: #34C759
+  - --error: #FF3B30
+- Радиусы: --radius-sm: 10px, --radius-md: 14px, --radius-lg: 20px
+- Touch targets: 44px минимум
+- Адаптивный: ПК, телефон, планшеты
+- Bottom navigation bar: floating dock, max-width 420px, backdrop-filter blur
+- Modals: bottom sheet на мобильных, centered popup на десктопе
+- Drawers: transform translateX(±100%) на мобильных, centered modal на десктопе
+- Skeleton screens при загрузке
+- Промо-баннер: autoplay только на десктопе, dots, pause button
+- Товары: карточки с aspect-ratio: 3/4, object-fit: contain
+- Бейджи: HIT, NEW, SALE
+- Иконки: inline SVG, Lucide-style
+- Анимации: только CSS transforms + opacity, cubic-bezier(0.32, 0.72, 0, 1)
+- prefers-reduced-motion: reduce — collapse animations
+
+---
+
 ## PWA и офлайн
 
 - Установка на домашний экран (A2HS)
