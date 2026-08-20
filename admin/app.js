@@ -2483,7 +2483,7 @@ function loadExportColumns() {
         try {
             const parsed = JSON.parse(stored)
             const validKeys = EXPORT_COLUMNS.map(c => c.key)
-            const filtered = parsed.filter((k) => validKeys.includes(k))
+            const filtered = Array.isArray(parsed) ? parsed.filter((k) => validKeys.includes(k)) : []
             if (filtered.length > 0) return filtered
         } catch (e) {
             console.error('Error loading export columns:', e)
