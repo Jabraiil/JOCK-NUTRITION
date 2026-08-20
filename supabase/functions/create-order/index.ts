@@ -98,7 +98,7 @@ serve(async (req) => {
       }
     }
 
-    const productIds = cart.map(item => item.id)
+    const productIds = cart.map(item => Number(item.id))
     const { data: products, error: productsError } = await supabase
       .from("products")
       .select("id, name, price, stock, is_visible, volume, dosage, brands(name)")

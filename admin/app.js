@@ -782,8 +782,8 @@ async function loadProducts() {
         if (products.length === 0) {
             tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text-secondary)">Товары не найдены</td></tr>'
         } else {
-            tbody.innerHTML = data.map(product => {
-                const isSelected = selectedProductIds.has(product.id)
+            tbody.innerHTML = products.map(product => {
+                const isSelected = selectedProductIds.has(String(product.id))
                 return `<tr>
                     <td class="checkbox-cell"><input type="checkbox" class="product-select-cb" data-id="${escapeHtml(String(product.id))}" ${isSelected ? 'checked' : ''} aria-label="Выбрать товар"></td>
                     <td data-label="Фото">${product.product_images?.[0]?.url ? `<img src="${escapeHtml(product.product_images[0].url)}" alt="" decoding="async" width="80" height="80">` : '<span style="color:var(--text-secondary)">—</span>'}</td>
@@ -2816,7 +2816,7 @@ async function undoLastImport() {
         } else {
             showError(`Отменено с ошибками: ${errors.length}. Успешно: ${history.createdProducts.length + history.updatedProducts.length - errors.length}`)
         }
-        updateUndoImportButton()
+        updateUndoImportButton().catch(console.error)
     } catch (error) {
         showError('Ошибка отмены импорта: ' + (error && error.message ? error.message : String(error)))
     }
@@ -3311,7 +3311,7 @@ async function handleGenerateDescriptions() {
 // ============================================
 
 async function startMonitor() {
-    checkMonitor()
+    checkMonitor().catch(console.error)
     monitorInterval = setInterval(checkMonitor, 30000)
 }
 
@@ -3333,7 +3333,7 @@ async function checkMonitor() {
         } else {
             dot.className = 'indicator-dot error'
             text.textContent = 'Ошибка Edge Function'
-            sendAlert('Edge Function недоступен')
+            sendAlert('Edge Function недоступен').catch(console.error)
         }
     } catch (error) {
         const dot = document.querySelector('.indicator-dot')

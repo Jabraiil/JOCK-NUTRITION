@@ -131,7 +131,7 @@ function init() {
     try {
         applyTheme()
         resetFilterState()
-        loadSettings()
+        loadSettings().catch(console.error)
         loadProducts().catch(console.error)
         updateCartCount()
         setupEventListeners()
@@ -899,7 +899,7 @@ function createProductCard(product) {
 
 
 function openProductModal(productId) {
-    const product = allProducts.find(p => p.id === productId)
+    const product = allProducts.find(p => String(p.id) === String(productId))
     if (!product) return
 
     const images = product.product_images || []
@@ -1132,14 +1132,15 @@ function switchSection(nav) {
 }
 
 function addToCart(productId, quantity) {
-    const existing = cart.find(c => c.id === productId)
+    const id = Number(productId)
+    const existing = cart.find(c => c.id === id)
     if (existing) {
         existing.quantity += quantity
         if (existing.quantity <= 0) {
-            cart = cart.filter(c => c.id !== productId)
+            cart = cart.filter(c => c.id !== id)
         }
     } else if (quantity > 0) {
-        cart.push({ id: productId, quantity })
+        cart.push({ id: id, quantity })
     }
 
     saveCart()
@@ -1157,7 +1158,7 @@ function updateProductCardCart(productId) {
 
     const cartItem = cart.find(c => c.id === productId)
     const inCart = cartItem ? cartItem.quantity : 0
-    const product = allProducts.find(p => p.id === productId)
+    const product = allProducts.find(p => String(p.id) === String(productId))
     const footer = card.querySelector('.product-footer')
     if (!footer) return
 
@@ -1223,18 +1224,19 @@ function saveFavorites() {
 }
 
 function isFavorited(productId) {
-    return favorites.includes(productId)
+    return favorites.includes(String(productId))
 }
 
 function toggleFavorite(productId) {
-    if (isFavorited(productId)) {
-        favorites = favorites.filter(id => id !== productId)
+    const id = String(productId)
+    if (isFavorited(id)) {
+        favorites = favorites.filter(favId => favId !== id)
     } else {
-        favorites.push(productId)
+        favorites.push(id)
     }
     saveFavorites()
-    document.querySelectorAll(`.favorite-btn[data-id="${productId}"]`).forEach(btn => {
-        btn.classList.toggle('active', isFavorited(productId))
+    document.querySelectorAll(`.favorite-btn[data-id="${id}"]`).forEach(btn => {
+        btn.classList.toggle('active', isFavorited(id))
     })
     if (favoritesOnly) {
         applyFilters()
@@ -1282,7 +1284,7 @@ function renderCart() {
 
     let total = 0
     cartItems.innerHTML = cart.map(cartItem => {
-        const product = allProducts.find(p => p.id === cartItem.id)
+        const product = allProducts.find(p => String(p.id) === String(cartItem.id))
         if (!product) return ''
 
         const itemTotal = product.price * cartItem.quantity
