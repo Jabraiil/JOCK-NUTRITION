@@ -1,4 +1,13 @@
 {
+  "name": "jock-nutrition",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Интернет-магазин БАДов — статический фронтенд + Supabase",
+  "scripts": {
+    "start": "echo \"Откройте index.html в браузере или задеплойте на GitHub Pages\"",
+    "lint": "echo \"Static site: no linter configured\"",
+    "typecheck": "echo \"Static site: no typechecker configured\""
+  },
   "dependencies": {
     "xlsx": "^0.18.5"
   }

@@ -102,7 +102,7 @@
                             <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path>
                         </svg>
                     </button>
-                    <button id="monitorIndicator" class="monitor-indicator" title="Статус Edge Function">
+                    <button class="monitor-indicator" title="Статус Edge Function">
                         <span class="indicator-dot"></span>
                         <span class="indicator-text">Проверка...</span>
                     </button>
@@ -124,7 +124,7 @@
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th style="width:40px" class="checkbox-header"><input type="checkbox" id="selectAllProducts" aria-label="Выбрать все"></th>
+                                <th class="checkbox-header"><input type="checkbox" id="selectAllProducts" aria-label="Выбрать все"></th>
                                 <th>Фото</th>
                                 <th>Название</th>
                                 <th>Категория</th>
@@ -230,7 +230,7 @@
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th style="width: 40px;" class="checkbox-header"><label for="selectAllOrders" class="sr-only">Выбрать все</label><input type="checkbox" id="selectAllOrders" title="Выбрать все"></th>
+                                <th class="checkbox-header"><label for="selectAllOrders" class="sr-only">Выбрать все</label><input type="checkbox" id="selectAllOrders" title="Выбрать все"></th>
                                 <th>Номер</th>
                                 <th>Товары</th>
                                 <th>Сумма</th>
@@ -249,12 +249,12 @@
 
             <div id="bannerPage" class="page">
                 <div class="page-header">
-                    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                    <div class="banner-header-row">
                         <label class="toggle-switch" title="Показать/скрыть баннер на сайте">
                             <input type="checkbox" id="bannerEnabled">
                             <span class="toggle-slider"></span>
                         </label>
-                        <span style="font-size: 0.9rem; color: var(--text-secondary);">Баннер включён</span>
+                        <span class="banner-enabled-text">Баннер включён</span>
                     </div>
                     <div class="page-header-actions">
                         <button id="addBannerSlideBtn" class="btn btn-primary">+ Добавить слайд <span class="field-hint" data-tooltip="Создаёт новый слайд для баннера. Вы сможете выбрать товар, загрузить фото, добавить текст и ссылку.">?</span></button>
@@ -370,16 +370,16 @@
                     <p>При совпадении артикула — обновление. Пустые поля не затирают существующие.</p>
                     <input type="file" id="importFile" accept=".xlsx,.xls" class="hidden" aria-label="Импорт из Excel">
                     <button id="importFileBtn" class="btn btn-secondary">Выбрать файл</button>
-                    <div id="importFileInfo" class="status-message" style="margin-top:12px; display:none;">
+                    <div id="importFileInfo" class="status-message import-file-info">
                         <span id="importFileName"></span>
-                        <button type="button" id="importRemoveFileBtn" class="btn btn-sm btn-secondary" style="margin-left:8px; min-height:32px; padding:0 10px; font-size:0.85rem;">✕</button>
+                        <button type="button" id="importRemoveFileBtn" class="btn btn-sm btn-secondary btn-xs">✕</button>
                     </div>
-                    <button type="button" id="undoImportBtn" class="btn btn-secondary" style="margin-top:12px; display:none;">Отменить последний импорт</button>
-                    <div id="importColumnsSection" style="display:none; margin-top:16px;">
-                        <p style="font-weight:600; margin-bottom:8px;">Выберите столбцы для импорта:</p>
+                    <button type="button" id="undoImportBtn" class="btn btn-secondary undo-import-btn">Отменить последний импорт</button>
+                    <div id="importColumnsSection" class="import-columns-section">
+                        <p class="section-title">Выберите столбцы для импорта:</p>
                         <div id="importColumns" class="export-columns"></div>
                     </div>
-                    <button id="importBtn" class="btn btn-primary" disabled style="margin-top:16px;">Импортировать</button>
+                    <button id="importBtn" class="btn btn-primary import-btn" disabled>Импортировать</button>
                     <div id="importStatus" class="status-message"></div>
                 </div>
             </div>
@@ -402,7 +402,7 @@
                     <h3>Резервное копирование <span class="field-hint" data-tooltip="Скачайте резервную копию базы данных. JSON — для восстановления через админку. SQL — для импорта в Supabase.">?</span></h3>
                     <p>Скачать дамп базы данных (JSON)</p>
                     <button id="backupBtn" class="btn btn-primary">Скачать дамп БД (JSON)</button>
-                    <p style="margin-top:12px;">Скачать SQL-дамп (восстанавливаемый .sql)</p>
+                    <p class="spacer">Скачать SQL-дамп (восстанавливаемый .sql)</p>
                     <button id="backupSqlBtn" class="btn btn-secondary">Скачать дамп БД (SQL)</button>
                 </div>
             </div>
@@ -445,7 +445,7 @@
                         Показать противопоказания <span class="field-hint" data-tooltip="Включите, если у товара есть противопоказания. Появится отдельное поле для их заполнения.">?</span>
                     </label>
                 </div>
-                <div class="form-group" id="contraindicationsGroup" style="display: none;">
+                <div class="form-group" id="contraindicationsGroup">
                     <label for="prodContraindications">Противопоказания <span class="field-hint" data-tooltip="Список случаев, когда товар принимать нельзя. Например: индивидуальная непереносимость, беременность.">?</span></label>
                         <textarea id="prodContraindications" rows="2"></textarea>
                 </div>
@@ -586,10 +586,10 @@
                 </div>
                 <div class="form-group">
                     <label for="bannerImage">URL фото <span class="field-hint" data-tooltip="Ссылка на изображение. Можно вставить ссылку из интернета (https://...). Если поле пустое, для товара подставится главное фото из каталога.">?</span></label>
-                    <div style="display: flex; gap: 8px; align-items: flex-start;">
-                        <input type="text" id="bannerImage" placeholder="https://... или оставьте пустым" style="flex: 1;">
-                        <button type="button" id="bannerUploadBtn" class="btn btn-secondary" title="Загрузить фото с устройства" style="white-space: nowrap;">📁 Загрузить</button>
-                        <input type="file" id="bannerFileInput" accept="image/*" style="display: none;">
+                    <div class="banner-image-row">
+                        <input type="text" id="bannerImage" placeholder="https://... или оставьте пустым" class="flex-1">
+                        <button type="button" id="bannerUploadBtn" class="btn btn-secondary nowrap" title="Загрузить фото с устройства">📁 Загрузить</button>
+                        <input type="file" id="bannerFileInput" accept="image/*" class="hidden">
                     </div>
                 </div>
                 <div class="form-group">

@@ -24,6 +24,7 @@ async function fetchWithTimeout(url, options = {}, timeout = 15000) {
         clearTimeout(timer)
         if (!isAuthEndpoint && !skipAuthRedirect && response.status === 401) {
             handleAuthError('Сессия истекла. Войдите снова.')
+            throw new Error('Сессия истекла. Войдите снова.')
         }
         if (!response.ok) {
             const text = await response.text().catch(() => '')
@@ -47,6 +48,96 @@ function escapeHtml(str) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;')
+}
+
+function safeGetItem(key) {
+    try { return localStorage.getItem(key) } catch (e) { console.error('localStorage not available:', e) }
+    return null
+}
+function safeSetItem(key, value) {
+    try { localStorage.setItem(key, value) } catch (e) { console.error('localStorage not available:', e) }
+}
+function safeRemoveItem(key) {
+    try { localStorage.removeItem(key) } catch (e) { console.error('localStorage not available:', e) }
+}
+
+function renderImagePreview(container, images) {
+    if (!container) return
+    container.innerHTML = images.map((img, idx) => `<span class="image-wrapper"><img src="${escapeHtml(img.url)}" alt="" decoding="async"><button type="button" class="remove-image" data-idx="${idx}">&times;</button></span>`).join('')
+}
+
+function fillProductForm(product, opts = {}) {
+    const { nameSuffix = '', skipOldPrice = false, clearSku = false, clearBarcode = false } = opts
+    const prodName = document.getElementById('prodName')
+    const prodDescription = document.getElementById('prodDescription')
+    const prodFullDescription = document.getElementById('prodFullDescription')
+    const prodComposition = document.getElementById('prodComposition')
+    const prodDosage = document.getElementById('prodDosage')
+    const prodUsage = document.getElementById('prodUsage')
+    const prodContraindications = document.getElementById('prodContraindications')
+    const prodCategory = document.getElementById('prodCategory')
+    const prodBrand = document.getElementById('prodBrand')
+    const prodPrice = document.getElementById('prodPrice')
+    const prodStock = document.getElementById('prodStock')
+    const prodVolume = document.getElementById('prodVolume')
+    const prodSku = document.getElementById('prodSku')
+    const prodBarcode = document.getElementById('prodBarcode')
+    const prodIsHit = document.getElementById('prodIsHit')
+    const prodIsNew = document.getElementById('prodIsNew')
+    const prodIsDiscount = document.getElementById('prodIsDiscount')
+    const prodIsRelated = document.getElementById('prodIsRelated')
+    const prodShelfLife = document.getElementById('prodShelfLife')
+    const prodIsVisible = document.getElementById('prodIsVisible')
+
+    if (prodName) prodName.value = (product.name || '') + nameSuffix
+    if (prodDescription) prodDescription.value = product.description || ''
+    if (prodFullDescription) prodFullDescription.value = product.full_description || ''
+    if (prodComposition) prodComposition.value = product.composition || ''
+    if (prodDosage) prodDosage.value = product.dosage || ''
+    if (prodUsage) prodUsage.value = product.usage || ''
+    if (prodContraindications) prodContraindications.value = product.contraindications || ''
+    if (prodCategory) prodCategory.value = product.category_id || ''
+    if (prodBrand) prodBrand.value = product.brand_id || ''
+    if (prodPrice) prodPrice.value = product.price ?? ''
+    if (!skipOldPrice) {
+        const prodOldPrice = document.getElementById('prodOldPrice')
+        if (prodOldPrice) prodOldPrice.value = product.old_price ?? ''
+    }
+    if (prodStock) prodStock.value = product.stock ?? ''
+    if (prodVolume) prodVolume.value = product.volume || ''
+    if (prodSku) prodSku.value = clearSku ? '' : (product.sku || '')
+    if (prodBarcode) prodBarcode.value = clearBarcode ? '' : (product.barcode || '')
+    if (prodIsHit) prodIsHit.checked = Boolean(product.is_hit)
+    if (prodIsNew) prodIsNew.checked = Boolean(product.is_new)
+    if (prodIsDiscount) prodIsDiscount.checked = Boolean(product.is_discount)
+    if (prodIsRelated) prodIsRelated.checked = Boolean(product.is_related_enabled)
+    if (prodShelfLife) prodShelfLife.value = product.shelf_life || ''
+    if (prodIsVisible) prodIsVisible.value = String(product.is_visible)
+
+    productImages = Array.isArray(product.images) ? product.images.map(img => ({ ...img })) : []
+
+    const preview = document.getElementById('imagePreview')
+    if (preview) {
+        renderImagePreview(preview, productImages)
+    }
+
+    const relatedIds = Array.isArray(product.related) ? product.related : []
+    const relatedSelect = document.getElementById('prodRelated')
+    if (relatedSelect) {
+        Array.from(relatedSelect.options).forEach(opt => {
+            opt.selected = relatedIds.includes(opt.value)
+        })
+    }
+
+    const showContra = document.getElementById('showContraindications')
+    const contraGroup = document.getElementById('contraindicationsGroup')
+    if (showContra && contraGroup) {
+        showContra.checked = !!product.contraindications
+        contraGroup.style.display = showContra.checked ? 'block' : 'none'
+        showContra.onchange = () => {
+            contraGroup.style.display = showContra.checked ? 'block' : 'none'
+        }
+    }
 }
 
 function cleanProductName(name, brand) {
@@ -90,13 +181,18 @@ let adminScanCropVideoH = 0
 let adminScannerMode = 'none'
 let adminHtml5QrCode = null
 const ADMIN_SCAN_INTERVAL_MS = 250
+const CAMERA_OPTS = { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } }
+const SCAN_TARGET_WIDTH = 320
+const SCAN_FPS = 10
+const SCAN_QRBOX = { width: 250, height: 120 }
+const TOOLTIP_GAP = 10
+const TOOLTIP_PADDING = 16
+const TOOLTIP_SHOW_DELAY_MS = 400
+const TOOLTIP_HIDE_DELAY_MS = 100
+const TOAST_DETECTED_CLOSE_MS = 600
 
 function handleAuthError(message) {
-    try {
-        localStorage.removeItem('admin-token')
-    } catch (e) {
-        console.error('localStorage not available in handleAuthError:', e)
-    }
+    safeRemoveItem('admin-token')
     showAuthPage()
     const errorEl = document.getElementById('loginError')
     if (errorEl) {
@@ -175,7 +271,7 @@ function init() {
 
         if (token) {
             showAdminPage()
-            loadPageData(currentPage).catch(console.error)
+            loadPageData(currentPage).catch(e => console.error('Async operation failed:', e))
             startMonitor()
         } else {
             showAuthPage()
@@ -194,11 +290,7 @@ function init() {
 
 function applyTheme() {
     let darkMode = false
-    try {
-        darkMode = localStorage.getItem('jock-theme') === 'dark'
-    } catch (e) {
-        console.error('localStorage not available in applyTheme:', e)
-    }
+    darkMode = safeGetItem('jock-theme') === 'dark'
     if (darkMode) {
         document.documentElement.setAttribute('data-theme', 'dark')
     } else {
@@ -208,12 +300,8 @@ function applyTheme() {
 
 function toggleTheme() {
     let darkMode = false
-    try {
-        darkMode = localStorage.getItem('jock-theme') === 'dark'
-        localStorage.setItem('jock-theme', darkMode ? 'light' : 'dark')
-    } catch (e) {
-        console.error('localStorage not available in toggleTheme:', e)
-    }
+    darkMode = safeGetItem('jock-theme') === 'dark'
+    safeSetItem('jock-theme', darkMode ? 'light' : 'dark')
     applyTheme()
 }
 
@@ -260,7 +348,7 @@ function setupEventListeners() {
             const dupBtn = e.target.closest('button[data-action="duplicate-product"]')
             const copyBtn = e.target.closest('button[data-action="copy-image-url"]')
             const delBtn = e.target.closest('button[data-action="delete-product"]')
-            if (editBtn) editProduct(editBtn.dataset.id)
+            if (editBtn) openProductModal(editBtn.dataset.id)
             if (dupBtn) duplicateProduct(dupBtn.dataset.id)
             if (copyBtn) copyImageUrl(copyBtn.dataset.url, copyBtn)
             if (delBtn) deleteProduct(delBtn.dataset.id)
@@ -332,7 +420,7 @@ function setupEventListeners() {
     if (productSearch) {
         productSearch.addEventListener('input', debounce(() => {
             productsPage = 1
-            loadProducts().catch(console.error)
+            loadProducts().catch(e => console.error('Async operation failed:', e))
         }, 300))
     }
 
@@ -379,7 +467,7 @@ function setupEventListeners() {
 
     // Analytics
     const analyticsPeriod = document.getElementById('analyticsPeriod')
-    if (analyticsPeriod) analyticsPeriod.addEventListener('change', () => { ordersPage = 1; loadAnalytics().catch(console.error) })
+    if (analyticsPeriod) analyticsPeriod.addEventListener('change', () => { ordersPage = 1; loadAnalytics().catch(e => console.error('Async operation failed:', e)) })
 
     // Settings
     const settingsForm = document.getElementById('settingsForm')
@@ -452,7 +540,7 @@ function setupEventListeners() {
             if (e.target.classList.contains('remove-image')) {
                 const idx = parseInt(e.target.dataset.idx, 10)
                 productImages.splice(idx, 1)
-                imagePreview.innerHTML = productImages.map((img, i) => `<span class="image-wrapper"><img src="${escapeHtml(img.url)}" alt="" decoding="async"><button type="button" class="remove-image" data-idx="${i}">&times;</button></span>`).join('')
+                renderImagePreview(imagePreview, productImages)
             }
         })
     }
@@ -641,7 +729,7 @@ async function handleLogin(e) {
         if (response.ok && data.access_token) {
             localStorage.setItem('admin-token', data.access_token)
             showAdminPage()
-            loadPageData('products').catch(console.error)
+            loadPageData('products').catch(e => console.error('Async operation failed:', e))
         } else {
             const errorMessage = data.msg || data.error || data.error_description || 'Неверный email или пароль'
             throw new Error(translateError(errorMessage))
@@ -686,11 +774,7 @@ function handleLogout() {
         clearInterval(monitorInterval)
         monitorInterval = null
     }
-    try {
-        localStorage.removeItem('admin-token')
-    } catch (e) {
-        console.error('localStorage not available in handleLogout:', e)
-    }
+    safeRemoveItem('admin-token')
     showAuthPage()
 }
 
@@ -770,7 +854,7 @@ async function loadProducts() {
         
         if (!response.ok) {
             const result = await response.json().catch(() => ({}))
-            const errorEl = document.getElementById('loginError')
+            const errorEl = document.getElementById('productError')
             if (errorEl) {
                 errorEl.textContent = translateError(result.error) || 'Ошибка загрузки товаров'
                 errorEl.classList.remove('hidden')
@@ -842,7 +926,7 @@ function renderProductsPagination() {
 
 function changeProductsPage(page) {
     productsPage = page
-    loadProducts().catch(console.error)
+    loadProducts().catch(e => console.error('Async operation failed:', e))
 }
 
 async function openProductModal(productId = null) {
@@ -898,52 +982,7 @@ async function openProductModal(productId = null) {
                 const prodShelfLife = document.getElementById('prodShelfLife')
                 const prodIsVisible = document.getElementById('prodIsVisible')
 
-                if (prodName) prodName.value = product.name || ''
-                if (prodDescription) prodDescription.value = product.description || ''
-                if (prodFullDescription) prodFullDescription.value = product.full_description || ''
-                if (prodComposition) prodComposition.value = product.composition || ''
-                if (prodDosage) prodDosage.value = product.dosage || ''
-                if (prodUsage) prodUsage.value = product.usage || ''
-                if (prodContraindications) prodContraindications.value = product.contraindications || ''
-                if (prodCategory) prodCategory.value = product.category_id || ''
-                if (prodBrand) prodBrand.value = product.brand_id || ''
-                if (prodPrice) prodPrice.value = product.price ?? ''
-                if (prodOldPrice) prodOldPrice.value = product.old_price ?? ''
-                if (prodStock) prodStock.value = product.stock ?? ''
-                if (prodVolume) prodVolume.value = product.volume || ''
-                if (prodSku) prodSku.value = product.sku || ''
-                if (prodBarcode) prodBarcode.value = product.barcode || ''
-                if (prodIsHit) prodIsHit.checked = Boolean(product.is_hit)
-                if (prodIsNew) prodIsNew.checked = Boolean(product.is_new)
-                if (prodIsDiscount) prodIsDiscount.checked = Boolean(product.is_discount)
-                if (prodIsRelated) prodIsRelated.checked = Boolean(product.is_related_enabled)
-                if (prodShelfLife) prodShelfLife.value = product.shelf_life || ''
-                if (prodIsVisible) prodIsVisible.value = String(product.is_visible)
-
-                productImages = Array.isArray(product.images) ? product.images.map(img => ({ ...img })) : []
-
-                const preview = document.getElementById('imagePreview')
-                if (preview) {
-                    preview.innerHTML = productImages.map((img, idx) => `<span class="image-wrapper"><img src="${escapeHtml(img.url)}" alt=""><button type="button" class="remove-image" data-idx="${idx}">&times;</button></span>`).join('')
-                }
-
-                const relatedIds = Array.isArray(product.related) ? product.related : []
-                const relatedSelect = document.getElementById('prodRelated')
-                if (relatedSelect) {
-                    Array.from(relatedSelect.options).forEach(opt => {
-                        opt.selected = relatedIds.includes(opt.value)
-                    })
-                }
-
-                const showContra = document.getElementById('showContraindications')
-                const contraGroup = document.getElementById('contraindicationsGroup')
-                if (showContra && contraGroup) {
-                    showContra.checked = !!product.contraindications
-                    contraGroup.style.display = showContra.checked ? 'block' : 'none'
-                    showContra.onchange = () => {
-                        contraGroup.style.display = showContra.checked ? 'block' : 'none'
-                    }
-                }
+                fillProductForm(product)
             }
         } catch (error) {
             console.error('Error loading product:', error)
@@ -979,8 +1018,10 @@ async function loadFormOptions() {
             throw new Error(text || 'Ошибка загрузки брендов')
         }
         
-        const categories = await categoriesRes.json()
-        const brands = await brandsRes.json()
+        const categoriesRaw = await categoriesRes.json()
+        const brandsRaw = await brandsRes.json()
+        const categories = Array.isArray(categoriesRaw) ? categoriesRaw : []
+        const brands = Array.isArray(brandsRaw) ? brandsRaw : []
         
         const prodCategoryEl = document.getElementById('prodCategory')
         if (prodCategoryEl) {
@@ -1141,7 +1182,7 @@ async function handleProductSubmit(e) {
         const searchInput = document.getElementById('productSearch')
         if (searchInput) searchInput.value = ''
         productsPage = 1
-        loadProducts().catch(console.error)
+        loadProducts().catch(e => console.error('Async operation failed:', e))
     } else {
         errorEl.textContent = translateError(result.error) || 'Ошибка сохранения товара'
         errorEl.classList.remove('hidden')
@@ -1165,7 +1206,7 @@ async function deleteProduct(id) {
         if (response.ok) {
             selectedProductIds.delete(String(id))
             updateBulkActionsBar()
-            loadProducts().catch(console.error)
+            loadProducts().catch(e => console.error('Async operation failed:', e))
         } else {
             const result = await response.json().catch(() => ({}))
             showError(translateError(result.error) || 'Ошибка удаления товара')
@@ -1208,14 +1249,7 @@ function toggleProductSelection(id, checked) {
 
 async function bulkToggleVisibility(visible) {
     if (selectedProductIds.size === 0) return
-    let token
-    try {
-        token = localStorage.getItem('admin-token')
-    } catch (e) {
-        console.error('localStorage not available in bulkToggleVisibility:', e)
-        showError('Сессия истекла. Войдите снова.')
-        return
-    }
+    const token = safeGetItem('admin-token')
     if (!token) {
         showError('Сессия истекла. Войдите снова.')
         return
@@ -1239,7 +1273,7 @@ async function bulkToggleVisibility(visible) {
     }
     selectedProductIds.clear()
     updateBulkActionsBar()
-    loadProducts().catch(console.error)
+    loadProducts().catch(e => console.error('Async operation failed:', e))
     if (errors === 0) {
         showError(visible ? 'Товары показаны' : 'Товары скрыты')
     } else {
@@ -1248,21 +1282,15 @@ async function bulkToggleVisibility(visible) {
 }
 
 async function bulkDeleteSelected() {
-    if (selectedProductIds.size === 0) return
-    const count = selectedProductIds.size
-    if (!confirm(`Удалить ${count} выбранных товаров?`)) return
-    let token
-    try {
-        token = localStorage.getItem('admin-token')
-    } catch (e) {
-        console.error('localStorage not available in bulkDeleteSelected:', e)
-        showError('Сессия истекла. Войдите снова.')
-        return
-    }
+    const token = safeGetItem('admin-token')
     if (!token) {
         showError('Сессия истекла. Войдите снова.')
         return
     }
+
+    if (selectedProductIds.size === 0) return
+    const count = selectedProductIds.size
+    if (!confirm(`Удалить ${count} выбранных товаров?`)) return
     const ids = Array.from(selectedProductIds)
     let errors = 0
     for (const id of ids) {
@@ -1278,7 +1306,7 @@ async function bulkDeleteSelected() {
     }
     selectedProductIds.clear()
     updateBulkActionsBar()
-    loadProducts().catch(console.error)
+    loadProducts().catch(e => console.error('Async operation failed:', e))
     if (errors === 0) {
         showError(`Удалено ${count} товаров`)
     } else {
@@ -1289,18 +1317,11 @@ async function bulkDeleteSelected() {
 function bulkClearSelection() {
     selectedProductIds.clear()
     updateBulkActionsBar()
-    loadProducts().catch(console.error)
+    loadProducts().catch(e => console.error('Async operation failed:', e))
 }
 
 async function bulkToggleAllVisibility() {
-    let token
-    try {
-        token = localStorage.getItem('admin-token')
-    } catch (e) {
-        console.error('localStorage not available in bulkToggleAllVisibility:', e)
-        showError('Сессия истекла. Войдите снова.')
-        return
-    }
+    const token = safeGetItem('admin-token')
     if (!token) {
         showError('Сессия истекла. Войдите снова.')
         return
@@ -1335,7 +1356,7 @@ async function bulkToggleAllVisibility() {
                 errors++
             }
         }
-        loadProducts().catch(console.error)
+        loadProducts().catch(e => console.error('Async operation failed:', e))
         if (errors === 0) {
             showError(makeVisible ? `Все товары показаны (${products.length})` : `Все товары скрыты (${products.length})`)
         } else {
@@ -1344,11 +1365,6 @@ async function bulkToggleAllVisibility() {
     } catch (error) {
         showError('Ошибка: ' + (error && error.message ? error.message : String(error)))
     }
-}
-
-function editProduct(id) {
-    // Load product data and open modal
-    openProductModal(id)
 }
 
 async function duplicateProduct(id) {
@@ -1375,69 +1391,7 @@ async function duplicateProduct(id) {
         const product = await response.json()
 
         if (product && product.id) {
-            const prodName = document.getElementById('prodName')
-            const prodDescription = document.getElementById('prodDescription')
-            const prodFullDescription = document.getElementById('prodFullDescription')
-            const prodComposition = document.getElementById('prodComposition')
-            const prodDosage = document.getElementById('prodDosage')
-            const prodUsage = document.getElementById('prodUsage')
-            const prodContraindications = document.getElementById('prodContraindications')
-            const prodCategory = document.getElementById('prodCategory')
-            const prodBrand = document.getElementById('prodBrand')
-            const prodPrice = document.getElementById('prodPrice')
-            const prodStock = document.getElementById('prodStock')
-            const prodVolume = document.getElementById('prodVolume')
-            const prodSku = document.getElementById('prodSku')
-            const prodBarcode = document.getElementById('prodBarcode')
-            const prodIsHit = document.getElementById('prodIsHit')
-            const prodIsNew = document.getElementById('prodIsNew')
-            const prodIsDiscount = document.getElementById('prodIsDiscount')
-            const prodIsRelated = document.getElementById('prodIsRelated')
-            const prodShelfLife = document.getElementById('prodShelfLife')
-            const prodIsVisible = document.getElementById('prodIsVisible')
-
-            if (prodName) prodName.value = product.name + ' (копия)'
-            if (prodDescription) prodDescription.value = product.description || ''
-            if (prodFullDescription) prodFullDescription.value = product.full_description || ''
-            if (prodComposition) prodComposition.value = product.composition || ''
-            if (prodDosage) prodDosage.value = product.dosage || ''
-            if (prodUsage) prodUsage.value = product.usage || ''
-            if (prodContraindications) prodContraindications.value = product.contraindications || ''
-            if (prodCategory) prodCategory.value = product.category_id || ''
-            if (prodBrand) prodBrand.value = product.brand_id || ''
-            if (prodPrice) prodPrice.value = product.price ?? ''
-            if (prodStock) prodStock.value = product.stock ?? ''
-            if (prodVolume) prodVolume.value = product.volume || ''
-            if (prodSku) prodSku.value = ''
-            if (prodBarcode) prodBarcode.value = ''
-            if (prodIsHit) prodIsHit.checked = Boolean(product.is_hit)
-            if (prodIsNew) prodIsNew.checked = Boolean(product.is_new)
-            if (prodIsDiscount) prodIsDiscount.checked = Boolean(product.is_discount)
-            if (prodIsRelated) prodIsRelated.checked = Boolean(product.is_related_enabled)
-            if (prodShelfLife) prodShelfLife.value = product.shelf_life || ''
-            if (prodIsVisible) prodIsVisible.value = String(product.is_visible)
-
-            productImages = Array.isArray(product.images) ? product.images.map(img => ({ ...img })) : []
-
-            const preview = document.getElementById('imagePreview')
-            if (preview) {
-                preview.innerHTML = productImages.map((img, idx) => `<span class="image-wrapper"><img src="${escapeHtml(img.url)}" alt=""><button type="button" class="remove-image" data-idx="${idx}">&times;</button></span>`).join('')
-            }
-
-            const relatedSelect = document.getElementById('prodRelated')
-            if (relatedSelect) {
-                Array.from(relatedSelect.options).forEach(opt => { opt.selected = false })
-            }
-
-            const showContra = document.getElementById('showContraindications')
-            const contraGroup = document.getElementById('contraindicationsGroup')
-            if (showContra && contraGroup) {
-                showContra.checked = !!product.contraindications
-                contraGroup.style.display = showContra.checked ? 'block' : 'none'
-                showContra.onchange = () => {
-                    contraGroup.style.display = showContra.checked ? 'block' : 'none'
-                }
-            }
+            fillProductForm(product, { nameSuffix: ' (копия)', clearSku: true, clearBarcode: true })
         }
 
     document.getElementById('productModal')?.classList.remove('hidden')
@@ -1482,8 +1436,8 @@ async function loadCategories() {
             return
         }
         
-        const data = await response.json()
-        
+        const raw = await response.json()
+        const data = Array.isArray(raw) ? raw : []
         const categoriesTable = document.getElementById('categoriesTable')
         if (categoriesTable) {
             categoriesTable.innerHTML = data.map(cat => `
@@ -1572,7 +1526,7 @@ async function openCategoryModal(categoryId = null) {
         })
 
         if (response.ok) {
-            loadCategories().catch(console.error)
+            loadCategories().catch(e => console.error('Async operation failed:', e))
         } else {
             const result = await response.json().catch(() => ({}))
             showError(translateError(result.error) || 'Ошибка сохранения категории')
@@ -1592,7 +1546,7 @@ async function deleteCategory(id) {
         })
 
         if (response.ok) {
-            loadCategories().catch(console.error)
+            loadCategories().catch(e => console.error('Async operation failed:', e))
         } else {
             const result = await response.json().catch(() => ({}))
             showError(translateError(result.error) || 'Ошибка удаления категории')
@@ -1623,7 +1577,8 @@ async function loadBrands() {
             return
         }
 
-        const data = await response.json()
+        const raw = await response.json()
+        const data = Array.isArray(raw) ? raw : []
 
         const brandsTable = document.getElementById('brandsTable')
         if (brandsTable) {
@@ -1683,7 +1638,7 @@ async function openBrandModal(brandId = null) {
         })
 
         if (response.ok) {
-            loadBrands().catch(console.error)
+            loadBrands().catch(e => console.error('Async operation failed:', e))
         } else {
             const result = await response.json().catch(() => ({}))
             showError(translateError(result.error) || 'Ошибка сохранения бренда')
@@ -1703,7 +1658,7 @@ async function deleteBrand(id) {
         })
 
         if (response.ok) {
-            loadBrands().catch(console.error)
+            loadBrands().catch(e => console.error('Async operation failed:', e))
         } else {
             const result = await response.json().catch(() => ({}))
             showError(translateError(result.error) || 'Ошибка удаления бренда')
@@ -1818,7 +1773,7 @@ function renderOrdersPagination() {
 
 function changeOrdersPage(page) {
     ordersPage = page
-    loadAnalytics().catch(console.error)
+    loadAnalytics().catch(e => console.error('Async operation failed:', e))
 }
 
 function updateDeleteSelectedBtn() {
@@ -1836,7 +1791,7 @@ async function deleteOrder(id) {
         })
 
         if (response.ok) {
-            loadAnalytics().catch(console.error)
+            loadAnalytics().catch(e => console.error('Async operation failed:', e))
         } else {
             const result = await response.json().catch(() => ({}))
             showError(translateError(result.error) || 'Ошибка удаления заказа')
@@ -1864,7 +1819,7 @@ async function deleteSelectedOrders() {
         if (failed.length > 0) {
             showError(`Удалено: ${results.length - failed.length}. Ошибок: ${failed.length}`)
         }
-        loadAnalytics().catch(console.error)
+        loadAnalytics().catch(e => console.error('Async operation failed:', e))
     } catch (error) {
         console.error('Error deleting orders:', error)
         showError('Ошибка удаления заказов: ' + (error && error.message ? error.message : String(error)))
@@ -2142,7 +2097,7 @@ async function populateBannerProductSelect() {
 
         if (!response.ok) return
 
-        const result = await response.json()
+        const result = await response.json().catch(() => ({}))
         const products = result.data || []
 
         select.innerHTML = '<option value="">— не выбран —</option>' +
@@ -2192,17 +2147,6 @@ function openBannerSlideModal(slideIndex = null) {
         if (bannerSort) bannerSort.value = slide.sort_order ?? 0
     } else {
         title.textContent = 'Новый слайд'
-        const bannerSlideType = document.getElementById('bannerSlideType')
-        const bannerProduct = document.getElementById('bannerProduct')
-        const bannerImage = document.getElementById('bannerImage')
-        const bannerTitle = document.getElementById('bannerTitle')
-        const bannerSubtitle = document.getElementById('bannerSubtitle')
-        const bannerText = document.getElementById('bannerText')
-        const bannerBadge = document.getElementById('bannerBadge')
-        const bannerLink = document.getElementById('bannerLink')
-        const bannerLayout = document.getElementById('bannerLayout')
-        const bannerImagePosition = document.getElementById('bannerImagePosition')
-        const bannerSort = document.getElementById('bannerSort')
         if (bannerSlideType) bannerSlideType.value = 'promo'
         if (bannerProduct) bannerProduct.value = ''
         if (bannerImage) bannerImage.value = ''
@@ -2337,20 +2281,22 @@ function showBannerError(message) {
     setTimeout(() => error.classList.add('hidden'), 4000)
 }
 
-function setupGlobalTooltip() {
-    const tooltip = document.getElementById('globalTooltip')
-    if (!tooltip) return
+class Tooltip {
+    constructor() {
+        this.tooltip = document.getElementById('globalTooltip')
+        if (!this.tooltip) return
+        this.activeHint = null
+        this.showTimeout = null
+        this.hideTimeout = null
+        this.isHoveringTooltip = false
+        this.init()
+    }
 
-    let activeHint = null
-    let showTimeout = null
-    let hideTimeout = null
-    let isHoveringTooltip = false
-
-    function getPlacement(hintRect) {
-        const tooltipRect = tooltip.getBoundingClientRect()
+    getPlacement(hintRect) {
+        const tooltipRect = this.tooltip.getBoundingClientRect()
         const viewportH = window.innerHeight
-        const gap = 10
-        const padding = 16
+        const gap = TOOLTIP_GAP
+        const padding = TOOLTIP_PADDING
 
         const spaceAbove = hintRect.top - padding
         const spaceBelow = viewportH - hintRect.bottom - padding
@@ -2361,15 +2307,15 @@ function setupGlobalTooltip() {
         return 'bottom'
     }
 
-    function positionTooltip(hint) {
+    positionTooltip(hint) {
         const hintRect = hint.getBoundingClientRect()
-        const tooltipRect = tooltip.getBoundingClientRect()
+        const tooltipRect = this.tooltip.getBoundingClientRect()
         const viewportW = window.innerWidth
         const viewportH = window.innerHeight
-        const gap = 10
-        const padding = 16
+        const gap = TOOLTIP_GAP
+        const padding = TOOLTIP_PADDING
 
-        const placement = getPlacement(hintRect)
+        const placement = this.getPlacement(hintRect)
 
         let top
         if (placement === 'top') {
@@ -2392,101 +2338,111 @@ function setupGlobalTooltip() {
             top = viewportH - padding - tooltipRect.height
         }
 
-        tooltip.style.top = `${top}px`
-        tooltip.style.left = `${left}px`
-        tooltip.setAttribute('data-placement', placement)
+        this.tooltip.style.top = `${top}px`
+        this.tooltip.style.left = `${left}px`
+        this.tooltip.setAttribute('data-placement', placement)
     }
 
-    function showTooltip(hint) {
-        if (hideTimeout) {
-            clearTimeout(hideTimeout)
-            hideTimeout = null
+    showTooltip(hint) {
+        if (this.hideTimeout) {
+            clearTimeout(this.hideTimeout)
+            this.hideTimeout = null
         }
 
-        if (showTimeout) {
-            clearTimeout(showTimeout)
+        if (this.showTimeout) {
+            clearTimeout(this.showTimeout)
         }
 
         const text = hint.dataset.tooltip || ''
         if (!text) return
 
-        showTimeout = setTimeout(() => {
-            tooltip.textContent = text
-            tooltip.classList.add('visible')
-            tooltip.setAttribute('aria-hidden', 'false')
-            positionTooltip(hint)
-            activeHint = hint
-            showTimeout = null
-        }, 400)
+        this.showTimeout = setTimeout(() => {
+            this.tooltip.textContent = text
+            this.tooltip.classList.add('visible')
+            this.tooltip.setAttribute('aria-hidden', 'false')
+            this.positionTooltip(hint)
+            this.activeHint = hint
+            this.showTimeout = null
+        }, TOOLTIP_SHOW_DELAY_MS)
     }
 
-    function hideTooltip() {
-        if (showTimeout) {
-            clearTimeout(showTimeout)
-            showTimeout = null
+    hideTooltip() {
+        if (this.showTimeout) {
+            clearTimeout(this.showTimeout)
+            this.showTimeout = null
         }
 
-        hideTimeout = setTimeout(() => {
-            if (!isHoveringTooltip) {
-                tooltip.classList.remove('visible')
-                tooltip.setAttribute('aria-hidden', 'true')
-                activeHint = null
+        this.hideTimeout = setTimeout(() => {
+            if (!this.isHoveringTooltip) {
+                this.tooltip.classList.remove('visible')
+                this.tooltip.setAttribute('aria-hidden', 'true')
+                this.activeHint = null
             }
-            hideTimeout = null
-        }, 100)
+            this.hideTimeout = null
+        }, TOOLTIP_HIDE_DELAY_MS)
     }
 
-    document.querySelectorAll('.field-hint').forEach(hint => {
-        hint.setAttribute('aria-describedby', 'globalTooltip')
-        hint.addEventListener('mouseenter', () => showTooltip(hint))
-        hint.addEventListener('mouseleave', hideTooltip)
-        hint.addEventListener('focus', () => showTooltip(hint))
-        hint.addEventListener('blur', hideTooltip)
-    })
+    bindEvents() {
+        document.querySelectorAll('.field-hint').forEach(hint => {
+            hint.setAttribute('aria-describedby', 'globalTooltip')
+            hint.addEventListener('mouseenter', () => this.showTooltip(hint))
+            hint.addEventListener('mouseleave', () => this.hideTooltip())
+            hint.addEventListener('focus', () => this.showTooltip(hint))
+            hint.addEventListener('blur', () => this.hideTooltip())
+        })
 
-    tooltip.addEventListener('mouseenter', () => {
-        isHoveringTooltip = true
-        if (hideTimeout) {
-            clearTimeout(hideTimeout)
-            hideTimeout = null
-        }
-    })
-
-    tooltip.addEventListener('mouseleave', () => {
-        isHoveringTooltip = false
-        hideTooltip()
-    })
-
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && tooltip.classList.contains('visible')) {
-            tooltip.classList.remove('visible')
-            tooltip.setAttribute('aria-hidden', 'true')
-            if (activeHint) {
-                activeHint.focus()
-                activeHint = null
+        this.tooltip.addEventListener('mouseenter', () => {
+            this.isHoveringTooltip = true
+            if (this.hideTimeout) {
+                clearTimeout(this.hideTimeout)
+                this.hideTimeout = null
             }
-            if (showTimeout) {
-                clearTimeout(showTimeout)
-                showTimeout = null
-            }
-            if (hideTimeout) {
-                clearTimeout(hideTimeout)
-                hideTimeout = null
-            }
-        }
-    })
+        })
 
-    document.addEventListener('scroll', () => {
-        if (activeHint && tooltip.classList.contains('visible')) {
-            positionTooltip(activeHint)
-        }
-    }, true)
+        this.tooltip.addEventListener('mouseleave', () => {
+            this.isHoveringTooltip = false
+            this.hideTooltip()
+        })
 
-    window.addEventListener('resize', () => {
-        if (activeHint && tooltip.classList.contains('visible')) {
-            positionTooltip(activeHint)
-        }
-    })
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.tooltip.classList.contains('visible')) {
+                this.tooltip.classList.remove('visible')
+                this.tooltip.setAttribute('aria-hidden', 'true')
+                if (this.activeHint) {
+                    this.activeHint.focus()
+                    this.activeHint = null
+                }
+                if (this.showTimeout) {
+                    clearTimeout(this.showTimeout)
+                    this.showTimeout = null
+                }
+                if (this.hideTimeout) {
+                    clearTimeout(this.hideTimeout)
+                    this.hideTimeout = null
+                }
+            }
+        })
+
+        document.addEventListener('scroll', () => {
+            if (this.activeHint && this.tooltip.classList.contains('visible')) {
+                this.positionTooltip(this.activeHint)
+            }
+        }, true)
+
+        window.addEventListener('resize', () => {
+            if (this.activeHint && this.tooltip.classList.contains('visible')) {
+                this.positionTooltip(this.activeHint)
+            }
+        })
+    }
+
+    init() {
+        this.bindEvents()
+    }
+}
+
+function setupGlobalTooltip() {
+    new Tooltip()
 }
 
 // ============================================
@@ -2512,11 +2468,7 @@ const EXPORT_COLUMNS = [
     { key: 'is_new', label: 'Новинка', required: false },
     { key: 'is_discount', label: 'Скидка', required: false },
     { key: 'is_visible', label: 'Видимость', required: false },
-    { key: 'shelf_life', label: 'Срок годности', required: false },
-    { key: 'stock_image', label: 'Картинка (остатки)', required: false },
-    { key: 'cart_image', label: 'Картинка (корзина)', required: false },
-    { key: 'wholesale_price', label: 'Оптовая цена', required: false },
-    { key: 'unit', label: 'Ед. изм.', required: false }
+    { key: 'shelf_life', label: 'Срок годности', required: false }
 ]
 
 const EXPORT_COLUMNS_STORAGE_KEY = 'jock-export-columns'
@@ -2526,26 +2478,22 @@ function getDefaultExportColumns() {
 }
 
 function loadExportColumns() {
-    try {
-        const stored = localStorage.getItem(EXPORT_COLUMNS_STORAGE_KEY)
-        if (stored) {
+    const stored = safeGetItem(EXPORT_COLUMNS_STORAGE_KEY)
+    if (stored) {
+        try {
             const parsed = JSON.parse(stored)
             const validKeys = EXPORT_COLUMNS.map(c => c.key)
             const filtered = parsed.filter((k) => validKeys.includes(k))
             if (filtered.length > 0) return filtered
+        } catch (e) {
+            console.error('Error loading export columns:', e)
         }
-    } catch (e) {
-        console.error('Error loading export columns:', e)
     }
     return getDefaultExportColumns()
 }
 
 function saveExportColumns(keys) {
-    try {
-        localStorage.setItem(EXPORT_COLUMNS_STORAGE_KEY, JSON.stringify(keys))
-    } catch (e) {
-        console.error('Error saving export columns:', e)
-    }
+    safeSetItem(EXPORT_COLUMNS_STORAGE_KEY, JSON.stringify(keys))
 }
 
 function buildExportColumnsUI() {
@@ -2730,7 +2678,7 @@ async function updateUndoImportButton() {
     if (undoBtn) {
         if (history && history.createdProducts && history.createdProducts.length > 0) {
             undoBtn.style.display = 'inline-flex'
-            undoBtn.textContent = `Отменить импорт (${history.createdProducts.length + history.updatedProducts.length} товаров)`
+            undoBtn.textContent = `Отменить импорт (${history.createdProducts.length + (history.updatedProducts?.length || 0)} товаров)`
         } else {
             undoBtn.style.display = 'none'
         }
@@ -2744,16 +2692,14 @@ async function undoLastImport() {
         return
     }
 
-    if (!confirm(`Отменить последний импорт?\n\nСозданные товары (${history.createdProducts.length}) будут удалены.\nОбновлённые товары (${history.updatedProducts.length}) будут восстановлены до предыдущего состояния.`)) {
+    const createdProducts = Array.isArray(history.createdProducts) ? history.createdProducts : []
+    const updatedProducts = Array.isArray(history.updatedProducts) ? history.updatedProducts : []
+
+    if (!confirm(`Отменить последний импорт?\n\nСозданные товары (${createdProducts.length}) будут удалены.\nОбновлённые товары (${updatedProducts.length}) будут восстановлены до предыдущего состояния.`)) {
         return
     }
 
-    let token = null
-    try {
-        token = localStorage.getItem('admin-token')
-    } catch (e) {
-        console.error('localStorage not available in undoLastImport:', e)
-    }
+    const token = safeGetItem('admin-token')
     if (!token) {
         showError('Сессия истекла. Войдите снова.')
         return
@@ -2762,7 +2708,7 @@ async function undoLastImport() {
     let errors = []
 
     try {
-        for (const product of history.updatedProducts) {
+        for (const product of updatedProducts) {
             try {
                 const previous = product.previous
                 const updateData = {}
@@ -2797,7 +2743,7 @@ async function undoLastImport() {
             }
         }
 
-        for (const product of history.createdProducts) {
+        for (const product of createdProducts) {
             try {
                 const response = await fetchWithTimeout(`${CONFIG.adminApiUrl}/products/${product.id}`, {
                     method: 'DELETE',
@@ -2819,9 +2765,9 @@ async function undoLastImport() {
             clearImportHistory()
             showError('Импорт успешно отменён')
         } else {
-            showError(`Отменено с ошибками: ${errors.length}. Успешно: ${history.createdProducts.length + history.updatedProducts.length - errors.length}`)
+            showError(`Отменено с ошибками: ${errors.length}. Успешно: ${createdProducts.length + updatedProducts.length - errors.length}`)
         }
-        updateUndoImportButton().catch(console.error)
+        updateUndoImportButton().catch(e => console.error('Async operation failed:', e))
     } catch (error) {
         showError('Ошибка отмены импорта: ' + (error && error.message ? error.message : String(error)))
     }
@@ -3016,8 +2962,9 @@ async function handleImport() {
             return
         }
         
-        const result = await response.json()
+        const result = await response.json().catch(() => ({}))
         const statusEl = document.getElementById('importStatus')
+        const importResults = result.results || { success: 0, errors: [] }
         
         if (result.success) {
             if (result.createdProducts || result.updatedProducts) {
@@ -3029,12 +2976,12 @@ async function handleImport() {
             }
             if (statusEl) {
                 statusEl.className = 'status-message success'
-                statusEl.textContent = `Импортировано: ${result.results.success} товаров`
+                statusEl.textContent = `Импортировано: ${importResults.success} товаров`
             }
         } else {
             if (statusEl) {
                 statusEl.className = 'status-message error'
-                statusEl.textContent = `Ошибки: ${result.results.errors.length}. Успешно: ${result.results.success}`
+                statusEl.textContent = `Ошибки: ${importResults.errors.length}. Успешно: ${importResults.success}`
             }
         }
     } catch (error) {
@@ -3136,18 +3083,6 @@ async function handleExport() {
                     case 'shelf_life':
                         row[col.key] = p.shelf_life || ''
                         break
-                    case 'stock_image':
-                        row[col.key] = p.product_images?.[0]?.url || ''
-                        break
-                    case 'cart_image':
-                        row[col.key] = p.product_images?.[0]?.url || ''
-                        break
-                    case 'wholesale_price':
-                        row[col.key] = ''
-                        break
-                    case 'unit':
-                        row[col.key] = 'шт'
-                        break
                     default:
                         row[col.key] = ''
                 }
@@ -3195,10 +3130,6 @@ async function handleExportTemplate() {
                 case 'is_new': return 'TRUE'
                 case 'is_discount': return 'FALSE'
                 case 'is_visible': return 'TRUE'
-                case 'stock_image': return 'https://...'
-                case 'cart_image': return 'https://...'
-                case 'wholesale_price': return 400
-                case 'unit': return 'шт'
                 default: return ''
             }
         })
@@ -3299,7 +3230,7 @@ async function handleGenerateDescriptions() {
             throw new Error(result.error || 'Ошибка запуска генерации')
         }
 
-        const genResult = await productsRes.json()
+        const genResult = await productsRes.json().catch(() => ({}))
 
         showError(`Генерация завершена: ${genResult.success || 0} успешно, ${genResult.errors || 0} ошибок`)
     } catch (error) {
@@ -3316,7 +3247,7 @@ async function handleGenerateDescriptions() {
 // ============================================
 
 async function startMonitor() {
-    checkMonitor().catch(console.error)
+    checkMonitor().catch(e => console.error('Async operation failed:', e))
     monitorInterval = setInterval(checkMonitor, 30000)
 }
 
@@ -3338,7 +3269,7 @@ async function checkMonitor() {
         } else {
             dot.className = 'indicator-dot error'
             text.textContent = 'Ошибка Edge Function'
-            sendAlert('Edge Function недоступен').catch(console.error)
+            sendAlert('Edge Function недоступен').catch(e => console.error('Async operation failed:', e))
         }
     } catch (error) {
         const dot = document.querySelector('.indicator-dot')
@@ -3372,7 +3303,7 @@ async function sendAlert(message) {
             document.body.removeChild(a)
         }
     } catch (e) {
-        // ignore
+        console.warn('sendAlert failed:', e)
     }
 }
 
@@ -3473,7 +3404,7 @@ async function openAdminBarcodeScanner() {
 
     try {
         const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } }
+            video: CAMERA_OPTS
         })
         await startNativeScanner(stream)
     } catch (error) {
@@ -3532,7 +3463,7 @@ async function startNativeScanner(stream) {
     invalidateAdminScanCropCache()
     const crop = getAdminScanCrop()
     if (crop) {
-        adminScannerWorker.postMessage({ type: 'init', crop: crop, tw: 320 })
+        adminScannerWorker.postMessage({ type: 'init', crop: crop, tw: SCAN_TARGET_WIDTH })
     }
 
     adminScanRafId = requestAnimationFrame(adminScanLoop)
@@ -3577,18 +3508,18 @@ async function startFallbackScanner() {
         }
 
         if (adminHtml5QrCode) {
-            try { await adminHtml5QrCode.stop() } catch (e) { /* ignore */ }
+            try { await adminHtml5QrCode.stop() } catch (e) { console.warn('Scanner stop failed:', e) }
             adminHtml5QrCode = null
         }
 
         adminHtml5QrCode = new Html5Qrcode('adminScannerHtml5Qr')
-        const cameraConfig = { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } }
+        const cameraConfig = CAMERA_OPTS
 
         await adminHtml5QrCode.start(
             cameraConfig,
             {
-                fps: 10,
-                qrbox: { width: 250, height: 120 },
+                fps: SCAN_FPS,
+                qrbox: SCAN_QRBOX,
                 formatsToSupport: [
                     Html5QrcodeSupportedFormats.EAN_13,
                     Html5QrcodeSupportedFormats.EAN_8,
@@ -3609,7 +3540,7 @@ async function startFallbackScanner() {
         console.error('Fallback scanner error:', error)
         statusEl.textContent = 'Не удалось запустить сканер. Загрузите фото штрих-кода.'
         if (adminHtml5QrCode) {
-            try { await adminHtml5QrCode.stop() } catch (e) { /* ignore */ }
+            try { await adminHtml5QrCode.stop() } catch (e) { console.warn('Scanner stop failed:', e) }
             adminHtml5QrCode = null
         }
     }
@@ -3689,7 +3620,7 @@ function adminScanLoop(timestamp) {
                                 type: 'scan',
                                 bitmap: bitmap,
                                 crop: crop,
-                                tw: 320
+                                tw: SCAN_TARGET_WIDTH
                             }, [bitmap])
                         }
                     }).catch((err) => {
@@ -3762,7 +3693,7 @@ function handleAdminBarcodeDetected(code) {
 
     setTimeout(() => {
         closeAdminBarcodeScanner()
-    }, 600)
+    }, TOAST_DETECTED_CLOSE_MS)
 }
 
 function closeAdminBarcodeScanner() {
@@ -3784,7 +3715,7 @@ function closeAdminBarcodeScanner() {
         adminBarcodeStream = null
     }
     if (adminHtml5QrCode) {
-        try { adminHtml5QrCode.stop() } catch (e) { /* ignore */ }
+        try { adminHtml5QrCode.stop() } catch (e) { console.warn('Scanner stop failed:', e) }
         adminHtml5QrCode = null
     }
     adminScannerMode = 'none'
@@ -3833,13 +3764,13 @@ function registerServiceWorker() {
 }
 
 // Initialize
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        init()
-        registerServiceWorker()
-    })
-} else {
+function bootstrap() {
     init()
     registerServiceWorker()
+}
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootstrap)
+} else {
+    bootstrap()
 }
 

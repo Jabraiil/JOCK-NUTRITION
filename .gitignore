@@ -32,5 +32,4 @@ build/
 *.tmp
 *.temp
 
-# Kilo config (local only, not for git)
-.kilo/
+# Kilo config is tracked in repo (.kilo/ contains commands/agents)

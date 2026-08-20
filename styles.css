@@ -3039,3 +3039,23 @@ select:focus:not(:focus-visible) {
     padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
 }
 
+.loading-error-text {
+    margin-bottom: 12px;
+}
+
+.cart-empty-text {
+    text-align: center;
+    color: var(--text-secondary);
+    padding: 20px;
+}
+
+.loading-text {
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.retry-load-products {
+    padding: 8px 20px;
+    font-size: 14px;
+}
+

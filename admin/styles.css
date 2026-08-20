@@ -2756,3 +2756,72 @@ th .toggle-switch {
         padding: 16px 12px calc(20px + env(safe-area-inset-bottom));
     }
 }
+
+.checkbox-header {
+    width: 40px;
+}
+
+.banner-header-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.banner-enabled-text {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.import-file-info {
+    margin-top: 12px;
+    display: none;
+}
+
+.btn-xs {
+    margin-left: 8px;
+    min-height: 32px;
+    padding: 0 10px;
+    font-size: 0.85rem;
+}
+
+.undo-import-btn {
+    margin-top: 12px;
+    display: none;
+}
+
+.import-columns-section {
+    display: none;
+    margin-top: 16px;
+}
+
+.section-title {
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.import-btn {
+    margin-top: 16px;
+}
+
+.banner-image-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+}
+
+.flex-1 {
+    flex: 1;
+}
+
+.nowrap {
+    white-space: nowrap;
+}
+
+.spacer {
+    margin-top: 12px;
+}
+
+.contraindications-group {
+    display: none;
+}

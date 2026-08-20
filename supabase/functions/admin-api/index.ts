@@ -1,18 +1,106 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { getCorsHeaders, normalizePath, jsonResponse, structuredLog, parseBoolean, getDateFilter, safeParseInt, GEMINI_DEFAULTS, IMPORT_CONSTANTS, healthResponse, formatDay } from "../_shared/index.ts"
+
+export interface ProductRow {
+  id: string
+  name: string
+  volume?: string
+  composition?: string
+  brands?: BrandRow
+  categories?: CategoryRow
+}
+
+export interface ProductImage {
+  id: string
+  product_id: string
+  url: string
+  sort_order: number
+}
+
+export interface ProductLink {
+  id: string
+  product_id: string
+  url: string
+  sort_order: number
+}
+
+export interface CategoryRow {
+  id: string
+  name: string
+}
+
+export interface BrandRow {
+  id: string
+  name: string
+}
+
+export interface ImportProduct {
+  name: string
+  volume?: string
+  composition?: string
+  brand?: string
+  category?: string
+}
+
+interface ImportedProductRow {
+  name: string
+  description: string
+  full_description: string
+  composition: string
+  dosage: string
+  usage: string
+  contraindications: string
+  category_id: string | null
+  brand_id: string | null
+  price: number
+  old_price: number | null
+  stock: number
+  volume: string
+  sku: string | null
+  barcode: string | null
+  is_hit: boolean
+  is_new: boolean
+  is_discount: boolean
+  shelf_life: string
+  is_visible: boolean
+}
+
+interface ExistingSkuProduct {
+  data: ImportedProductRow
+  prev: ProductRow
+}
+
+export interface OrderItem {
+  id: string
+  order_id: string
+  product_id: string
+  quantity: number
+  price: number
+  products?: ProductRow
+}
+
+export interface OrderAnalyticsRow {
+  id: string
+  created_at: string
+  total_amount: number
+  items?: OrderItem[]
+}
+
+export interface GeminiParams {
+  temperature?: number
+  maxOutputTokens?: number
+  responseMimeType?: string
+  responseSchema?: Record<string, unknown>
+}
+
+export interface GeminiResponse {
+  text: string
+  raw: unknown
+}
 
 serve(async (req) => {
-  const origin = req.headers.get("origin") || ""
-  const allowedOrigins = [
-      "https://jabraiil.github.io",
-      "https://jabraiil.github.io/JOCK-NUTRITION"
-  ]
-  const corsHeaders = {
-      "Access-Control-Allow-Origin": allowedOrigins.includes(origin) ? origin : allowedOrigins[0],
-      "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-      "Access-Control-Max-Age": "86400"
-  }
+  const corsHeaders = getCorsHeaders(req.headers.get("origin"))
 
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders })
@@ -40,41 +128,38 @@ serve(async (req) => {
       await supabase.from("product_related").insert(rows)
     }
 
-    async function callGemini(apiKey: string, prompt: string, params: any = {}, attempts = 3) {
-      const body: any = {
+    async function callGemini(apiKey: string, prompt: string, params: GeminiParams = {}, attempts = GEMINI_DEFAULTS.retryAttempts): Promise<GeminiResponse | null> {
+      const body = {
         contents: [
           {
             parts: [{ text: prompt }]
           }
         ],
         generationConfig: {
-          temperature: params.temperature ?? 0.3,
-          maxOutputTokens: params.maxOutputTokens ?? 1500,
-          responseMimeType: params.responseMimeType || 'text/plain'
-        }
-      }
-
-      if (params.responseMimeType === 'application/json') {
-        body.generationConfig.responseSchema = params.responseSchema || {
-          type: 'object',
-          properties: {
-            description: { type: 'string' },
-            full_description: { type: 'string' },
-            composition: { type: 'string' },
-            dosage: { type: 'string' },
-            usage: { type: 'string' },
-            contraindications: { type: 'string' }
-          },
-          required: ['description', 'full_description', 'composition', 'dosage', 'usage', 'contraindications']
+          temperature: params.temperature ?? GEMINI_DEFAULTS.temperature,
+          maxOutputTokens: params.maxOutputTokens ?? GEMINI_DEFAULTS.maxOutputTokens,
+          responseMimeType: params.responseMimeType || 'text/plain',
+          responseSchema: params.responseMimeType === 'application/json' ? (params.responseSchema || {
+            type: 'object',
+            properties: {
+              description: { type: 'string' },
+              full_description: { type: 'string' },
+              composition: { type: 'string' },
+              dosage: { type: 'string' },
+              usage: { type: 'string' },
+              contraindications: { type: 'string' }
+            },
+            required: ['description', 'full_description', 'composition', 'dosage', 'usage', 'contraindications']
+          }) : undefined
         }
       }
 
       for (let i = 0; i < attempts; i++) {
         try {
-          const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(apiKey)}`
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent`
           const response = await fetch(url, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
             body: JSON.stringify(body)
           })
 
@@ -83,9 +168,9 @@ serve(async (req) => {
             const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
             
             if (!text) {
-              console.warn(`Empty Gemini response for attempt ${i + 1}`)
+              structuredLog("warn", `Empty Gemini response for attempt ${i + 1}`)
               if (i < attempts - 1) {
-                await new Promise(r => setTimeout(r, Math.pow(2, i) * 2000))
+                await new Promise(r => setTimeout(r, Math.pow(2, i) * GEMINI_DEFAULTS.baseRetryDelayMs))
                 continue
               }
               throw new Error('Empty response from AI')
@@ -98,8 +183,8 @@ serve(async (req) => {
           const errorMsg = errData.error?.message || errData.error || `AI API error: ${response.status}`
 
           if ((response.status === 429 || response.status === 503) && i < attempts - 1) {
-            const delay = Math.pow(2, i) * 3000
-            console.warn(`Gemini rate limit/server busy, retrying in ${delay}ms...`)
+            const delay = Math.pow(2, i) * GEMINI_DEFAULTS.rateLimitRetryDelayMs
+            structuredLog("warn", `Gemini rate limit/server busy, retrying in ${delay}ms...`)
             await new Promise(r => setTimeout(r, delay))
             continue
           }
@@ -107,8 +192,8 @@ serve(async (req) => {
           throw new Error(errorMsg)
         } catch (err) {
           if (i < attempts - 1) {
-            const delay = Math.pow(2, i) * 2000
-            console.warn(`Gemini call failed, retrying in ${delay}ms...`)
+            const delay = Math.pow(2, i) * GEMINI_DEFAULTS.baseRetryDelayMs
+            structuredLog("warn", `Gemini call failed, retrying in ${delay}ms...`)
             await new Promise(r => setTimeout(r, delay))
             continue
           }
@@ -130,7 +215,7 @@ serve(async (req) => {
       }
       return { type: 'supplement', category: 'БАДы' }
     }
-    async function generateProductDescription(product: any, apiKey: string) {
+    async function generateProductDescription(product: ProductRow, apiKey: string) {
       const brandName = product.brands?.name || ''
       const productName = product.name || ''
       const volume = product.volume || ''
@@ -170,7 +255,7 @@ ${composition ? `Состав: "${composition}"` : ''}
 - Не придумывай состав/дозировку — только общеизвестные стандартные данные.`
 
       const data = await callGemini(apiKey, prompt, {
-        temperature: 0.3,
+        temperature: GEMINI_DEFAULTS.temperature,
         maxOutputTokens: 1200,
         responseMimeType: 'application/json',
         responseSchema: {
@@ -195,7 +280,7 @@ ${composition ? `Состав: "${composition}"` : ''}
         const cleaned = rawText.replace(/```json\n?|\n?```/g, '').trim()
         parsed = JSON.parse(cleaned)
       } catch (e) {
-        console.error('Failed to parse AI response for', productName, ':', rawText)
+        structuredLog("error", 'Failed to parse AI response for ' + productName + ': ' + rawText)
         return null
       }
 
@@ -232,7 +317,7 @@ ${composition ? `Состав: "${composition}"` : ''}
     const { data: adminUser, error: adminError } = await supabase
       .from("admin_users")
       .select("*")
-      .ilike("email", user.email)
+      .ilike("email", user.email.toLowerCase())
       .single()
 
     if (adminError || !adminUser) {
@@ -243,13 +328,7 @@ ${composition ? `Состав: "${composition}"` : ''}
     }
 
     const url = new URL(req.url)
-    let path = url.pathname
-
-    if (path.startsWith('/functions/v1/admin-api')) {
-        path = path.replace('/functions/v1/admin-api', '')
-    } else if (path.startsWith('/admin-api')) {
-        path = path.replace('/admin-api', '')
-    }
+    const path = normalizePath(url.pathname, "/admin-api")
 
     // GET /settings
     if (req.method === "GET" && path === "/settings") {
@@ -257,7 +336,7 @@ ${composition ? `Состав: "${composition}"` : ''}
         .from("settings")
         .select("*")
 
-      if (error) throw error
+      if (error) return jsonResponse({ error: error.message }, 500, corsHeaders)
 
       const settingsMap = {}
       for (const s of data) {
@@ -297,7 +376,7 @@ ${composition ? `Состав: "${composition}"` : ''}
         .eq("id", productId)
         .single()
 
-      if (productError) throw productError
+      if (productError) return jsonResponse({ error: productError.message }, 500, corsHeaders)
 
       const { data: images } = await supabase
         .from("product_images")
@@ -335,8 +414,8 @@ ${composition ? `Состав: "${composition}"` : ''}
       const search = url.searchParams.get("search") || ""
       const category = url.searchParams.get("category") || ""
       const brand = url.searchParams.get("brand") || ""
-      const page = parseInt(url.searchParams.get("page") || "1")
-      const limit = parseInt(url.searchParams.get("limit") || "20")
+      const page = safeParseInt(url.searchParams.get("page"), 1)
+      const limit = safeParseInt(url.searchParams.get("limit"), 20)
       const offset = (page - 1) * limit
 
       let query = supabase
@@ -360,7 +439,7 @@ ${composition ? `Состав: "${composition}"` : ''}
         .order("created_at", { ascending: false })
         .range(offset, offset + limit - 1)
 
-      if (error) throw error
+      if (error) return jsonResponse({ error: error.message }, 500, corsHeaders)
 
       // Get images, links and related products for each product
       const productIds = data?.map(p => p.id) || []
@@ -416,10 +495,7 @@ ${composition ? `Состав: "${composition}"` : ''}
         .single()
 
       if (error) {
-        return new Response(
-          JSON.stringify({ error: error.message }),
-          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
-        )
+        return jsonResponse({ error: error.message }, 500, corsHeaders)
       }
 
       if (Array.isArray(images) && images.length > 0) {
@@ -473,10 +549,7 @@ ${composition ? `Состав: "${composition}"` : ''}
         .single()
 
       if (error) {
-        return new Response(
-          JSON.stringify({ error: error.message }),
-          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
-        )
+        return jsonResponse({ error: error.message }, 500, corsHeaders)
       }
 
       if (Array.isArray(images)) {
@@ -523,7 +596,7 @@ ${composition ? `Состав: "${composition}"` : ''}
         .delete()
         .eq("id", productId)
 
-      if (error) throw error
+      if (error) return jsonResponse({ error: error.message }, 500, corsHeaders)
 
       return new Response(
         JSON.stringify({ success: true }),
@@ -541,7 +614,7 @@ ${composition ? `Состав: "${composition}"` : ''}
         .eq("id", categoryId)
         .single()
 
-      if (error) throw error
+      if (error) return jsonResponse({ error: error.message }, 500, corsHeaders)
 
       return new Response(
         JSON.stringify(data),
@@ -556,7 +629,7 @@ ${composition ? `Состав: "${composition}"` : ''}
         .select("*")
         .order("name")
 
-      if (error) throw error
+      if (error) return jsonResponse({ error: error.message }, 500, corsHeaders)
 
       return new Response(
         JSON.stringify(data),
@@ -573,7 +646,7 @@ ${composition ? `Состав: "${composition}"` : ''}
         .select()
         .single()
 
-      if (error) throw error
+      if (error) return jsonResponse({ error: error.message }, 500, corsHeaders)
 
       return new Response(
         JSON.stringify(data),
@@ -593,7 +666,7 @@ ${composition ? `Состав: "${composition}"` : ''}
         .select()
         .single()
 
-      if (error) throw error
+      if (error) return jsonResponse({ error: error.message }, 500, corsHeaders)
 
       return new Response(
         JSON.stringify(data),
@@ -610,7 +683,7 @@ ${composition ? `Состав: "${composition}"` : ''}
         .delete()
         .eq("id", categoryId)
 
-      if (error) throw error
+      if (error) return jsonResponse({ error: error.message }, 500, corsHeaders)
 
       return new Response(
         JSON.stringify({ success: true }),
@@ -628,7 +701,7 @@ ${composition ? `Состав: "${composition}"` : ''}
         .eq("id", brandId)
         .single()
 
-      if (error) throw error
+      if (error) return jsonResponse({ error: error.message }, 500, corsHeaders)
 
       return new Response(
         JSON.stringify(data),
@@ -643,7 +716,7 @@ ${composition ? `Состав: "${composition}"` : ''}
         .select("*")
         .order("name")
 
-      if (error) throw error
+      if (error) return jsonResponse({ error: error.message }, 500, corsHeaders)
 
       return new Response(
         JSON.stringify(data),
@@ -660,7 +733,7 @@ ${composition ? `Состав: "${composition}"` : ''}
         .select()
         .single()
 
-      if (error) throw error
+      if (error) return jsonResponse({ error: error.message }, 500, corsHeaders)
 
       return new Response(
         JSON.stringify(data),
@@ -680,7 +753,7 @@ ${composition ? `Состав: "${composition}"` : ''}
         .select()
         .single()
 
-      if (error) throw error
+      if (error) return jsonResponse({ error: error.message }, 500, corsHeaders)
 
       return new Response(
         JSON.stringify(data),
@@ -697,7 +770,7 @@ ${composition ? `Состав: "${composition}"` : ''}
         .delete()
         .eq("id", brandId)
 
-      if (error) throw error
+      if (error) return jsonResponse({ error: error.message }, 500, corsHeaders)
 
       return new Response(
         JSON.stringify({ success: true }),
@@ -709,13 +782,7 @@ ${composition ? `Состав: "${composition}"` : ''}
     if (req.method === "GET" && path === "/analytics") {
       const period = url.searchParams.get("period") || "month"
 
-      const now = new Date()
-      let dateFilter = now.toISOString()
-      if (period === "day") dateFilter = new Date(now.getTime() - 86400000).toISOString()
-      else if (period === "week") dateFilter = new Date(now.getTime() - 7 * 86400000).toISOString()
-      else if (period === "month") dateFilter = new Date(now.getTime() - 30 * 86400000).toISOString()
-      else if (period === "quarter") dateFilter = new Date(now.getTime() - 90 * 86400000).toISOString()
-      else if (period === "year") dateFilter = new Date(now.getTime() - 365 * 86400000).toISOString()
+      const dateFilter = getDateFilter(period)
 
       // Total stats
       const { data: totalStats, error: totalError } = await supabase
@@ -723,7 +790,11 @@ ${composition ? `Состав: "${composition}"` : ''}
         .select("total", { count: "exact" })
         .gte("created_at", dateFilter)
 
-      if (totalError) throw totalError
+      if (totalError) {
+        structuredLog("error", "Analytics query (total) failed", { error: String(totalError) })
+        return jsonResponse({ error: totalError.message }, 500, corsHeaders)
+      }
+
 
       const totalRevenue = totalStats?.reduce((sum, o) => sum + o.total, 0) || 0
       const totalOrders = totalStats?.length || 0
@@ -734,16 +805,20 @@ ${composition ? `Состав: "${composition}"` : ''}
         .select("items")
         .gte("created_at", dateFilter)
 
-      if (ordersError) throw ordersError
+      if (ordersError) {
+        structuredLog("error", "Analytics query (orders) failed", { error: String(ordersError) })
+        return jsonResponse({ error: ordersError.message }, 500, corsHeaders)
+      }
 
-      const productSales = {}
+      const productSales: Record<string, { name: string; quantity: number; total: number }> = {}
       for (const order of orders || []) {
         for (const item of (order.items || [])) {
-          if (!productSales[item.name]) {
-            productSales[item.name] = { name: item.name, quantity: 0, total: 0 }
+          const key = item.name + "___" + item.price
+          if (!productSales[key]) {
+            productSales[key] = { name: item.name, quantity: 0, total: 0 }
           }
-          productSales[item.name].quantity += item.quantity
-          productSales[item.name].total += item.total
+          productSales[key].quantity += item.quantity
+          productSales[key].total += item.total
         }
       }
 
@@ -758,12 +833,15 @@ ${composition ? `Состав: "${composition}"` : ''}
         .gte("created_at", dateFilter)
         .order("created_at")
 
-      if (dailyError) throw dailyError
+      if (dailyError) {
+        structuredLog("error", "Analytics query (daily) failed", { error: String(dailyError) })
+        return jsonResponse({ error: dailyError.message }, 500, corsHeaders)
+      }
 
       // Group by day
       const dailyStats = {}
       for (const order of dailyData || []) {
-        const day = (order.created_at || "").split("T")[0]
+        const day = formatDay(order.created_at || "")
         if (!dailyStats[day]) {
           dailyStats[day] = { date: day, total: 0, orders: 0 }
         }
@@ -785,17 +863,11 @@ ${composition ? `Состав: "${composition}"` : ''}
     // GET /orders
     if (req.method === "GET" && path === "/orders") {
       const period = url.searchParams.get("period") || "month"
-      const page = parseInt(url.searchParams.get("page") || "1")
-      const limit = parseInt(url.searchParams.get("limit") || "20")
+      const page = safeParseInt(url.searchParams.get("page"), 1)
+      const limit = safeParseInt(url.searchParams.get("limit"), 20)
       const offset = (page - 1) * limit
 
-      const now = new Date()
-      let dateFilter = now.toISOString()
-      if (period === "day") dateFilter = new Date(now.getTime() - 86400000).toISOString()
-      else if (period === "week") dateFilter = new Date(now.getTime() - 7 * 86400000).toISOString()
-      else if (period === "month") dateFilter = new Date(now.getTime() - 30 * 86400000).toISOString()
-      else if (period === "quarter") dateFilter = new Date(now.getTime() - 90 * 86400000).toISOString()
-      else if (period === "year") dateFilter = new Date(now.getTime() - 365 * 86400000).toISOString()
+      const dateFilter = getDateFilter(period)
 
       const { data, error, count } = await supabase
         .from("orders_analytics")
@@ -804,7 +876,7 @@ ${composition ? `Состав: "${composition}"` : ''}
         .order("created_at", { ascending: false })
         .range(offset, offset + limit - 1)
 
-      if (error) throw error
+      if (error) return jsonResponse({ error: error.message }, 500, corsHeaders)
 
       return new Response(
         JSON.stringify({ data, total: count }),
@@ -821,7 +893,7 @@ ${composition ? `Состав: "${composition}"` : ''}
         .delete()
         .eq("id", orderId)
 
-      if (error) throw error
+      if (error) return jsonResponse({ error: error.message }, 500, corsHeaders)
 
       return new Response(
         JSON.stringify({ success: true }),
@@ -873,8 +945,8 @@ ${composition ? `Состав: "${composition}"` : ''}
       })
       await Promise.all([...categoryPromises, ...brandPromises])
 
-      const skuProducts: any[] = []
-      const noSkuProducts: any[] = []
+      const skuProducts: ImportedProductRow[] = []
+      const noSkuProducts: ImportedProductRow[] = []
 
       for (const p of excelProducts) {
         let categoryName = p.category || ''
@@ -885,7 +957,7 @@ ${composition ? `Состав: "${composition}"` : ''}
         const categoryId = categoryName ? categoryMap[categoryName] || null : null
         const brandId = p.brand ? brandMap[p.brand] || null : null
 
-        const productData: any = {
+        const productData: ImportedProductRow = {
           name: p.name,
           description: p.description || "",
           full_description: p.full_description || "",
@@ -895,17 +967,17 @@ ${composition ? `Состав: "${composition}"` : ''}
           contraindications: p.contraindications || "",
           category_id: categoryId,
           brand_id: brandId,
-          price: parseInt(p.price) || 0,
-          old_price: p.old_price ? parseInt(p.old_price) : null,
-          stock: parseInt(p.stock) || 0,
+          price: Number(p.price) || 0,
+          old_price: p.old_price ? Number(p.old_price) || null : null,
+          stock: Number(p.stock) || 0,
           volume: p.volume || "",
           sku: p.sku || null,
           barcode: p.barcode || null,
-          is_hit: p.is_hit === true || p.is_hit === "TRUE" || p.is_hit === "true" || p.is_hit === 1 || p.is_hit === "1",
-          is_new: p.is_new === true || p.is_new === "TRUE" || p.is_new === "true" || p.is_new === 1 || p.is_new === "1",
-          is_discount: p.is_discount === true || p.is_discount === "TRUE" || p.is_discount === "true" || p.is_discount === 1 || p.is_discount === "1",
+          is_hit: parseBoolean(p.is_hit),
+          is_new: parseBoolean(p.is_new),
+          is_discount: parseBoolean(p.is_discount),
           shelf_life: p.shelf_life || "",
-          is_visible: p.is_visible === true || p.is_visible === "TRUE" || p.is_visible === "true" || p.is_visible === 1 || p.is_visible === "1"
+          is_visible: parseBoolean(p.is_visible)
         }
 
         if (p.sku && p.sku.trim() !== '') {
@@ -916,11 +988,11 @@ ${composition ? `Состав: "${composition}"` : ''}
       }
 
       const existingSkuSet = new Set<string>()
-      const existingSkuMap: Record<string, any> = {}
+      const existingSkuMap: Record<string, ProductRow> = {}
 
       if (skuProducts.length > 0) {
         const allSkus = skuProducts.map(p => p.sku).filter(Boolean)
-        const BATCH_SIZE = 300
+        const BATCH_SIZE = IMPORT_CONSTANTS.SKU_BATCH_SIZE
         for (let i = 0; i < allSkus.length; i += BATCH_SIZE) {
           const batch = allSkus.slice(i, i + BATCH_SIZE)
           const { data: existing } = await supabase.from("products").select("id,sku").in("sku", batch)
@@ -933,8 +1005,8 @@ ${composition ? `Состав: "${composition}"` : ''}
         }
       }
 
-      const existingSkuProducts: any[] = []
-      const newSkuProducts: any[] = []
+      const existingSkuProducts: ExistingSkuProduct[] = []
+      const newSkuProducts: ImportedProductRow[] = []
 
       for (const p of skuProducts) {
         if (existingSkuSet.has(p.sku)) {
@@ -944,11 +1016,11 @@ ${composition ? `Состав: "${composition}"` : ''}
         }
       }
 
-      const UPDATE_BATCH = 50
+      const UPDATE_BATCH = IMPORT_CONSTANTS.UPDATE_BATCH
       for (let i = 0; i < existingSkuProducts.length; i += UPDATE_BATCH) {
         const batch = existingSkuProducts.slice(i, i + UPDATE_BATCH)
         await Promise.all(batch.map(async ({ data: p, prev }) => {
-          const updateData: any = {}
+          const updateData: Partial<ImportedProductRow> = {}
           const fields = [
             "name", "description", "full_description", "composition",
             "dosage", "usage", "contraindications", "price", "old_price",
@@ -971,7 +1043,7 @@ ${composition ? `Состав: "${composition}"` : ''}
       }
 
       if (newSkuProducts.length > 0) {
-        const INSERT_BATCH = 50
+        const INSERT_BATCH = IMPORT_CONSTANTS.INSERT_BATCH
         for (let i = 0; i < newSkuProducts.length; i += INSERT_BATCH) {
           const batch = newSkuProducts.slice(i, i + INSERT_BATCH)
           const { data: inserted, error: insertError } = await supabase.from("products").insert(batch).select()
@@ -986,7 +1058,7 @@ ${composition ? `Состав: "${composition}"` : ''}
       }
 
       if (noSkuProducts.length > 0) {
-        const INSERT_BATCH = 50
+        const INSERT_BATCH = IMPORT_CONSTANTS.INSERT_BATCH
         for (let i = 0; i < noSkuProducts.length; i += INSERT_BATCH) {
           const batch = noSkuProducts.slice(i, i + INSERT_BATCH)
           const { error: insertError } = await supabase.from("products").insert(batch)
@@ -994,10 +1066,6 @@ ${composition ? `Состав: "${composition}"` : ''}
             results.errors.push({ row: i + 1, error: insertError.message })
           }
         }
-      }
-
-      for (const p of newSkuProducts) {
-        createdProducts.push({ sku: p.sku, name: p.name })
       }
 
       results.success = createdProducts.length + updatedProducts.length
@@ -1029,7 +1097,7 @@ ${composition ? `Состав: "${composition}"` : ''}
         .select("*, categories(name), brands(name)")
         .order("name")
 
-      if (error) throw error
+      if (error) return jsonResponse({ error: error.message }, 500, corsHeaders)
 
       return new Response(
         JSON.stringify(products),
@@ -1040,7 +1108,7 @@ ${composition ? `Состав: "${composition}"` : ''}
     // GET /backup
     if (req.method === "GET" && path === "/backup") {
       const tables = ["categories", "brands", "products", "product_images", "product_links", "settings", "orders_analytics", "order_counter"]
-      const backup = {}
+      const backup: Record<string, unknown> = {}
 
       for (const table of tables) {
         const { data, error } = await supabase
@@ -1068,10 +1136,17 @@ ${composition ? `Состав: "${composition}"` : ''}
       try {
         const { data, error } = await supabase.rpc("generate_sql_dump")
 
-        if (error) throw error
+        if (error) {
+          structuredLog("error", "Backup SQL error", { error: String(error) })
+          return jsonResponse({ error: error.message }, 500, corsHeaders)
+        }
+
+        if (typeof data !== "string") {
+          return jsonResponse({ error: "SQL-дамп временно недоступен. Используйте JSON-дамп." }, 500, corsHeaders)
+        }
 
         return new Response(
-          data as string,
+          data,
           {
             headers: {
               "Content-Type": "application/sql",
@@ -1080,7 +1155,7 @@ ${composition ? `Состав: "${composition}"` : ''}
           }
         )
       } catch (sqlError) {
-        console.error("SQL backup error:", sqlError)
+        structuredLog("error", "SQL backup error", { error: String(sqlError) })
         return new Response(
           JSON.stringify({ error: "SQL-дамп временно недоступен. Используйте JSON-дампа." }),
           { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -1090,16 +1165,13 @@ ${composition ? `Состав: "${composition}"` : ''}
 
     // Health check
     if (req.method === "GET" && path === "/health") {
-      return new Response(
-        JSON.stringify({ status: "ok", timestamp: new Date().toISOString() }),
-        { headers: { "Content-Type": "application/json", ...corsHeaders } }
-      )
+      return healthResponse(corsHeaders)
     }
 
     // POST /generate-descriptions
     if (req.method === "POST" && path === "/generate-descriptions") {
       const body = await req.json()
-      const apiKey = body.apiKey || ''
+      const apiKey = Deno.env.get("GEMINI_API_KEY") || body.apiKey || ''
 
       if (!apiKey) {
         return new Response(
@@ -1113,7 +1185,10 @@ ${composition ? `Состав: "${composition}"` : ''}
         .select("id, name, volume, composition, brands(name)")
         .or("full_description.is.null,full_description.eq.")
 
-      if (productsError) throw productsError
+      if (productsError) {
+        structuredLog("error", "Generate descriptions query failed", { error: String(productsError) })
+        return jsonResponse({ error: productsError.message }, 500, corsHeaders)
+      }
 
       if (!products || products.length === 0) {
         return new Response(
@@ -1122,8 +1197,8 @@ ${composition ? `Состав: "${composition}"` : ''}
         )
       }
 
-      const CHUNK_SIZE = 30
-      const chunks: any[][] = []
+      const CHUNK_SIZE = IMPORT_CONSTANTS.CHUNK_SIZE
+      const chunks: ProductRow[][] = []
       for (let i = 0; i < products.length; i += CHUNK_SIZE) {
         chunks.push(products.slice(i, i + CHUNK_SIZE))
       }
@@ -1133,7 +1208,7 @@ ${composition ? `Состав: "${composition}"` : ''}
 
       for (let c = 0; c < chunks.length; c++) {
         const chunk = chunks[c]
-        console.log(`Processing chunk ${c + 1}/${chunks.length}, ${chunk.length} products`)
+        structuredLog("info", `Processing chunk ${c + 1}/${chunks.length}, ${chunk.length} products`)
 
         for (const product of chunk) {
           try {
@@ -1153,25 +1228,25 @@ ${composition ? `Состав: "${composition}"` : ''}
 
               if (updateError) {
                 totalError++
-                console.error(`Failed to update product ${product.id}:`, updateError)
+                structuredLog("error", `Failed to update product ${product.id}`, { error: String(updateError) })
               } else {
                 totalSuccess++
-                console.log(`✓ Generated description for: ${product.name}`)
+                structuredLog("info", `✓ Generated description for: ${product.name}`)
               }
             } else {
               totalError++
-              console.warn(`✗ Failed to generate description for: ${product.name}`)
+              structuredLog("warn", `✗ Failed to generate description for: ${product.name}`)
             }
           } catch (err) {
             totalError++
-            console.error(`Error generating description for product ${product.id}:`, err)
+            structuredLog("error", `Error generating description for product ${product.id}`, { error: String(err) })
           }
 
-          await new Promise(r => setTimeout(r, 300))
+          await new Promise(r => setTimeout(r, GEMINI_DEFAULTS.requestDelayMs))
         }
 
         if (chunks.length > 1 && c < chunks.length - 1) {
-          await new Promise(r => setTimeout(r, 2000))
+          await new Promise(r => setTimeout(r, GEMINI_DEFAULTS.chunkDelayMs))
         }
       }
 
@@ -1187,7 +1262,7 @@ ${composition ? `Состав: "${composition}"` : ''}
     )
 
   } catch (error) {
-    console.error("Admin API error:", error)
+    structuredLog("error", "Admin API error", { error: String(error) })
     return new Response(
       JSON.stringify({ error: "Внутренняя ошибка сервера" }),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }

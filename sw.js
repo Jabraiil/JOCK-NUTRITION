@@ -1,5 +1,4 @@
-const CACHE_VERSION = 'jack-nutrition-v42-2026-08-20'
-const BASE_PATH = self.location.pathname.replace(/\/sw\.js$/, '').replace(/\/$/, '') + '/'
+const CACHE_VERSION = 'jock-nutrition-v42-2026-08-20'
 const PRECACHE_URLS = [
     'index.html',
     'offline.html',
@@ -16,23 +15,13 @@ const PRECACHE_URLS = [
     'assets/icons/favicon-16x16.png',
     'assets/icons/favicon-32x32.png',
     'assets/icons/apple-touch-icon.png',
-    'icons/apple-touch-icon.svg',
-    'icons/icon-192.svg',
-    'icons/icon-512.svg',
-    'icons/favicon.svg',
     'admin/styles.css',
     'admin/app.js?v=37',
     'admin/index.html',
     'sitemap.xml'
 ]
 
-const CACHE_STRATEGIES = {
-    images: 'cache-first',
-    fonts: 'cache-first',
-    api: 'network-first',
-    pages: 'stale-while-revalidate',
-    static: 'cache-first'
-}
+const isLocalhost = self.location.hostname === 'localhost'
 
 function cacheName(type) {
     return `${type}-${CACHE_VERSION}`
@@ -62,20 +51,20 @@ async function precache() {
     const results = await Promise.allSettled(
         PRECACHE_URLS.map(url =>
             cache.add(url).catch(err => {
-                console.warn('Precache failed for', url, err)
+                if (isLocalhost) console.warn('Precache failed for', url, err)
             })
         )
     )
     const failed = results.filter(r => r.status === 'rejected').length
     if (failed > 0) {
-        console.warn(`Precache: ${failed} resources failed to cache`)
+        if (isLocalhost) console.warn(`Precache: ${failed} resources failed to cache`)
     }
 }
 
 async function cleanOldCaches() {
     try {
         const keys = await caches.keys()
-        const currentPrefixes = ['images', 'api', 'pages', 'static'].map(
+        const currentPrefixes = ['images', 'api', 'pages', 'static', 'fonts'].map(
             type => `${type}-${CACHE_VERSION}`
         )
         await Promise.all(
@@ -84,7 +73,7 @@ async function cleanOldCaches() {
                 .map(key => caches.delete(key))
         )
     } catch (e) {
-        console.warn('cleanOldCaches failed:', e)
+        if (isLocalhost) console.warn('cleanOldCaches failed:', e)
     }
 }
 
@@ -92,7 +81,7 @@ self.addEventListener('install', (event) => {
     event.waitUntil(
         precache()
             .then(() => self.skipWaiting())
-            .catch(err => console.warn('Precache failed, skipping skipWaiting:', err))
+            .catch(err => { if (isLocalhost) console.warn('Precache failed, skipping skipWaiting:', err) })
     )
 })
 
@@ -126,7 +115,7 @@ self.addEventListener('fetch', (event) => {
                         try {
                             const cache = await caches.open(cacheName('api'))
                             cache.put(request, response.clone())
-                        } catch (e) { /* quota exceeded */ }
+                        } catch (e) { if (isLocalhost) console.warn('Cache put failed:', e) }
                     }
                     return response
                 })
@@ -153,10 +142,10 @@ self.addEventListener('fetch', (event) => {
                         const response = await fetch(request)
                         if (response && response.status === 200) {
                             try {
-                                const type = isImage(url) ? 'images' : 'fonts'
-                                const cache = await caches.open(cacheName(type))
-                                cache.put(request, response.clone())
-                            } catch (e) { /* quota exceeded */ }
+                            const type = isImage(url) ? 'images' : 'fonts'
+                            const cache = await caches.open(cacheName(type))
+                            cache.put(request, response.clone())
+                        } catch (e) { if (isLocalhost) console.warn('Cache put failed:', e) }
                         }
                         return response
                     } catch (err) {
@@ -209,7 +198,7 @@ self.addEventListener('fetch', (event) => {
                         try {
                             const cache = await caches.open(cacheName('static'))
                             cache.put(request, response.clone())
-                        } catch (e) { /* quota exceeded */ }
+                        } catch (e) { if (isLocalhost) console.warn('Cache put failed:', e) }
                     }
                     return response
                 } catch (err) {

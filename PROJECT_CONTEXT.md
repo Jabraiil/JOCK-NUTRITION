@@ -34,7 +34,7 @@
 - В проекте используется реальный `anon key`, он прописан в `app.js` и `admin/app.js`
 - Обе Edge Functions развёрнуты, `create-order` имеет рабочий эндпоинт `/health`
 - В репозитории есть `.nojekyll` для отключения Jekyll на GitHub Pages
-- Service Worker версия: `jock-nutrition-v40-2026-08-10`
+- Service Worker версия: `jock-nutrition-v42-2026-08-10`
 - `manifest.json` cache bust: `2026-08-10-v6`
 - `index.html` deploy marker: `2026-08-10-v6`
 - Версии статики в query params: `styles.css?v=38`, `app.js?v=39`

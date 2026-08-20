@@ -1,68 +1,90 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import {
+  getCorsHeaders,
+  normalizePath,
+  jsonResponse,
+  structuredLog,
+  healthResponse,
+  safeParseInt,
+} from "../_shared/index.ts"
+
+interface OrderItem {
+  name: string
+  quantity: number
+  price: number
+  total: number
+}
+
+interface CreateOrderSettings {
+  order_time_limit_enabled?: string
+  order_start_hour?: string
+  order_end_hour?: string
+  timezone?: string
+  store_name?: string
+  currency?: string
+  whatsapp_number?: string
+  whatsapp_business_number?: string
+  order_error_code?: string
+}
+
+const ADMIN_ROUTE_PREFIX = "/create-order"
 
 serve(async (req) => {
-  const origin = req.headers.get("origin") || ""
-  const allowedOrigins = [
-      "https://jabraiil.github.io",
-      "https://jabraiil.github.io/JOCK-NUTRITION"
-  ]
-  const corsHeaders = {
-      "Access-Control-Allow-Origin": allowedOrigins.includes(origin) ? origin : allowedOrigins[0],
-      "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Max-Age": "86400"
-  }
+  const corsHeaders = getCorsHeaders(req.headers.get("origin"))
 
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders })
   }
 
   const url = new URL(req.url)
-  let path = url.pathname
-
-  if (path.startsWith('/functions/v1/create-order')) {
-    path = path.replace('/functions/v1/create-order', '')
-  } else if (path.startsWith('/create-order')) {
-    path = path.replace('/create-order', '')
-  }
+  const path = normalizePath(url.pathname, ADMIN_ROUTE_PREFIX)
 
   if (req.method === "GET" && path === "/health") {
-    return new Response(
-      JSON.stringify({ status: "ok", timestamp: new Date().toISOString() }),
-      { headers: { "Content-Type": "application/json", ...corsHeaders } }
+    return healthResponse(corsHeaders)
+  }
+
+  if (req.method !== "POST") {
+    return jsonResponse(
+      { error: "Method Not Allowed" },
+      405,
+      corsHeaders,
     )
   }
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
-    
+
     if (!supabaseUrl || !supabaseServiceKey) {
-      return new Response(
-        JSON.stringify({ error: "Server misconfigured" }),
-        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      structuredLog("error", "Server misconfigured", { supabaseUrl: !!supabaseUrl, supabaseServiceKey: !!supabaseServiceKey })
+      return jsonResponse(
+        { error: "Server misconfigured" },
+        500,
+        corsHeaders,
       )
     }
-    
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     let body
     try {
       body = await req.json()
     } catch {
-      return new Response(
-        JSON.stringify({ error: "Invalid JSON" }),
-        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      return jsonResponse(
+        { error: "Invalid JSON" },
+        400,
+        corsHeaders,
       )
     }
-    
+
     const { cart, whatsappAccountType = 'personal' } = body
 
     if (!cart || !Array.isArray(cart) || cart.length === 0) {
-      return new Response(
-        JSON.stringify({ error: "Корзина пуста" }),
-        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      return jsonResponse(
+        { error: "Корзина пуста" },
+        400,
+        corsHeaders,
       )
     }
 
@@ -71,44 +93,50 @@ serve(async (req) => {
       .select("key, value")
 
     if (settingsError) {
-      console.error("Settings error:", settingsError)
+      structuredLog("error", "Settings error", { error: settingsError.message })
     }
 
-    const settingsMap = {}
+    const settingsMap: CreateOrderSettings = {}
     if (settings) {
       for (const s of settings) {
-        settingsMap[s.key] = s.value
+        settingsMap[s.key as keyof CreateOrderSettings] = s.value
       }
     }
 
     const timeLimitEnabled = settingsMap.order_time_limit_enabled === "true"
     if (timeLimitEnabled) {
-      const startHour = parseInt(settingsMap.order_start_hour || "9")
-      const endHour = parseInt(settingsMap.order_end_hour || "20")
+      const startHour = safeParseInt(settingsMap.order_start_hour, 9)
+      const endHour = safeParseInt(settingsMap.order_end_hour, 20)
       const now = new Date()
       const timezone = settingsMap.timezone || "Europe/Moscow"
       const options = { timeZone: timezone, hour: "numeric", hour12: false }
       const formatter = new Intl.DateTimeFormat("ru-RU", options)
-      const currentHour = parseInt(formatter.format(now))
+      const currentHour = safeParseInt(formatter.format(now))
       if (currentHour < startHour || currentHour >= endHour) {
-        return new Response(
-          JSON.stringify({ error: "Заказы принимаются с 9:00 до 20:00.", time_restricted: true }),
-          { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        return jsonResponse(
+          { error: `Заказы принимаются с ${startHour}:00 до ${endHour}:00.`, time_restricted: true },
+          403,
+          corsHeaders,
         )
       }
     }
 
-    const productIds = cart.map(item => Number(item.id))
+    const validCart = cart.filter((item: { id: unknown }) => {
+      const id = Number(item.id)
+      return !Number.isNaN(id)
+    })
+    const productIds = validCart.map((item: { id: unknown }) => Number(item.id))
     const { data: products, error: productsError } = await supabase
       .from("products")
       .select("id, name, price, stock, is_visible, volume, dosage, brands(name)")
       .in("id", productIds)
 
     if (productsError) {
-      console.error("Products error:", productsError)
-      return new Response(
-        JSON.stringify({ error: "Ошибка проверки товаров" }),
-        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      structuredLog("error", "Products error", { error: productsError.message })
+      return jsonResponse(
+        { error: "Ошибка проверки товаров" },
+        500,
+        corsHeaders,
       )
     }
 
@@ -117,13 +145,13 @@ serve(async (req) => {
       productMap[p.id] = p
     }
 
-    const orderItems = []
+    const orderItems: OrderItem[] = []
     let total = 0
     let hasError = false
     let errorCode = ""
 
     for (const cartItem of cart) {
-      const product = productMap[cartItem.id]
+      const product = productMap[String(cartItem.id)]
       if (!product || !product.is_visible) {
         hasError = true
         errorCode = settingsMap.order_error_code || "[!CHECK!]"
@@ -140,9 +168,10 @@ serve(async (req) => {
     }
 
     if (orderItems.length === 0) {
-      return new Response(
-        JSON.stringify({ error: "Нет доступных товаров" }),
-        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      return jsonResponse(
+        { error: "Нет доступных товаров" },
+        400,
+        corsHeaders,
       )
     }
 
@@ -153,10 +182,11 @@ serve(async (req) => {
       .single()
 
     if (counterError || !counter) {
-      console.error("Counter error:", counterError)
-      return new Response(
-        JSON.stringify({ error: "Ошибка генерации номера" }),
-        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      structuredLog("error", "Counter error", { error: counterError?.message })
+      return jsonResponse(
+        { error: "Ошибка генерации номера" },
+        500,
+        corsHeaders,
       )
     }
 
@@ -180,13 +210,20 @@ serve(async (req) => {
       .single()
 
     if (updateCounterError || !updatedCounter) {
-      console.error("Counter update error:", updateCounterError)
-      return new Response(
-        JSON.stringify({ error: "Ошибка генерации номера заказа" }),
-        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      structuredLog("error", "Counter update error", { error: updateCounterError?.message })
+      return jsonResponse(
+        { error: "Ошибка генерации номера заказа" },
+        500,
+        corsHeaders,
       )
     }
-    await supabase.from("orders_analytics").insert({ order_number: orderNumber, items: orderItems, total })
+
+    const { error: analyticsError } = await supabase
+      .from("orders_analytics").insert({ order_number: orderNumber, items: orderItems, total })
+
+    if (analyticsError) {
+      structuredLog("error", "Analytics insert error", { error: analyticsError.message, orderNumber })
+    }
 
     const storeName = settingsMap.store_name || "JOCK NUTRITION"
     const currency = settingsMap.currency || "₽"
@@ -208,16 +245,18 @@ serve(async (req) => {
       : settingsMap.whatsapp_number?.replace(/\D/g, "") || ""
     const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`
 
-    return new Response(
-      JSON.stringify({ success: true, orderNumber, total, items: orderItems, whatsappUrl, hasError, errorCode }),
-      { headers: { "Content-Type": "application/json", ...corsHeaders } }
+    return jsonResponse(
+      { success: true, orderNumber, total, items: orderItems, whatsappUrl, hasError, errorCode },
+      200,
+      corsHeaders,
     )
 
   } catch (error) {
-    console.error("Unexpected error:", error)
-    return new Response(
-      JSON.stringify({ error: "Внутренняя ошибка" }),
-      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+    structuredLog("error", "Unexpected error", { error: String(error) })
+    return jsonResponse(
+      { error: "Внутренняя ошибка" },
+      500,
+      corsHeaders,
     )
   }
 })

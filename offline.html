@@ -112,7 +112,10 @@
         </div>
         <h1>Нет подключения</h1>
         <p>Проверьте интернет-соединение и попробуйте снова. Некоторые данные могут быть доступны из кеша.</p>
-        <button class="btn" onclick="window.location.reload()">Попробовать снова</button>
+        <button class="btn" id="retryBtn">Попробовать снова</button>
     </div>
+    <script>
+        document.getElementById('retryBtn').addEventListener('click', () => window.location.reload())
+    </script>
 </body>
 </html>

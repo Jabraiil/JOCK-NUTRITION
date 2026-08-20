@@ -1,8 +1,7 @@
 const CONFIG = {
     supabaseUrl: 'https://hpphfeojjejculvdundj.supabase.co',
     supabaseAnonKey: 'sb_publishable_1EGpjPEw9gU2W5OKL-gFIQ_x4Gvger1',
-    orderFunctionUrl: 'https://hpphfeojjejculvdundj.supabase.co/functions/v1/create-order',
-    adminApiUrl: 'https://hpphfeojjejculvdundj.supabase.co/functions/v1/admin-api'
+    orderFunctionUrl: 'https://hpphfeojjejculvdundj.supabase.co/functions/v1/create-order'
 }
 
 async function fetchWithTimeout(url, options = {}, timeout = 15000) {
@@ -98,6 +97,8 @@ const apiCache = {
 }
 
 let initialized = false
+let checkOrderTimeInterval = null
+let swUpdateInterval = null
 
 function resetFilterState() {
     favoritesOnly = false
@@ -135,12 +136,12 @@ function init() {
     try {
         applyTheme()
         resetFilterState()
-        loadSettings().catch(console.error)
-        loadProducts().catch(console.error)
+        loadSettings().catch(e => console.error('loadSettings failed:', e))
+        loadProducts().catch(e => console.error('loadProducts failed:', e))
         updateCartCount()
         setupEventListeners()
         checkOrderTime()
-        setInterval(checkOrderTime, 60000)
+        checkOrderTimeInterval = setInterval(checkOrderTime, 60000)
         checkCookieConsent()
         setupOfflineListener()
         window.addEventListener('resize', invalidateScanCropCache)
@@ -216,7 +217,7 @@ function setupEventListeners() {
         if (privacyBackdrop) privacyBackdrop.addEventListener('click', closePrivacyModal)
 
         const searchInput = document.getElementById('searchInput')
-        if (searchInput) searchInput.addEventListener('input', debounce(handleSearch, 300))
+        if (searchInput) searchInput.addEventListener('input', debounce(() => applyFilters(), 300))
 
         const searchClear = document.getElementById('searchClear')
         if (searchClear) searchClear.addEventListener('click', clearSearch)
@@ -417,6 +418,11 @@ function setupEventListeners() {
                     toggleFavorite(favBtn.dataset.id)
                     return
                 }
+                const retryBtn = e.target.closest('.retry-load-products')
+                if (retryBtn) {
+                    loadProducts()
+                    return
+                }
                 const card = e.target.closest('.product-card')
                 if (card) {
                     openProductModal(card.dataset.id)
@@ -455,16 +461,6 @@ function toggleTheme() {
     applyTheme()
 }
 
-function toggleSearch() {
-    const searchBar = document.getElementById('searchBar')
-    if (!searchBar) return
-    searchBar.classList.toggle('hidden')
-    if (!searchBar.classList.contains('hidden')) {
-        const searchInput = document.getElementById('searchInput')
-        if (searchInput) searchInput.focus()
-    }
-}
-
 function handleSearch(e) {
     applyFilters()
 }
@@ -488,9 +484,9 @@ async function loadSettings() {
             }
         })
         if (response.ok) {
-            const settingsRaw = await response.json()
+            const settingsRaw = await response.json().catch(() => [])
             const settings = {}
-            for (const s of settingsRaw) {
+            for (const s of (Array.isArray(settingsRaw) ? settingsRaw : [])) {
                 settings[s.key] = s.value
             }
             window.__storeSettings = settings
@@ -593,10 +589,8 @@ async function loadProducts(reset = true) {
         if (catalog) {
             catalog.innerHTML = `
                 <div class="loading">
-                    <p style="margin-bottom: 12px;">Не удалось загрузить товары.</p>
-                    <button onclick="loadProducts()" class="btn btn-primary" style="padding: 8px 20px; font-size: 14px;">
-                        Попробовать снова
-                    </button>
+                    <p class="loading-error-text">Не удалось загрузить товары.</p>
+                    <button class="btn btn-primary retry-load-products">Попробовать снова</button>
                 </div>
             `
         }
@@ -647,8 +641,10 @@ async function loadFilters() {
             throw new Error(text || 'Ошибка загрузки брендов')
         }
 
-        const categories = await categoriesRes.json()
-        const brands = await brandsRes.json()
+        const categoriesRaw = await categoriesRes.json()
+        const brandsRaw = await brandsRes.json()
+        const categories = Array.isArray(categoriesRaw) ? categoriesRaw : []
+        const brands = Array.isArray(brandsRaw) ? brandsRaw : []
 
         const categorySelect = document.getElementById('categoryFilter')
         if (categorySelect) {
@@ -784,6 +780,39 @@ function appendProducts(products) {
 
 const initializedSliderTracks = new WeakSet()
 
+function initSlider(track, dots) {
+    if (!track) return
+    const count = parseInt(track.dataset.count || '1', 10)
+    if (count <= 1) {
+        track.style.overflowX = 'hidden'
+        return
+    }
+    if (!dots || !dots.length) return
+
+    const updateDots = () => {
+        const scrollLeft = track.scrollLeft
+        const width = track.clientWidth
+        if (width === 0) return
+        const index = Math.round(scrollLeft / width)
+        dots.forEach((dot, i) => {
+            dot.classList.toggle('active', i === index)
+        })
+    }
+
+    track.addEventListener('scroll', updateDots, { passive: true })
+
+    dots.forEach(dot => {
+        dot.addEventListener('click', (e) => {
+            e.stopPropagation()
+            const index = parseInt(dot.dataset.index, 10)
+            const width = track.clientWidth
+            if (width > 0) {
+                track.scrollTo({ left: width * index, behavior: 'smooth' })
+            }
+        })
+    })
+}
+
 function initProductSliders() {
     const tracks = document.querySelectorAll('.slider-track')
     if (!tracks.length) return
@@ -792,39 +821,10 @@ function initProductSliders() {
         if (initializedSliderTracks.has(track)) return
         initializedSliderTracks.add(track)
 
-        const count = parseInt(track.dataset.count || '1', 10)
-        if (count <= 1) {
-            track.style.overflowX = 'hidden'
-            return
-        }
-
         const wrap = track.closest('.product-image-wrap')
         if (!wrap) return
         const dots = wrap.querySelectorAll('.slider-dot')
-        if (!dots.length) return
-
-        const updateDots = () => {
-            const scrollLeft = track.scrollLeft
-            const width = track.clientWidth
-            if (width === 0) return
-            const index = Math.round(scrollLeft / width)
-            dots.forEach((dot, i) => {
-                dot.classList.toggle('active', i === index)
-            })
-        }
-
-        track.addEventListener('scroll', updateDots, { passive: true })
-
-        dots.forEach(dot => {
-            dot.addEventListener('click', (e) => {
-                e.stopPropagation()
-                const index = parseInt(dot.dataset.index, 10)
-                const width = track.clientWidth
-                if (width > 0) {
-                    track.scrollTo({ left: width * index, behavior: 'smooth' })
-                }
-            })
-        })
+        initSlider(track, dots)
     })
 }
 
@@ -904,6 +904,45 @@ function createProductCard(product) {
     `
 }
 
+function getRelatedProductsHtml(product) {
+    const explicitIds = (relatedMap || [])
+        .filter(rel => rel.product_id === product.id)
+        .map(rel => rel.related_id)
+
+    let relatedIds = explicitIds
+    if (relatedIds.length === 0 && product.is_related_enabled) {
+        relatedIds = allProducts
+            .filter(p => p.id !== product.id &&
+                (p.category_id === product.category_id || p.brand_id === product.brand_id))
+            .map(p => p.id)
+    }
+
+    const related = relatedIds
+        .map(id => allProducts.find(p => p.id === id))
+        .filter(Boolean)
+        .slice(0, 4)
+
+    if (!related.length) return ''
+    return `
+        <div class="modal-related">
+            <h3>Связанные товары</h3>
+            <div class="related-grid">
+                ${related.map(r => {
+                    const rImg = r.product_images?.find(i => i.is_main) || r.product_images?.[0]
+                    const rUrl = rImg?.url || ''
+                    return `
+                        <button class="related-card" data-id="${escapeHtml(String(r.id))}">
+                            ${rUrl ? `<img src="${escapeHtml(rUrl)}" alt="${escapeHtml(r.name)}" loading="lazy" decoding="async" width="400" height="533">` : ''}
+                            <div class="related-name">${escapeHtml(r.name)}</div>
+                            <div class="related-price">${r.price} ₽</div>
+                        </button>
+                    `
+                }).join('')}
+            </div>
+        </div>
+    `
+}
+
 
 function openProductModal(productId) {
     const product = allProducts.find(p => String(p.id) === String(productId))
@@ -921,18 +960,14 @@ function openProductModal(productId) {
         ? Math.round((1 - product.price / product.old_price) * 100)
         : 0
     modalBody.innerHTML = `
-        ${(() => {
-            return `
-                <div class="modal-image-wrap">
-                    <div class="modal-slider-track" data-count="${images.length}">
-                        ${images.map((img, idx) => `<img class="modal-slider-img" src="${escapeHtml(img.url)}" alt="${escapeHtml(product.name)}" loading="lazy" decoding="async" width="800" height="1067">`).join('')}
-                    </div>
-                    <div class="modal-slider-dots" data-count="${images.length}">
-                        ${images.map((_, idx) => `<button class="modal-slider-dot${idx === currentImageIndex ? ' active' : ''}" data-index="${idx}" aria-label="Фото ${idx + 1}"></button>`).join('')}
-                    </div>
-                </div>
-            `
-        })()}
+        <div class="modal-image-wrap">
+            <div class="modal-slider-track" data-count="${images.length}">
+                ${images.map((img, idx) => `<img class="modal-slider-img" src="${escapeHtml(img.url)}" alt="${escapeHtml(product.name)}" loading="lazy" decoding="async" width="800" height="1067">`).join('')}
+            </div>
+            <div class="modal-slider-dots" data-count="${images.length}">
+                ${images.map((_, idx) => `<button class="modal-slider-dot${idx === currentImageIndex ? ' active' : ''}" data-index="${idx}" aria-label="Фото ${idx + 1}"></button>`).join('')}
+            </div>
+        </div>
         <div class="modal-brand">${escapeHtml(product.brands?.name || 'JOCK NUTRITION')}</div>
         <h2>${escapeHtml(cleanProductName(product.name, product.brands?.name))}</h2>
         <div class="modal-volume">${escapeHtml(product.volume || '')}</div>
@@ -985,44 +1020,7 @@ function openProductModal(productId) {
             </div>
         ` : ''}
 
-        ${(() => {
-            const explicitIds = (relatedMap || [])
-                .filter(rel => rel.product_id === product.id)
-                .map(rel => rel.related_id)
-
-            let relatedIds = explicitIds
-            if (relatedIds.length === 0 && product.is_related_enabled) {
-                relatedIds = allProducts
-                    .filter(p => p.id !== product.id &&
-                        (p.category_id === product.category_id || p.brand_id === product.brand_id))
-                    .map(p => p.id)
-            }
-
-            const related = relatedIds
-                .map(id => allProducts.find(p => p.id === id))
-                .filter(Boolean)
-                .slice(0, 4)
-
-            if (!related.length) return ''
-            return `
-                <div class="modal-related">
-                    <h3>Связанные товары</h3>
-                    <div class="related-grid">
-                        ${related.map(r => {
-                            const rImg = r.product_images?.find(i => i.is_main) || r.product_images?.[0]
-                            const rUrl = rImg?.url || ''
-                            return `
-                                <button class="related-card" data-id="${escapeHtml(String(r.id))}">
-                                    ${rUrl ? `<img src="${escapeHtml(rUrl)}" alt="${escapeHtml(r.name)}" loading="lazy" decoding="async" width="400" height="533">` : ''}
-                                    <div class="related-name">${escapeHtml(r.name)}</div>
-                                    <div class="related-price">${r.price} ₽</div>
-                                </button>
-                            `
-                        }).join('')}
-                    </div>
-                </div>
-            `
-        })()}
+        ${getRelatedProductsHtml(product)}
 
         <button class="btn btn-primary btn-block add-to-cart-modal" data-id="${escapeHtml(String(product.id))}">
             Выбрать
@@ -1046,38 +1044,7 @@ function openProductModal(productId) {
     const track = modalBody.querySelector('.modal-slider-track')
     const dots = modalBody.querySelectorAll('.modal-slider-dot')
 
-    if (!track) return
-
-    const count = parseInt(track.dataset.count || '1', 10)
-    if (count <= 1) {
-        track.style.overflowX = 'hidden'
-        return
-    }
-
-    if (!dots.length) return
-
-    const updateDots = () => {
-        const scrollLeft = track.scrollLeft
-        const width = track.clientWidth
-        if (width === 0) return
-        const index = Math.round(scrollLeft / width)
-        dots.forEach((dot, i) => {
-            dot.classList.toggle('active', i === index)
-        })
-    }
-
-    track.addEventListener('scroll', updateDots, { passive: true })
-
-    dots.forEach(dot => {
-        dot.addEventListener('click', (e) => {
-            e.stopPropagation()
-            const index = parseInt(dot.dataset.index, 10)
-            const width = track.clientWidth
-            if (width > 0) {
-                track.scrollTo({ left: width * index, behavior: 'smooth' })
-            }
-        })
-    })
+    initSlider(track, dots)
 
     const productModal = document.getElementById('productModal')
     if (productModal) productModal.classList.remove('hidden')
@@ -1281,7 +1248,7 @@ function renderCart() {
     if (!cartItems || !cartTotal || !checkoutBtn) return
 
     if (cart.length === 0) {
-        cartItems.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 20px;">Ваш выбор пуст</p>'
+        cartItems.innerHTML = '<p class="cart-empty-text">Ваш выбор пуст</p>'
         cartTotal.textContent = '0 ₽'
         checkoutBtn.disabled = true
         resetCartCheckoutState()
@@ -1320,22 +1287,6 @@ function renderCart() {
     cartTotal.textContent = `${total} ₽`
 }
 
-function getDeliveryMethodLabel(value) {
-    switch (value) {
-        case 'taxi': return 'Такси'
-        case 'ozon': return 'Ozon Доставка'
-        default: return ''
-    }
-}
-
-function isTaxiMethod(value) {
-    return value === 'taxi'
-}
-
-function isPvzMethod(value) {
-    return value === 'ozon'
-}
-
 function updateDeliveryFields() {
     const method = document.getElementById('deliveryMethod')
     const taxiFields = document.getElementById('taxiFields')
@@ -1345,10 +1296,10 @@ function updateDeliveryFields() {
     if (!method) return
 
     const value = method.value
-    const isTaxi = isTaxiMethod(value)
+    const isTaxi = value === 'taxi'
 
     if (taxiFields) taxiFields.classList.toggle('hidden', !isTaxi)
-    if (pvzFields) pvzFields.classList.toggle('hidden', !isPvzMethod(value))
+    if (pvzFields) pvzFields.classList.toggle('hidden', value !== 'ozon')
     if (ozonPhoneHint) ozonPhoneHint.classList.toggle('hidden', value !== 'ozon')
 
     if (taxiDoorbell) {
@@ -1518,18 +1469,10 @@ function buildWhatsAppMessage(items, total, hasError, errorCode, formData) {
 }
 
 function openWhatsAppUrl(whatsappUrl) {
-    const a = document.createElement('a')
-    a.href = whatsappUrl
-    a.rel = 'noopener noreferrer'
-    a.target = '_blank'
-    document.body.appendChild(a)
     const popup = window.open(whatsappUrl, '_blank', 'noopener,noreferrer')
     if (!popup) {
         location.href = whatsappUrl
     }
-    setTimeout(() => {
-        if (a.parentNode) a.parentNode.removeChild(a)
-    }, 1000)
 }
 
 async function generateWhatsAppSpec() {
@@ -1543,19 +1486,19 @@ async function generateWhatsAppSpec() {
     const phone = (document.getElementById('recipientPhone') || {}).value || ''
     const method = document.getElementById('deliveryMethod')
     const methodValue = method ? method.value : ''
-    const methodLabel = isPickup ? 'Самовывоз' : getDeliveryMethodLabel(methodValue)
+    const methodLabel = isPickup ? 'Самовывоз' : (methodValue === 'taxi' ? 'Такси' : methodValue === 'ozon' ? 'Ozon Доставка' : '')
 
     let address = ''
     if (!isPickup) {
-        if (isTaxiMethod(methodValue)) {
+        if (methodValue === 'taxi') {
             address = (document.getElementById('deliveryAddress') || {}).value || ''
-        } else if (isPvzMethod(methodValue)) {
+        } else if (methodValue === 'ozon') {
             address = (document.getElementById('pvzAddress') || {}).value || ''
         }
     }
 
     const taxiDoorbell = document.getElementById('taxiDoorbell')
-    const isTaxi = isTaxiMethod(methodValue)
+    const isTaxi = methodValue === 'taxi'
     const taxiOption = isTaxi && taxiDoorbell
         ? (taxiDoorbell.checked
             ? 'С выходом водителя'
@@ -1929,7 +1872,7 @@ function onWorkerMessage(e) {
                             scanner.classList.add('not-found')
                             setTimeout(() => scanner.classList.remove('not-found'), 900)
                         }
-                    }).catch(() => {})
+                    }).catch(e => console.warn('searchByBarcode .then failed:', e))
                 }
             }).catch(err => {
                 console.error('Detect error:', err)
@@ -1976,7 +1919,7 @@ function toggleScannerMode() {
         modeBtn.classList.remove('active')
         const scanner = document.getElementById('barcodeScanner')
         if (scanner && scanner.classList.contains('hidden')) {
-            toggleBarcodeScanner().catch(console.error)
+            toggleBarcodeScanner().catch(e => console.error('toggleBarcodeScanner failed:', e))
         }
     }
 }
@@ -2083,9 +2026,9 @@ async function searchByBarcode(barcode) {
             return false
         }
 
-        const products = await response.json()
+        const products = await response.json().catch(() => ({}))
 
-        if (products.length > 0) {
+        if (products && products.length > 0) {
             const product = products[0]
             if (!allProducts.find(p => p.id === product.id)) {
                 allProducts.unshift(product)
@@ -2557,7 +2500,7 @@ async function openPrivacyModal() {
     const body = document.getElementById('privacyModalBody')
     if (!modal || !body) return
 
-    body.innerHTML = '<p style="text-align:center;color:var(--text-secondary);">Загрузка...</p>'
+    body.innerHTML = '<p class="loading-text">Загрузка...</p>'
     modal.classList.remove('hidden')
 
     try {
@@ -2632,7 +2575,7 @@ async function registerServiceWorker() {
         }
 
         registration.update()
-        setInterval(() => registration.update(), 60000)
+        swUpdateInterval = setInterval(() => registration.update(), 60000)
     } catch (error) {
         console.error('Service Worker registration failed:', error)
     }
@@ -2653,7 +2596,7 @@ function showUpdateNotification() {
                     } else {
                         window.location.reload()
                     }
-                }).catch(() => {})
+                }).catch(e => console.warn('SW getRegistrations failed:', e))
             } else {
                 window.location.reload()
             }
@@ -2741,7 +2684,9 @@ function showA2HSModal() {
 function trackPWAInstall() {
     try {
         localStorage.setItem('jock-pwa-install-attempt', Date.now().toString())
-    } catch (e) {}
+    } catch (e) {
+        console.warn('trackPWAInstall failed:', e)
+    }
 }
 
 function detectPWA() {
@@ -2770,23 +2715,39 @@ function initA2HS() {
     const isSecondVisit = visitCount >= 2
 
     const showTarget = isSecondVisit ? showA2HSModal : showA2HSBanner
-    const iosDelay = isSecondVisit ? 5000 : 5000
+    const iosDelay = 5000
 
-    window.addEventListener('beforeinstallprompt', (e) => {
+    function onBeforeInstallPrompt(e) {
         e.preventDefault()
         deferredPrompt = e
         showTarget()
-    })
+    }
 
-    window.addEventListener('appinstalled', () => {
+    function onAppInstalled() {
         deferredPrompt = null
         trackPWAInstall()
-    })
+    }
+
+    window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt)
+    window.addEventListener('appinstalled', onAppInstalled)
 
     const isIOS = /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase()) && !window.MSStream
     if (isIOS && /safari/i.test(navigator.userAgent) && !/crios|fxios|edgios/.test(navigator.userAgent)) {
         setTimeout(showTarget, iosDelay)
     }
+}
+
+function destroyApp() {
+    if (checkOrderTimeInterval) {
+        clearInterval(checkOrderTimeInterval)
+        checkOrderTimeInterval = null
+    }
+    if (swUpdateInterval) {
+        clearInterval(swUpdateInterval)
+        swUpdateInterval = null
+    }
+    window.removeEventListener('beforeinstallprompt', onBeforeInstallPrompt)
+    window.removeEventListener('appinstalled', onAppInstalled)
 }
 
 function setupOfflineListener() {

@@ -1,5 +1,6 @@
 let cropRect = null
-let targetWidth = 320
+const DEFAULT_TARGET_WIDTH = 320
+let targetWidth = DEFAULT_TARGET_WIDTH
 let mainCanvas = null
 let mainCtx = null
 
@@ -14,7 +15,7 @@ self.onmessage = async (e) => {
       mainCanvas = new OffscreenCanvas(targetWidth, targetWidth)
       mainCtx = mainCanvas.getContext('2d')
     } catch (err) {
-      self.postMessage({ type: 'init_error', error: 'Worker init failed' })
+      self.postMessage({ type: 'init_error', error: err.message })
     }
     return
   }
