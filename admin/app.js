@@ -128,6 +128,16 @@ function showError(message) {
     errorEl.classList.remove('hidden')
 }
 
+function showLoginError(message) {
+    const errorEl = document.getElementById('loginError')
+    if (!errorEl) {
+        showError(message)
+        return
+    }
+    errorEl.textContent = message
+    errorEl.classList.remove('hidden')
+}
+
 function init() {
     if (initialized) return
     initialized = true
@@ -318,7 +328,7 @@ function setupEventListeners() {
     if (productSearch) {
         productSearch.addEventListener('input', debounce(() => {
             productsPage = 1
-            loadProducts()
+            loadProducts().catch(console.error)
         }, 300))
     }
 
@@ -365,7 +375,7 @@ function setupEventListeners() {
 
     // Analytics
     const analyticsPeriod = document.getElementById('analyticsPeriod')
-    if (analyticsPeriod) analyticsPeriod.addEventListener('change', () => { ordersPage = 1; loadAnalytics() })
+    if (analyticsPeriod) analyticsPeriod.addEventListener('change', () => { ordersPage = 1; loadAnalytics().catch(console.error) })
 
     // Settings
     const settingsForm = document.getElementById('settingsForm')
@@ -642,9 +652,9 @@ async function handleForgotPassword() {
     const email = await openNameModal('Сброс пароля', 'Email')
     if (!email) return
     if (!email.includes('@')) {
-            showError('Введите корректный email')
-            return
-        }
+        showLoginError('Введите корректный email')
+        return
+    }
     
     try {
         const response = await fetchWithTimeout(`${CONFIG.supabaseUrl}/auth/v1/recover`, {
@@ -653,17 +663,17 @@ async function handleForgotPassword() {
                 'apikey': CONFIG.supabaseAnonKey,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ email, redirect_to: window.location.origin + '/JOCK-NUTRITION/admin/' })
+            body: JSON.stringify({ email, redirect_to: window.location.origin + window.location.pathname.replace(/admin\/?$/, '') + 'admin/' })
         })
         
         if (response.ok) {
-            showError('Письмо для сброса пароля отправлено на почту')
+            showLoginError('Письмо для сброса пароля отправлено на почту')
         } else {
             const result = await response.json().catch(() => ({}))
-            showError(translateError(result.msg || result.error || result.error_description || 'Ошибка отправки письма'))
+            showLoginError(translateError(result.msg || result.error || result.error_description || 'Ошибка отправки письма'))
         }
     } catch (error) {
-        showError('Ошибка: ' + translateError(error.message || String(error)))
+        showLoginError('Ошибка: ' + translateError(error.message || String(error)))
     }
 }
 
@@ -828,7 +838,7 @@ function renderProductsPagination() {
 
 function changeProductsPage(page) {
     productsPage = page
-    loadProducts()
+    loadProducts().catch(console.error)
 }
 
 async function openProductModal(productId = null) {
@@ -1126,7 +1136,7 @@ async function handleProductSubmit(e) {
         const searchInput = document.getElementById('productSearch')
         if (searchInput) searchInput.value = ''
         productsPage = 1
-        loadProducts()
+        loadProducts().catch(console.error)
     } else {
         errorEl.textContent = translateError(result.error) || 'Ошибка сохранения товара'
         errorEl.classList.remove('hidden')
@@ -1150,7 +1160,7 @@ async function deleteProduct(id) {
         if (response.ok) {
             selectedProductIds.delete(String(id))
             updateBulkActionsBar()
-            loadProducts()
+            loadProducts().catch(console.error)
         } else {
             const result = await response.json().catch(() => ({}))
             showError(translateError(result.error) || 'Ошибка удаления товара')
@@ -1224,7 +1234,7 @@ async function bulkToggleVisibility(visible) {
     }
     selectedProductIds.clear()
     updateBulkActionsBar()
-    loadProducts()
+    loadProducts().catch(console.error)
     if (errors === 0) {
         showError(visible ? 'Товары показаны' : 'Товары скрыты')
     } else {
@@ -1263,7 +1273,7 @@ async function bulkDeleteSelected() {
     }
     selectedProductIds.clear()
     updateBulkActionsBar()
-    loadProducts()
+    loadProducts().catch(console.error)
     if (errors === 0) {
         showError(`Удалено ${count} товаров`)
     } else {
@@ -1274,7 +1284,7 @@ async function bulkDeleteSelected() {
 function bulkClearSelection() {
     selectedProductIds.clear()
     updateBulkActionsBar()
-    loadProducts()
+    loadProducts().catch(console.error)
 }
 
 async function bulkToggleAllVisibility() {
@@ -1320,7 +1330,7 @@ async function bulkToggleAllVisibility() {
                 errors++
             }
         }
-        loadProducts()
+        loadProducts().catch(console.error)
         if (errors === 0) {
             showError(makeVisible ? `Все товары показаны (${products.length})` : `Все товары скрыты (${products.length})`)
         } else {
@@ -1557,7 +1567,7 @@ async function openCategoryModal(categoryId = null) {
         })
 
         if (response.ok) {
-            loadCategories()
+            loadCategories().catch(console.error)
         } else {
             const result = await response.json().catch(() => ({}))
             showError(translateError(result.error) || 'Ошибка сохранения категории')
@@ -1577,7 +1587,7 @@ async function deleteCategory(id) {
         })
 
         if (response.ok) {
-            loadCategories()
+            loadCategories().catch(console.error)
         } else {
             const result = await response.json().catch(() => ({}))
             showError(translateError(result.error) || 'Ошибка удаления категории')
@@ -1668,7 +1678,7 @@ async function openBrandModal(brandId = null) {
         })
 
         if (response.ok) {
-            loadBrands()
+            loadBrands().catch(console.error)
         } else {
             const result = await response.json().catch(() => ({}))
             showError(translateError(result.error) || 'Ошибка сохранения бренда')
@@ -1688,7 +1698,7 @@ async function deleteBrand(id) {
         })
 
         if (response.ok) {
-            loadBrands()
+            loadBrands().catch(console.error)
         } else {
             const result = await response.json().catch(() => ({}))
             showError(translateError(result.error) || 'Ошибка удаления бренда')
@@ -1803,7 +1813,7 @@ function renderOrdersPagination() {
 
 function changeOrdersPage(page) {
     ordersPage = page
-    loadAnalytics()
+    loadAnalytics().catch(console.error)
 }
 
 function updateDeleteSelectedBtn() {
@@ -1821,7 +1831,7 @@ async function deleteOrder(id) {
         })
 
         if (response.ok) {
-            loadAnalytics()
+            loadAnalytics().catch(console.error)
         } else {
             const result = await response.json().catch(() => ({}))
             showError(translateError(result.error) || 'Ошибка удаления заказа')
@@ -1849,7 +1859,7 @@ async function deleteSelectedOrders() {
         if (failed.length > 0) {
             showError(`Удалено: ${results.length - failed.length}. Ошибок: ${failed.length}`)
         }
-        loadAnalytics()
+        loadAnalytics().catch(console.error)
     } catch (error) {
         console.error('Error deleting orders:', error)
         showError('Ошибка удаления заказов: ' + (error && error.message ? error.message : String(error)))
@@ -3601,7 +3611,7 @@ async function startFallbackScanner() {
 }
 
 async function handleAdminFileUpload(e) {
-    const file = (e.target && e.target.files && e.target.files[0]) || (e.target.target && e.target.target.files && e.target.target.files[0])
+    const file = (e.target && e.target.files && e.target.files[0])
     if (!file) return
 
     const statusEl = document.getElementById('adminScannerStatus')
@@ -3827,3 +3837,4 @@ if (document.readyState === 'loading') {
     init()
     registerServiceWorker()
 }
+

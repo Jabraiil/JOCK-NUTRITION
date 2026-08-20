@@ -132,7 +132,7 @@ function init() {
         applyTheme()
         resetFilterState()
         loadSettings()
-        loadProducts()
+        loadProducts().catch(console.error)
         updateCartCount()
         setupEventListeners()
         checkOrderTime()
@@ -1877,7 +1877,7 @@ function toggleScannerMode() {
         modeBtn.classList.remove('active')
         const scanner = document.getElementById('barcodeScanner')
         if (scanner && scanner.classList.contains('hidden')) {
-            toggleBarcodeScanner()
+            toggleBarcodeScanner().catch(console.error)
         }
     }
 }
