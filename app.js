@@ -269,6 +269,9 @@ function setupEventListeners() {
         const taxiDoorbell = document.getElementById('taxiDoorbell')
         if (taxiDoorbell) taxiDoorbell.addEventListener('change', updateSendSpecBtnState)
 
+        const pickupToggle = document.getElementById('pickupToggle')
+        if (pickupToggle) pickupToggle.addEventListener('change', toggleCartFormFields)
+
         const loadMoreBtn = document.getElementById('loadMoreBtn')
         if (loadMoreBtn) loadMoreBtn.addEventListener('click', loadMoreProducts)
 
@@ -1315,19 +1318,17 @@ function renderCart() {
 function getDeliveryMethodLabel(value) {
     switch (value) {
         case 'taxi': return 'Такси'
-        case 'taxi_caspian': return 'Попутное такси в Каспийск'
-        case 'sdek': return 'СДЭК'
         case 'ozon': return 'Ozon Доставка'
         default: return ''
     }
 }
 
 function isTaxiMethod(value) {
-    return value === 'taxi' || value === 'taxi_caspian'
+    return value === 'taxi'
 }
 
 function isPvzMethod(value) {
-    return value === 'sdek' || value === 'ozon'
+    return value === 'ozon'
 }
 
 function updateDeliveryFields() {
@@ -1361,7 +1362,20 @@ function updateDeliveryFields() {
 function updateSendSpecBtnState() {
     const method = document.getElementById('deliveryMethod')
     const sendSpecBtn = document.getElementById('sendSpecBtn')
-    if (!method || !sendSpecBtn) return
+    if (!sendSpecBtn) return
+
+    const pickupToggle = document.getElementById('pickupToggle')
+    const isPickup = pickupToggle ? pickupToggle.checked : false
+
+    if (isPickup) {
+        sendSpecBtn.disabled = false
+        return
+    }
+
+    if (!method) {
+        sendSpecBtn.disabled = true
+        return
+    }
 
     const value = method.value
     const name = (document.getElementById('recipientName') || {}).value || ''
@@ -1377,21 +1391,36 @@ function updateSendSpecBtnState() {
     sendSpecBtn.disabled = !valid
 }
 
+function toggleCartFormFields() {
+    const pickupToggle = document.getElementById('pickupToggle')
+    const cartFormFields = document.getElementById('cartFormFields')
+    if (!pickupToggle || !cartFormFields) return
+
+    if (pickupToggle.checked) {
+        cartFormFields.classList.add('hidden')
+    } else {
+        cartFormFields.classList.remove('hidden')
+    }
+
+    updateSendSpecBtnState()
+}
+
 function proceedToCheckout() {
     if (cart.length === 0) {
         showError('Ваш выбор пуст')
         return
     }
 
-    const cartForm = document.getElementById('cartForm')
+    const cartFormFields = document.getElementById('cartFormFields')
     const checkoutBtn = document.getElementById('checkoutBtn')
     const sendSpecBtn = document.getElementById('sendSpecBtn')
 
-    if (cartForm) cartForm.classList.remove('hidden')
     if (checkoutBtn) checkoutBtn.classList.add('hidden')
     if (sendSpecBtn) sendSpecBtn.classList.remove('hidden')
 
     resetCartFormFields()
+
+    if (cartFormFields) cartFormFields.classList.remove('hidden')
     updateDeliveryFields()
 }
 
@@ -1402,6 +1431,7 @@ function resetCartFormFields() {
     const deliveryAddress = document.getElementById('deliveryAddress')
     const pvzAddress = document.getElementById('pvzAddress')
     const taxiDoorbell = document.getElementById('taxiDoorbell')
+    const pickupToggle = document.getElementById('pickupToggle')
     const specError = document.getElementById('specFormError')
 
     if (recipientName) recipientName.value = ''
@@ -1410,7 +1440,11 @@ function resetCartFormFields() {
     if (deliveryAddress) deliveryAddress.value = ''
     if (pvzAddress) pvzAddress.value = ''
     if (taxiDoorbell) taxiDoorbell.checked = false
+    if (pickupToggle) pickupToggle.checked = false
     if (specError) { specError.textContent = ''; specError.classList.add('hidden') }
+
+    const cartFormFields = document.getElementById('cartFormFields')
+    if (cartFormFields) cartFormFields.classList.add('hidden')
 
     updateDeliveryFields()
 }
@@ -1434,15 +1468,23 @@ function buildWhatsAppMessage(items, total, hasError, errorCode, formData) {
 
     lines.push('*Новая спецификация*')
     lines.push('')
-    lines.push(`*Получатель:* ${formData.name}`)
-    lines.push(`*Способ получения:* ${formData.methodLabel}`)
 
-    if (formData.isTaxi) {
-        lines.push(`*Опция такси:* ${formData.taxiOption}`)
+    if (formData.isPickup) {
+        lines.push('*Получатель:* Самовывоз')
+        lines.push(`*ФИО:* ${formData.name || '-'}`)
+        lines.push(`*Телефон:* ${formData.phone || '-'}`)
+    } else {
+        lines.push(`*Получатель:* ${formData.name}`)
+        lines.push(`*Способ получения:* ${formData.methodLabel}`)
+
+        if (formData.isTaxi) {
+            lines.push(`*Опция такси:* ${formData.taxiOption}`)
+        }
+
+        lines.push(`*Телефон:* ${formData.phone}`)
+        lines.push(`*Адрес или ПВЗ:* ${formData.address}`)
     }
 
-    lines.push(`*Телефон:* ${formData.phone}`)
-    lines.push(`*Адрес или ПВЗ:* ${formData.address}`)
     lines.push('')
     lines.push('*Выбранные позиции:*')
 
@@ -1456,7 +1498,11 @@ function buildWhatsAppMessage(items, total, hasError, errorCode, formData) {
 
     lines.push('')
     lines.push(`*Итоговая стоимость позиций: ${total}${currency}*`)
-    lines.push('(Транспорт оплачивается при получении — для ПВЗ уточняйте при передаче отправления)')
+    if (formData.isPickup) {
+        lines.push('(Товар берёт покупатель самостоятельно)')
+    } else {
+        lines.push('(Транспорт оплачивается при получении — для ПВЗ уточняйте при передаче отправления)')
+    }
 
     if (hasError && errorCode) {
         lines.push('')
@@ -1485,17 +1531,22 @@ async function generateWhatsAppSpec() {
     const sendSpecBtn = document.getElementById('sendSpecBtn')
     const specError = document.getElementById('specFormError')
 
+    const pickupToggle = document.getElementById('pickupToggle')
+    const isPickup = pickupToggle ? pickupToggle.checked : false
+
     const name = (document.getElementById('recipientName') || {}).value || ''
     const phone = (document.getElementById('recipientPhone') || {}).value || ''
     const method = document.getElementById('deliveryMethod')
     const methodValue = method ? method.value : ''
-    const methodLabel = getDeliveryMethodLabel(methodValue)
+    const methodLabel = isPickup ? 'Самовывоз' : getDeliveryMethodLabel(methodValue)
 
     let address = ''
-    if (isTaxiMethod(methodValue)) {
-        address = (document.getElementById('deliveryAddress') || {}).value || ''
-    } else if (isPvzMethod(methodValue)) {
-        address = (document.getElementById('pvzAddress') || {}).value || ''
+    if (!isPickup) {
+        if (isTaxiMethod(methodValue)) {
+            address = (document.getElementById('deliveryAddress') || {}).value || ''
+        } else if (isPvzMethod(methodValue)) {
+            address = (document.getElementById('pvzAddress') || {}).value || ''
+        }
     }
 
     const taxiDoorbell = document.getElementById('taxiDoorbell')
@@ -1506,7 +1557,7 @@ async function generateWhatsAppSpec() {
             : 'Без выхода водителя')
         : ''
 
-    if (!name.trim() || !phone.trim() || !methodValue || !address.trim()) {
+    if (!isPickup && (!name.trim() || !phone.trim() || !methodValue || !address.trim())) {
         if (specError) {
             specError.textContent = 'Пожалуйста, заполните все обязательные поля (*).'
             specError.classList.remove('hidden')
@@ -1548,7 +1599,8 @@ async function generateWhatsAppSpec() {
             methodLabel: methodLabel,
             address: address.trim(),
             isTaxi: isTaxi,
-            taxiOption: taxiOption
+            taxiOption: taxiOption,
+            isPickup: isPickup
         })
 
         if (!whatsappNumber) {
@@ -1582,10 +1634,12 @@ async function generateWhatsAppSpec() {
 }
 
 function resetCartCheckoutState() {
-    const cartForm = document.getElementById('cartForm')
+    const cartFormFields = document.getElementById('cartFormFields')
+    const pickupToggle = document.getElementById('pickupToggle')
     const sendSpecBtn = document.getElementById('sendSpecBtn')
     const checkoutBtn = document.getElementById('checkoutBtn')
-    if (cartForm) cartForm.classList.add('hidden')
+    if (cartFormFields) cartFormFields.classList.add('hidden')
+    if (pickupToggle) pickupToggle.checked = false
     if (sendSpecBtn) sendSpecBtn.classList.add('hidden')
     if (checkoutBtn) {
         checkoutBtn.disabled = cart.length > 0 ? false : true

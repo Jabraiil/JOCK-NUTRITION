@@ -208,7 +208,13 @@
                         <span id="cartTotal">0 ₽</span>
                     </div>
 
-                    <div id="cartForm" class="cart-form hidden">
+                    <label class="toggle-switch-wrap pickup-switch">
+                        <input type="checkbox" id="pickupToggle" class="toggle-switch-input">
+                        <span class="toggle-switch-slider"></span>
+                        Самовывоз (я сам заберу)
+                    </label>
+
+                    <div id="cartFormFields" class="cart-form-fields hidden">
                         <div class="form-group">
                             <label for="recipientName">ФИО получателя *</label>
                             <input type="text" id="recipientName" class="form-input" placeholder="Введите ФИО" autocomplete="off" spellcheck="off">
@@ -222,8 +228,6 @@
                             <label for="deliveryMethod">Способ получения *</label>
                             <select id="deliveryMethod" class="form-select">
                                 <option value="taxi">Такси</option>
-                                <option value="taxi_caspian">Попутное такси в Каспийск</option>
-                                <option value="sdek">СДЭК</option>
                                 <option value="ozon">Ozon Доставка</option>
                             </select>
                         </div>
@@ -240,7 +244,7 @@
                             <label for="pvzAddress">Номер или адрес пункта выдачи (ПВЗ) *</label>
                             <input type="text" id="pvzAddress" class="form-input" placeholder="Введите номер или адрес пункта" autocomplete="off" spellcheck="off">
                         </div>
-                         <div id="specFormError" class="spec-error hidden" role="alert"></div>
+                        <div id="specFormError" class="spec-error hidden" role="alert"></div>
                     </div>
 
                     <div class="cart-consent">
