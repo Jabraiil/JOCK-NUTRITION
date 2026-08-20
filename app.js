@@ -1456,7 +1456,7 @@ function buildWhatsAppMessage(items, total, hasError, errorCode, formData) {
 
     lines.push('')
     lines.push(`*Итоговая стоимость позиций: ${total}${currency}*`)
-    lines.push('(Транспорт не входит в стоимость — оплачивается отдельно по выбранному способу получения)')
+    lines.push('(Транспорт оплачивается при получении — для ПВЗ уточняйте при передаче отправления)')
 
     if (hasError && errorCode) {
         lines.push('')
