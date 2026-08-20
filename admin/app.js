@@ -1021,10 +1021,11 @@ async function loadFormOptions() {
 
 async function handleProductSubmit(e) {
     e.preventDefault()
-        const errorEl = document.getElementById('productError')
-        if (!errorEl) return
 
-        errorEl.classList.add('hidden')
+    const errorEl = document.getElementById('productError')
+    if (!errorEl) return
+
+    errorEl.classList.add('hidden')
 
     const prodName = document.getElementById('prodName')
     const prodPrice = document.getElementById('prodPrice')
@@ -1034,7 +1035,7 @@ async function handleProductSubmit(e) {
     errorEl.classList.add('hidden')
 
     try {
-        const productData = {
+    const productData = {
         name: prodName.value.trim(),
         description: document.getElementById('prodDescription')?.value.trim() || '',
         full_description: document.getElementById('prodFullDescription')?.value.trim() || '',

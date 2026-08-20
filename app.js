@@ -11,6 +11,10 @@ async function fetchWithTimeout(url, options = {}, timeout = 15000) {
     try {
         const response = await window.fetch(url, { ...options, signal: controller.signal })
         clearTimeout(timer)
+        if (!response.ok) {
+            const text = await response.text().catch(() => '')
+            throw new Error(text || `HTTP ${response.status}`)
+        }
         return response
     } catch (error) {
         clearTimeout(timer)

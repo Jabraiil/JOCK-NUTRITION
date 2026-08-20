@@ -4,7 +4,7 @@ const PRECACHE_URLS = [
     'index.html',
     'offline.html',
     'styles.css?v=39',
-    'app.js?v=40',
+    'app.js?v=41',
     'scanner-worker.js',
     'manifest.json',
     'favicon.ico',
@@ -21,7 +21,7 @@ const PRECACHE_URLS = [
     'icons/icon-512.svg',
     'icons/favicon.svg',
     'admin/styles.css',
-    'admin/app.js?v=36',
+    'admin/app.js?v=37',
     'admin/index.html',
     'sitemap.xml'
 ]
