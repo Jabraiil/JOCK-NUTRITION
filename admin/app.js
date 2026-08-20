@@ -25,6 +25,10 @@ async function fetchWithTimeout(url, options = {}, timeout = 15000) {
         if (!isAuthEndpoint && !skipAuthRedirect && response.status === 401) {
             handleAuthError('Сессия истекла. Войдите снова.')
         }
+        if (!response.ok) {
+            const text = await response.text().catch(() => '')
+            throw new Error(text || `HTTP ${response.status}`)
+        }
         return response
     } catch (error) {
         clearTimeout(timer)

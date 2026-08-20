@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'jock-nutrition-v41-2026-08-20'
+const CACHE_VERSION = 'jack-nutrition-v42-2026-08-20'
 const BASE_PATH = self.location.pathname.replace(/\/sw\.js$/, '').replace(/\/$/, '') + '/'
 const PRECACHE_URLS = [
     'index.html',
@@ -73,21 +73,26 @@ async function precache() {
 }
 
 async function cleanOldCaches() {
-    const keys = await caches.keys()
-    const currentPrefixes = ['images', 'api', 'pages', 'static'].map(
-        type => `${type}-${CACHE_VERSION}`
-    )
-    await Promise.all(
-        keys
-            .filter(key => key !== cacheName('precache') && !currentPrefixes.includes(key))
-            .map(key => caches.delete(key))
-    )
+    try {
+        const keys = await caches.keys()
+        const currentPrefixes = ['images', 'api', 'pages', 'static'].map(
+            type => `${type}-${CACHE_VERSION}`
+        )
+        await Promise.all(
+            keys
+                .filter(key => key !== cacheName('precache') && !currentPrefixes.includes(key))
+                .map(key => caches.delete(key))
+        )
+    } catch (e) {
+        console.warn('cleanOldCaches failed:', e)
+    }
 }
 
 self.addEventListener('install', (event) => {
     event.waitUntil(
         precache()
             .then(() => self.skipWaiting())
+            .catch(err => console.warn('Precache failed, skipping skipWaiting:', err))
     )
 })
 
@@ -98,8 +103,10 @@ self.addEventListener('activate', (event) => {
     )
 })
 
+const TRANSPARENT_SVG = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"><rect width="1" height="1" fill="transparent"/></svg>'
+
 self.addEventListener('message', (event) => {
-    if (event.data && event.data.action === 'SKIP_WAITING') {
+    if (event.data && (event.data.action === 'SKIP_WAITING' || event.data.type === 'SKIP_WAITING')) {
         self.skipWaiting()
     }
 })
@@ -154,10 +161,10 @@ self.addEventListener('fetch', (event) => {
                         return response
                     } catch (err) {
                         if (isImage(url)) {
-                            return new Response(
-                                'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"><rect width="1" height="1" fill="transparent"/></svg>',
-                                { headers: { 'Content-Type': 'image/svg+xml' }, status: 503 }
-                            )
+                            return new Response(TRANSPARENT_SVG, { headers: { 'Content-Type': 'image/svg+xml' }, status: 503 })
+                        }
+                        if (isFont(url)) {
+                            return new Response('', { status: 204 })
                         }
                         return new Response('Offline', { status: 503 })
                     }
@@ -179,6 +186,12 @@ self.addEventListener('fetch', (event) => {
                     }
                     return response
                 } catch (err) {
+                    if (isImage(url)) {
+                        return new Response(TRANSPARENT_SVG, { headers: { 'Content-Type': 'image/svg+xml' }, status: 503 })
+                    }
+                    if (isFont(url)) {
+                        return new Response('', { status: 204 })
+                    }
                     return new Response('Offline', { status: 503 })
                 }
             })
@@ -210,27 +223,25 @@ self.addEventListener('fetch', (event) => {
     const isHTML = request.headers.get('accept')?.includes('text/html')
     if (isHTML) {
         event.respondWith(
-            fetch(request)
-                .then(async response => {
+            caches.open(cacheName('pages')).then(async cache => {
+                const cached = await cache.match(request)
+                try {
+                    const response = await fetch(request)
                     if (response && response.status === 200) {
-                        try {
-                            const cache = await caches.open(cacheName('pages'))
-                            cache.put(request, response.clone())
-                        } catch (e) { /* quota exceeded */ }
+                        cache.put(request, response.clone())
                     }
-                    return response
-                })
-                .catch(async () => {
-                    const cached = await caches.open(cacheName('pages')).then(cache => cache.match('offline.html'))
+                    return cached || response
+                } catch (err) {
                     if (cached) return cached
-                    if (url.pathname === `${BASE_PATH}admin/` || url.pathname.startsWith(`${BASE_PATH}admin/`)) {
-                        const adminCached = await caches.open(cacheName('pages')).then(cache => cache.match(`${BASE_PATH}admin/index.html`.replace(/^\//, '')))
-                        if (adminCached) return adminCached
-                    }
-                    const indexCached = await caches.open(cacheName('pages')).then(cache => cache.match('index.html'))
-                    if (indexCached) return indexCached
+                    const offline = await cache.match('offline.html')
+                    if (offline) return offline
+                    const adminOffline = await cache.match('admin/index.html')
+                    if (adminOffline) return adminOffline
+                    const indexOffline = await cache.match('index.html')
+                    if (indexOffline) return indexOffline
                     return new Response('Offline', { status: 503 })
-                })
+                }
+            })
         )
         return
     }
@@ -240,8 +251,3 @@ self.addEventListener('fetch', (event) => {
     )
 })
 
-self.addEventListener('message', (event) => {
-    if (event.data && event.data.type === 'SKIP_WAITING') {
-        self.skipWaiting()
-    }
-})

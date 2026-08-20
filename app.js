@@ -55,13 +55,13 @@ let cart = []
 let favorites = []
 try {
     const cartRaw = localStorage.getItem('jock-cart')
-    if (cartRaw) cart = JSON.parse(cartRaw)
+    if (cartRaw) cart = JSON.parse(cartRaw).map(item => ({ ...item, id: String(item.id) }))
 } catch (e) {
     console.error('Failed to parse cart from localStorage:', e)
 }
 try {
     const favRaw = localStorage.getItem('jock-favorites')
-    if (favRaw) favorites = JSON.parse(favRaw)
+    if (favRaw) favorites = JSON.parse(favRaw).map(String)
 } catch (e) {
     console.error('Failed to parse favorites from localStorage:', e)
 }
@@ -836,7 +836,7 @@ function createProductCard(product) {
     })
     const fallbackImg = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect fill="%23f0f0f0" width="200" height="200"/><text fill="%23999" font-family="sans-serif" font-size="14" x="50%" y="50%" text-anchor="middle" dy=".3em">Нет фото</text></svg>'
 
-    const cartItem = cart.find(c => c.id === product.id)
+    const cartItem = cart.find(c => c.id === String(product.id))
     const inCart = cartItem ? cartItem.quantity : 0
     const favorited = isFavorited(product.id)
     const displayName = cleanProductName(product.name, product.brands?.name)
@@ -1139,7 +1139,7 @@ function switchSection(nav) {
 }
 
 function addToCart(productId, quantity) {
-    const id = Number(productId)
+    const id = String(productId)
     const existing = cart.find(c => c.id === id)
     if (existing) {
         existing.quantity += quantity
@@ -1160,12 +1160,13 @@ function addToCart(productId, quantity) {
 }
 
 function updateProductCardCart(productId) {
-    const card = document.querySelector(`.product-card[data-id="${productId}"]`)
+    const id = String(productId)
+    const card = document.querySelector(`.product-card[data-id="${id}"]`)
     if (!card) return
 
-    const cartItem = cart.find(c => c.id === productId)
+    const cartItem = cart.find(c => c.id === id)
     const inCart = cartItem ? cartItem.quantity : 0
-    const product = allProducts.find(p => String(p.id) === String(productId))
+    const product = allProducts.find(p => String(p.id) === id)
     const footer = card.querySelector('.product-footer')
     if (!footer) return
 
