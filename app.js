@@ -1332,14 +1332,26 @@ function updateDeliveryFields() {
     const method = document.getElementById('deliveryMethod')
     const taxiFields = document.getElementById('taxiFields')
     const pvzFields = document.getElementById('pvzFields')
-    const ozonWarning = document.getElementById('ozonWarning')
+    const taxiDoorbell = document.getElementById('taxiDoorbell')
+    const ozonPhoneHint = document.getElementById('ozonPhoneHint')
     if (!method) return
 
     const value = method.value
+    const isTaxi = isTaxiMethod(value)
 
-    if (taxiFields) taxiFields.classList.toggle('hidden', !isTaxiMethod(value))
+    if (taxiFields) taxiFields.classList.toggle('hidden', !isTaxi)
     if (pvzFields) pvzFields.classList.toggle('hidden', !isPvzMethod(value))
-    if (ozonWarning) ozonWarning.classList.toggle('hidden', value !== 'ozon')
+    if (ozonPhoneHint) ozonPhoneHint.classList.toggle('hidden', value !== 'ozon')
+
+    if (taxiDoorbell) {
+        if (isTaxi) {
+            taxiDoorbell.disabled = false
+            taxiDoorbell.parentElement.classList.remove('disabled')
+        } else {
+            taxiDoorbell.disabled = true
+            taxiDoorbell.parentElement.classList.add('disabled')
+        }
+    }
 
     updateSendSpecBtnState()
 }
@@ -1421,13 +1433,13 @@ function buildWhatsAppMessage(items, total, hasError, errorCode, formData) {
     lines.push('*Новая спецификация*')
     lines.push('')
     lines.push(`*Получатель:* ${formData.name}`)
-    lines.push(`*Телефон:* ${formData.phone}`)
     lines.push(`*Способ получения:* ${formData.methodLabel}`)
 
     if (formData.isTaxi) {
         lines.push(`*Опция такси:* ${formData.taxiOption}`)
     }
 
+    lines.push(`*Телефон:* ${formData.phone}`)
     lines.push(`*Адрес или ПВЗ:* ${formData.address}`)
     lines.push('')
     lines.push('*Выбранные позиции:*')

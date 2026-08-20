@@ -208,6 +208,11 @@
                         <span id="cartTotal">0 ₽</span>
                     </div>
 
+                    <div class="cart-delivery-note">
+                        <span class="cart-delivery-icon">⚠️</span>
+                        <span>Стоимость транспортировки не входит в цену товаров и рассчитывается индивидуально по выбранному способу получения.</span>
+                    </div>
+
                     <div id="cartForm" class="cart-form hidden">
                         <div class="form-group">
                             <label for="recipientName">ФИО получателя *</label>
@@ -216,6 +221,7 @@
                         <div class="form-group">
                             <label for="recipientPhone">Контактный телефон *</label>
                             <input type="tel" id="recipientPhone" class="form-input" placeholder="+7 (___) ___-__-__" autocomplete="off" inputmode="tel">
+                            <small id="ozonPhoneHint" class="phone-hint hidden">Номер должен быть привязан к вашему личному приложению Ozon — на него придёт штрихкод для получения.</small>
                         </div>
                         <div class="form-group">
                             <label for="deliveryMethod">Способ получения *</label>
@@ -239,15 +245,7 @@
                             <label for="pvzAddress">Номер или адрес пункта выдачи (ПВЗ) *</label>
                             <input type="text" id="pvzAddress" class="form-input" placeholder="Введите номер или адрес пункта" autocomplete="off" spellcheck="off">
                         </div>
-                        <div id="ozonWarning" class="ozon-warning hidden" role="alert">
-                            Важно: указывайте номер телефона, который строго привязан к вашему личному приложению Ozon. На него придёт штрихкод для получения отправления.
-                        </div>
-                        <div id="specFormError" class="spec-error hidden" role="alert"></div>
-                    </div>
-
-                    <div class="cart-delivery-note">
-                        <span class="cart-delivery-icon">⚠️</span>
-                        <span>Стоимость транспортировки не входит в цену товаров и рассчитывается индивидуально по выбранному способу получения.</span>
+                         <div id="specFormError" class="spec-error hidden" role="alert"></div>
                     </div>
 
                     <div class="cart-consent">
