@@ -2069,6 +2069,60 @@ select:focus:not(:focus-visible) {
     text-decoration-thickness: 2px;
 }
 
+/* ---------- Toggle switch for cart form ---------- */
+.toggle-switch-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    user-select: text;
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+.toggle-switch-input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-switch-slider {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+    background: var(--border);
+    border-radius: 24px;
+    transition: all 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+    flex-shrink: 0;
+    cursor: pointer;
+}
+
+.toggle-switch-slider::before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background: var(--bg);
+    border-radius: 50%;
+    transition: all 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+    box-shadow: var(--shadow-sm);
+}
+
+.toggle-switch-input:checked + .toggle-switch-slider {
+    background: var(--success);
+}
+
+.toggle-switch-input:checked + .toggle-switch-slider::before {
+    transform: translateX(20px);
+}
+
+.toggle-switch-input:focus-visible + .toggle-switch-slider {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 30%, transparent);
+}
+
 /* ---------- Order time message ---------- */
 .order-time-message {
     padding: 12px 16px;

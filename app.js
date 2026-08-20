@@ -248,6 +248,27 @@ function setupEventListeners() {
         const checkoutBtn = document.getElementById('checkoutBtn')
         if (checkoutBtn) checkoutBtn.addEventListener('click', proceedToCheckout)
 
+        const sendSpecBtn = document.getElementById('sendSpecBtn')
+        if (sendSpecBtn) sendSpecBtn.addEventListener('click', generateWhatsAppSpec)
+
+        const recipientName = document.getElementById('recipientName')
+        if (recipientName) recipientName.addEventListener('input', updateSendSpecBtnState)
+
+        const recipientPhone = document.getElementById('recipientPhone')
+        if (recipientPhone) recipientPhone.addEventListener('input', updateSendSpecBtnState)
+
+        const deliveryMethod = document.getElementById('deliveryMethod')
+        if (deliveryMethod) deliveryMethod.addEventListener('change', updateSendSpecBtnState)
+
+        const deliveryAddress = document.getElementById('deliveryAddress')
+        if (deliveryAddress) deliveryAddress.addEventListener('input', updateSendSpecBtnState)
+
+        const pvzAddress = document.getElementById('pvzAddress')
+        if (pvzAddress) pvzAddress.addEventListener('input', updateSendSpecBtnState)
+
+        const taxiDoorbell = document.getElementById('taxiDoorbell')
+        if (taxiDoorbell) taxiDoorbell.addEventListener('change', updateSendSpecBtnState)
+
         const loadMoreBtn = document.getElementById('loadMoreBtn')
         if (loadMoreBtn) loadMoreBtn.addEventListener('click', loadMoreProducts)
 
@@ -1421,7 +1442,7 @@ function buildWhatsAppMessage(items, total, hasError, errorCode, formData) {
 
     lines.push('')
     lines.push(`*Итоговая стоимость позиций: ${total}${currency}*`)
-    lines.push('(Транспортировка оплачивается отдельно)')
+    lines.push('(Транспорт не входит в стоимость — оплачивается отдельно по выбранному способу получения)')
 
     if (hasError && errorCode) {
         lines.push('')
@@ -1531,7 +1552,12 @@ async function generateWhatsAppSpec() {
         applyFilters()
     } catch (error) {
         const msg = error && error.message ? error.message : String(error)
-        showError(msg)
+        if (specError) {
+            specError.textContent = msg
+            specError.classList.remove('hidden')
+        } else {
+            showError(msg)
+        }
         console.error('generateWhatsAppSpec error:', error)
     } finally {
         if (sendSpecBtn) {
