@@ -182,6 +182,14 @@ function setupEventListeners() {
         const privacyToggle = document.getElementById('privacyToggle')
         if (privacyToggle) privacyToggle.addEventListener('click', openPrivacyModal)
 
+        const consentPrivacyLink = document.getElementById('consentPrivacyLink')
+        if (consentPrivacyLink) {
+            consentPrivacyLink.addEventListener('click', (e) => {
+                e.preventDefault()
+                openPrivacyModal()
+            })
+        }
+
         const cookieAccept = document.getElementById('cookieAccept')
         if (cookieAccept) cookieAccept.addEventListener('click', acceptCookies)
 
@@ -238,7 +246,7 @@ function setupEventListeners() {
         if (manualBarcodeSubmit) manualBarcodeSubmit.addEventListener('click', handleManualBarcode)
 
         const checkoutBtn = document.getElementById('checkoutBtn')
-        if (checkoutBtn) checkoutBtn.addEventListener('click', checkout)
+        if (checkoutBtn) checkoutBtn.addEventListener('click', proceedToCheckout)
 
         const loadMoreBtn = document.getElementById('loadMoreBtn')
         if (loadMoreBtn) loadMoreBtn.addEventListener('click', loadMoreProducts)
@@ -853,7 +861,7 @@ function createProductCard(product) {
                 </div>
                 <div class="product-footer">
                     ${inCart === 0 ? `
-                        <button class="add-to-cart btn-block" data-id="${escapeHtml(String(product.id))}">В корзину</button>
+                        <button class="add-to-cart btn-block" data-id="${escapeHtml(String(product.id))}">Выбрать</button>
                     ` : `
                         <div class="cart-controls active">
                             <button class="cart-minus" data-id="${escapeHtml(String(product.id))}">-</button>
@@ -989,7 +997,7 @@ function openProductModal(productId) {
         })()}
 
         <button class="btn btn-primary btn-block add-to-cart-modal" data-id="${escapeHtml(String(product.id))}">
-            В корзину
+            Выбрать
         </button>
     `
 
@@ -1138,7 +1146,7 @@ function updateProductCardCart(productId) {
 
     footer.innerHTML = `
         ${inCart === 0 ? `
-            <button class="add-to-cart btn-block" data-id="${productId}">В корзину</button>
+            <button class="add-to-cart btn-block" data-id="${productId}">Выбрать</button>
         ` : `
             <div class="cart-controls active">
                 <button class="cart-minus" data-id="${productId}">-</button>
@@ -1242,9 +1250,10 @@ function renderCart() {
     if (!cartItems || !cartTotal || !checkoutBtn) return
 
     if (cart.length === 0) {
-        cartItems.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 20px;">Корзина пуста</p>'
+        cartItems.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 20px;">Ваш выбор пуст</p>'
         cartTotal.textContent = '0 ₽'
         checkoutBtn.disabled = true
+        resetCartCheckoutState()
         return
     }
 
@@ -1280,91 +1289,289 @@ function renderCart() {
     cartTotal.textContent = `${total} ₽`
 }
 
-async function checkout() {
+function getDeliveryMethodLabel(value) {
+    switch (value) {
+        case 'taxi': return 'Такси'
+        case 'taxi_caspian': return 'Попутное такси в Каспийск'
+        case 'sdek': return 'СДЭК'
+        case 'ozon': return 'Ozon Доставка'
+        default: return ''
+    }
+}
+
+function isTaxiMethod(value) {
+    return value === 'taxi' || value === 'taxi_caspian'
+}
+
+function isPvzMethod(value) {
+    return value === 'sdek' || value === 'ozon'
+}
+
+function updateDeliveryFields() {
+    const method = document.getElementById('deliveryMethod')
+    const taxiFields = document.getElementById('taxiFields')
+    const pvzFields = document.getElementById('pvzFields')
+    const ozonWarning = document.getElementById('ozonWarning')
+    if (!method) return
+
+    const value = method.value
+
+    if (taxiFields) taxiFields.classList.toggle('hidden', !isTaxiMethod(value))
+    if (pvzFields) pvzFields.classList.toggle('hidden', !isPvzMethod(value))
+    if (ozonWarning) ozonWarning.classList.toggle('hidden', value !== 'ozon')
+
+    updateSendSpecBtnState()
+}
+
+function updateSendSpecBtnState() {
+    const method = document.getElementById('deliveryMethod')
+    const sendSpecBtn = document.getElementById('sendSpecBtn')
+    if (!method || !sendSpecBtn) return
+
+    const value = method.value
+    const name = (document.getElementById('recipientName') || {}).value || ''
+    const phone = (document.getElementById('recipientPhone') || {}).value || ''
+    let address = ''
+    if (isTaxiMethod(value)) {
+        address = (document.getElementById('deliveryAddress') || {}).value || ''
+    } else if (isPvzMethod(value)) {
+        address = (document.getElementById('pvzAddress') || {}).value || ''
+    }
+
+    const valid = !!name.trim() && !!phone.trim() && !!value && !!address.trim()
+    sendSpecBtn.disabled = !valid
+}
+
+function proceedToCheckout() {
     if (cart.length === 0) {
-        showError('Корзина пуста')
+        showError('Ваш выбор пуст')
         return
     }
 
+    const cartForm = document.getElementById('cartForm')
     const checkoutBtn = document.getElementById('checkoutBtn')
-    if (checkoutBtn) {
-        checkoutBtn.disabled = true
-        checkoutBtn.textContent = 'Оформление...'
+    const sendSpecBtn = document.getElementById('sendSpecBtn')
+
+    if (cartForm) cartForm.classList.remove('hidden')
+    if (checkoutBtn) checkoutBtn.classList.add('hidden')
+    if (sendSpecBtn) sendSpecBtn.classList.remove('hidden')
+
+    resetCartFormFields()
+    updateDeliveryFields()
+}
+
+function resetCartFormFields() {
+    const recipientName = document.getElementById('recipientName')
+    const recipientPhone = document.getElementById('recipientPhone')
+    const deliveryMethod = document.getElementById('deliveryMethod')
+    const deliveryAddress = document.getElementById('deliveryAddress')
+    const pvzAddress = document.getElementById('pvzAddress')
+    const taxiDoorbell = document.getElementById('taxiDoorbell')
+    const specError = document.getElementById('specFormError')
+
+    if (recipientName) recipientName.value = ''
+    if (recipientPhone) recipientPhone.value = ''
+    if (deliveryMethod) deliveryMethod.value = 'taxi'
+    if (deliveryAddress) deliveryAddress.value = ''
+    if (pvzAddress) pvzAddress.value = ''
+    if (taxiDoorbell) taxiDoorbell.checked = false
+    if (specError) { specError.textContent = ''; specError.classList.add('hidden') }
+
+    updateDeliveryFields()
+}
+
+function getWhatsAppNumber() {
+    const settings = window.__storeSettings || {}
+    const accountType = (settings.whatsapp_account_type || 'personal') === 'business' ? 'business' : 'personal'
+    let number = ''
+    if (accountType === 'business') {
+        number = (settings.whatsapp_business_number || settings.whatsapp_number || '').replace(/\D/g, '')
+    } else {
+        number = (settings.whatsapp_number || '').replace(/\D/g, '')
+    }
+    return number
+}
+
+function buildWhatsAppMessage(items, total, hasError, errorCode, formData) {
+    const settings = window.__storeSettings || {}
+    const currency = settings.currency || '₽'
+    const lines = []
+
+    lines.push('*Новая спецификация*')
+    lines.push('')
+    lines.push(`*Получатель:* ${formData.name}`)
+    lines.push(`*Телефон:* ${formData.phone}`)
+    lines.push(`*Способ получения:* ${formData.methodLabel}`)
+
+    if (formData.isTaxi) {
+        lines.push(`*Опция такси:* ${formData.taxiOption}`)
+    }
+
+    lines.push(`*Адрес или ПВЗ:* ${formData.address}`)
+    lines.push('')
+    lines.push('*Выбранные позиции:*')
+
+    if (items && items.length) {
+        for (const item of items) {
+            lines.push(`• ${item.name} — ${item.quantity} шт. × ${item.price}${currency}`)
+        }
+    } else {
+        lines.push('— позиции не выбраны —')
+    }
+
+    lines.push('')
+    lines.push(`*Итоговая стоимость позиций: ${total}${currency}*`)
+    lines.push('(Транспортировка оплачивается отдельно)')
+
+    if (hasError && errorCode) {
+        lines.push('')
+        lines.push(`${errorCode} — проверьте наличие`)
+    }
+
+    return lines.join('\n')
+}
+
+function openWhatsAppUrl(whatsappUrl) {
+    const a = document.createElement('a')
+    a.href = whatsappUrl
+    a.rel = 'noopener noreferrer'
+    a.target = '_blank'
+    document.body.appendChild(a)
+    const popup = window.open(whatsappUrl, '_blank', 'noopener,noreferrer')
+    if (!popup) {
+        location.href = whatsappUrl
+    }
+    setTimeout(() => {
+        if (a.parentNode) a.parentNode.removeChild(a)
+    }, 1000)
+}
+
+async function generateWhatsAppSpec() {
+    const sendSpecBtn = document.getElementById('sendSpecBtn')
+    const specError = document.getElementById('specFormError')
+
+    const name = (document.getElementById('recipientName') || {}).value || ''
+    const phone = (document.getElementById('recipientPhone') || {}).value || ''
+    const method = document.getElementById('deliveryMethod')
+    const methodValue = method ? method.value : ''
+    const methodLabel = getDeliveryMethodLabel(methodValue)
+
+    let address = ''
+    if (isTaxiMethod(methodValue)) {
+        address = (document.getElementById('deliveryAddress') || {}).value || ''
+    } else if (isPvzMethod(methodValue)) {
+        address = (document.getElementById('pvzAddress') || {}).value || ''
+    }
+
+    const taxiDoorbell = document.getElementById('taxiDoorbell')
+    const isTaxi = isTaxiMethod(methodValue)
+    const taxiOption = isTaxi && taxiDoorbell
+        ? (taxiDoorbell.checked
+            ? 'С выходом водителя'
+            : 'Без выхода водителя')
+        : ''
+
+    if (!name.trim() || !phone.trim() || !methodValue || !address.trim()) {
+        if (specError) {
+            specError.textContent = 'Пожалуйста, заполните все обязательные поля (*).'
+            specError.classList.remove('hidden')
+        }
+        return
+    }
+    if (specError) { specError.textContent = ''; specError.classList.add('hidden') }
+
+    if (sendSpecBtn) {
+        sendSpecBtn.disabled = true
+        sendSpecBtn.textContent = 'Формирование...'
     }
 
     try {
+        const settings = window.__storeSettings || {}
+        const accountType = (settings.whatsapp_account_type || 'personal') === 'business' ? 'business' : 'personal'
+
         const response = await fetchWithTimeout(CONFIG.orderFunctionUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ cart, whatsappAccountType: 'personal' })
+            body: JSON.stringify({ cart, whatsappAccountType: accountType })
         })
 
         const data = await response.json().catch(() => ({}))
-        const orderTimeMessage = document.getElementById('orderTimeMessage')
 
         if (!response.ok) {
-            if (data.time_restricted && orderTimeMessage) {
-                orderTimeMessage.textContent = data.error
-                orderTimeMessage.classList.remove('hidden')
-                if (checkoutBtn) {
-                    checkoutBtn.disabled = false
-                    checkoutBtn.textContent = 'Оформить заказ'
-                }
-                return
-            }
-            throw new Error(data.error || 'Ошибка оформления заказа')
+            throw new Error(data.error || 'Ошибка формирования спецификации')
         }
 
-        // Open WhatsApp
-        if (data.whatsappUrl) {
-            cart = []
-            saveCart()
-            updateCartCount()
-            closeCart()
-            applyFilters()
-            const popup = window.open(data.whatsappUrl, '_blank', 'noopener,noreferrer')
-            if (!popup) {
-                location.href = data.whatsappUrl
-            }
-            return
+        const items = data.items || []
+        const total = data.total || 0
+        const hasError = data.hasError || false
+        const errorCode = data.errorCode || ''
+
+        const whatsappNumber = getWhatsAppNumber()
+        const message = buildWhatsAppMessage(items, total, hasError, errorCode, {
+            name: name.trim(),
+            phone: phone.trim(),
+            methodLabel: methodLabel,
+            address: address.trim(),
+            isTaxi: isTaxi,
+            taxiOption: taxiOption
+        })
+
+        if (!whatsappNumber) {
+            throw new Error('Номер WhatsApp не настроен')
         }
 
-        // Clear cart
+        const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`
+        openWhatsAppUrl(whatsappUrl)
+
+        resetCartFormFields()
         cart = []
         saveCart()
         updateCartCount()
         closeCart()
         applyFilters()
-
     } catch (error) {
-        showError(error.message)
+        const msg = error && error.message ? error.message : String(error)
+        showError(msg)
+        console.error('generateWhatsAppSpec error:', error)
     } finally {
-        if (checkoutBtn) {
-            checkoutBtn.disabled = false
-            checkoutBtn.textContent = 'Оформить заказ'
+        if (sendSpecBtn) {
+            sendSpecBtn.disabled = false
+            sendSpecBtn.textContent = 'Сформировать спецификацию в WhatsApp'
         }
+    }
+}
+
+function resetCartCheckoutState() {
+    const cartForm = document.getElementById('cartForm')
+    const sendSpecBtn = document.getElementById('sendSpecBtn')
+    const checkoutBtn = document.getElementById('checkoutBtn')
+    if (cartForm) cartForm.classList.add('hidden')
+    if (sendSpecBtn) sendSpecBtn.classList.add('hidden')
+    if (checkoutBtn) {
+        checkoutBtn.disabled = cart.length > 0 ? false : true
+        checkoutBtn.textContent = 'Далее'
     }
 }
 
 async function checkOrderTime() {
     const timeMessage = document.getElementById('orderTimeMessage')
     const checkoutBtn = document.getElementById('checkoutBtn')
-    
+
     if (!timeMessage || !checkoutBtn) return
-    
+
     const settings = window.__storeSettings || {}
     const timeLimitEnabled = settings.order_time_limit_enabled === 'true'
-    
+
     if (!timeLimitEnabled) {
         checkoutBtn.disabled = false
         timeMessage.classList.add('hidden')
         return
     }
-    
+
     const startHour = parseInt(settings.order_start_hour || '9', 10)
     const endHour = parseInt(settings.order_end_hour || '20', 10)
     const timezone = settings.timezone || 'Europe/Moscow'
-    
+
     const now = new Date()
     const formatter = new Intl.DateTimeFormat('ru-RU', {
         timeZone: timezone,
@@ -1372,10 +1579,10 @@ async function checkOrderTime() {
         hour12: false,
     })
     const currentHour = parseInt(formatter.format(now), 10)
-    
+
     if (currentHour < startHour || currentHour >= endHour) {
         checkoutBtn.disabled = true
-        timeMessage.textContent = `Заказы принимаются с ${startHour}:00 до ${endHour}:00. Добавьте товары в корзину и оформите заказ в рабочее время.`
+        timeMessage.textContent = `Формирование спецификации доступно с ${startHour}:00 до ${endHour}:00. Добавьте позиции в список и повторите действие в рабочее время.`
         timeMessage.classList.remove('hidden')
     } else {
         checkoutBtn.disabled = false
@@ -2280,12 +2487,12 @@ function getPrivacyFallbackContent() {
         <p><strong>JOCK NUTRITION</strong> уважает вашу приватность.</p>
         <p>Наше веб-приложение использует исключительно технические механизмы хранения данных на устройстве пользователя для обеспечения базовой функциональности:</p>
         <ul>
-            <li><strong>localStorage:</strong> сохранение корзины покупок (<code>jock-cart</code>), списка избранного (<code>jock-favorites</code>), темы оформления (<code>jock-theme</code>), флагов согласия на cookies и приветственного окна (<code>jock-cookie-consent</code>, <code>jock-welcome-shown</code>).</li>
+            <li><strong>localStorage:</strong> сохранение списка выбранного (<code>jock-cart</code>), списка избранного (<code>jock-favorites</code>), темы оформления (<code>jock-theme</code>), флагов согласия на cookies и приветственного окна (<code>jock-cookie-consent</code>, <code>jock-welcome-shown</code>).</li>
             <li><strong>Service Worker / Cache API:</strong> временное кеширование статических ресурсов для ускорения загрузки приложения.</li>
         </ul>
         <p>Мы <strong>не собираем, не передаём и не продаём</strong> никакие персональные данные третьим лицам или на сторонние серверы. В приложении не запрашиваются ФИО, номера телефонов, адреса электронной почты или иные персональные идентификаторы.</p>
-        <p>Оформление заказа реализовано через отправку содержимого корзины на сервисный endpoint (Supabase Edge Function) исключительно для генерации номера заказа и формирования ссылки на WhatsApp. На этом endpoint не передаётся никакой информации кроме списка идентификаторов товаров и их количества.</p>
-        <p>Вы можете в любой момент очистить localStorage через настройки браузера, что приведёт к потере корзины и избранного, но не затронет работу приложения.</p>
+        <p>Формирование спецификации реализовано через отправку содержимого списка выбранного на сервисный endpoint (Supabase Edge Function) исключительно для актуализации цен и формирования ссылки на WhatsApp. На этом endpoint не передаётся никакой информации кроме списка идентификаторов товаров и их количества.</p>
+        <p>Вы можете в любой момент очистить localStorage через настройки браузера, что приведёт к потере списка выбранного и избранного, но не затронет работу приложения.</p>
         <p>Если у вас есть вопросы, свяжитесь с нами через форму обратной связи на сайте.</p>
     `
 }

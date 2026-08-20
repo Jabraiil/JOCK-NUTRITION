@@ -1,10 +1,10 @@
-const CACHE_VERSION = 'jock-nutrition-v40-2026-08-10'
+const CACHE_VERSION = 'jock-nutrition-v41-2026-08-20'
 const BASE_PATH = self.location.pathname.replace(/\/sw\.js$/, '').replace(/\/$/, '') + '/'
 const PRECACHE_URLS = [
     'index.html',
     'offline.html',
-    'styles.css?v=38',
-    'app.js?v=38',
+    'styles.css?v=39',
+    'app.js?v=40',
     'scanner-worker.js',
     'manifest.json',
     'favicon.ico',

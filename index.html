@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<!-- DEPLOY-MARKER: 2026-08-10-v6 -->
+<!-- DEPLOY-MARKER: 2026-08-20-v7 -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="description" content="JOCK NUTRITION - интернет-магазин биологически активных добавок. Быстрая доставка, широкий ассортимент спортивного питания.">
+    <meta name="description" content="JOCK NUTRITION — интерактивная онлайн-витрина (цифровой информационный каталог) биологически активных добавок. Просматривайте каталог, формируйте список и отправляйте спецификацию в WhatsApp.">
     <meta name="theme-color" content="#007AFF">
     <meta name="color-scheme" content="light dark">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -23,7 +23,7 @@
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="https://jabraiil.github.io/JOCK-NUTRITION/">
     <title>JOCK NUTRITION</title>
-    <link rel="stylesheet" href="styles.css?v=38">
+    <link rel="stylesheet" href="styles.css?v=39">
     <link rel="sitemap" type="application/xml" title="Sitemap" href="./sitemap.xml">
     <script type="application/ld+json">
     {
@@ -31,7 +31,7 @@
         "@type": "WebSite",
         "name": "JOCK NUTRITION",
         "url": "https://jabraiil.github.io/JOCK-NUTRITION/",
-        "description": "Интернет-магазин биологически активных добавок",
+        "description": "Интерактивная онлайн-витрина (цифровой информационный каталог) биологически активных добавок",
         "potentialAction": {
             "@type": "SearchAction",
             "target": "https://jabraiil.github.io/JOCK-NUTRITION/?search={search_term_string}",
@@ -190,20 +190,66 @@
             </div>
 
             <div id="cartDrawerOverlay" class="cart-drawer-overlay"></div>
-            <div id="cartDrawer" class="cart-drawer" role="dialog" aria-modal="true" aria-label="Корзина">
+            <div id="cartDrawer" class="cart-drawer" role="dialog" aria-modal="true" aria-label="Ваш выбор">
                 <div class="cart-drawer-header">
-                    <h2>Корзина</h2>
-                     <button id="cartDrawerClose" class="cart-drawer-close" aria-label="Закрыть корзину">&times;</button>
+                    <h2>Ваш выбор</h2>
+                     <button id="cartDrawerClose" class="cart-drawer-close" aria-label="Закрыть">&times;</button>
                 </div>
                 <div class="cart-drawer-body">
                     <div id="cartItems"></div>
                 </div>
                 <div class="cart-drawer-footer">
+                    <div id="cartDeliveryNote" class="cart-delivery-note">
+                        <span class="cart-delivery-icon" aria-hidden="true">⚠️</span>
+                        <span class="cart-delivery-text">Стоимость транспортировки не входит в цену товара и полностью оплачивается получателем. Для пунктов выдачи (СДЭК, Ozon) точная стоимость рассчитывается при передаче отправления и компенсируется до отправления трек-номера.</span>
+                    </div>
                     <div class="cart-total">
                         <span>Итого:</span>
                         <span id="cartTotal">0 ₽</span>
                     </div>
-                    <button id="checkoutBtn" class="btn btn-primary btn-block">Оформить заказ</button>
+
+                    <div id="cartForm" class="cart-form hidden">
+                        <div class="form-group">
+                            <label for="recipientName">ФИО получателя *</label>
+                            <input type="text" id="recipientName" class="form-input" placeholder="Введите ФИО" autocomplete="off" spellcheck="off">
+                        </div>
+                        <div class="form-group">
+                            <label for="recipientPhone">Контактный телефон *</label>
+                            <input type="tel" id="recipientPhone" class="form-input" placeholder="+7 (___) ___-__-__" autocomplete="off" inputmode="tel">
+                        </div>
+                        <div class="form-group">
+                            <label for="deliveryMethod">Способ получения *</label>
+                            <select id="deliveryMethod" class="form-select">
+                                <option value="taxi">Такси</option>
+                                <option value="taxi_caspian">Попутное такси в Каспийск</option>
+                                <option value="sdek">СДЭК</option>
+                                <option value="ozon">Ozon Доставка</option>
+                            </select>
+                        </div>
+                        <div id="taxiFields" class="form-group hidden">
+                            <label for="deliveryAddress">Адрес доставки (Улица, дом, квартира) *</label>
+                            <input type="text" id="deliveryAddress" class="form-input" placeholder="Улица, дом, квартира" autocomplete="off" spellcheck="off">
+                            <label class="checkbox-label" for="taxiDoorbell">
+                                <input type="checkbox" id="taxiDoorbell" class="checkbox-input">
+                                <span class="checkbox-mark"></span>
+                                Подача такси с выходом водителя (подъем до двери / передача лично). Без отметки — встреча у машина.
+                            </label>
+                        </div>
+                        <div id="pvzFields" class="form-group hidden">
+                            <label for="pvzAddress">Номер или адрес пункта выдачи (ПВЗ) *</label>
+                            <input type="text" id="pvzAddress" class="form-input" placeholder="Введите номер или адрес пункта" autocomplete="off" spellcheck="off">
+                        </div>
+                        <div id="ozonWarning" class="ozon-warning hidden" role="alert">
+                            Важно: указывайте номер телефона, который строго привязан к вашему личному приложению Ozon. На него придёт штрихкод для получения отправления.
+                        </div>
+                        <div id="specFormError" class="spec-error hidden" role="alert"></div>
+                    </div>
+
+                    <div class="cart-consent">
+                        Нажимая кнопку, вы соглашаетесь с <a href="#" id="consentPrivacyLink" class="consent-link" tabindex="0">Правилами использования сайта</a>
+                    </div>
+                    <button id="checkoutBtn" class="btn btn-primary btn-block">Далее</button>
+                    <button id="sendSpecBtn" class="btn btn-primary btn-block hidden">Сформировать спецификацию в WhatsApp</button>
                     <div id="orderTimeMessage" class="order-time-message hidden"></div>
                 </div>
             </div>
@@ -228,11 +274,11 @@
         </div>
     </div>
 
-    <script src="app.js?v=39"></script>
+    <script src="app.js?v=40"></script>
 
     <div id="cookieBanner" class="cookie-banner hidden">
         <div class="cookie-banner-content">
-            <p>Мы используем технические файлы cookie и локальное хранилище для правильной работы приложения (например, сохранения корзины). Оставаясь на сайте, вы соглашаетесь с этим.</p>
+            <p>Мы используем технические файлы cookie и локальное хранилище для правильной работы приложения (например, сохранения списка выбранного). Оставаясь на сайте, вы соглашаетесь с этим.</p>
             <button id="cookieAccept" class="btn btn-primary">Понятно</button>
         </div>
     </div>
@@ -298,14 +344,14 @@
         </svg>
         <span class="nav-label">Избранное</span>
     </button>
-    <button type="button" class="bottom-nav-item" id="navCart" data-nav="cart" role="button" tabindex="0" aria-label="Корзина">
+    <button type="button" class="bottom-nav-item" id="navCart" data-nav="cart" role="button" tabindex="0" aria-label="Ваш выбор">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="9" cy="21" r="1"></circle>
             <circle cx="20" cy="21" r="1"></circle>
             <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
         </svg>
-        <span class="nav-label">Корзина</span>
-        <span id="bottomCartCount" class="bottom-nav-badge hidden" aria-label="Количество товаров в корзине">0</span>
+        <span class="nav-label">Ваш выбор</span>
+        <span id="bottomCartCount" class="bottom-nav-badge hidden" aria-label="Количество позиций в списке выбранного">0</span>
     </button>
 </nav>
 

@@ -2,7 +2,7 @@
   "id": "/JOCK-NUTRITION/",
   "name": "JOCK NUTRITION",
   "short_name": "JOCK",
-  "description": "Интернет-магазин биологически активных добавок",
+  "description": "Интерактивная онлайн-витрина (цифровой информационный каталог) биологически активных добавок",
   "start_url": "/JOCK-NUTRITION/",
   "scope": "/JOCK-NUTRITION/",
   "display": "standalone",
@@ -13,7 +13,7 @@
   "lang": "ru",
   "dir": "ltr",
   "prefer_related_applications": false,
-  "categories": ["shopping", "health", "fitness"],
+  "categories": ["health", "fitness", "shopping"],
   "icons": [
     {
       "src": "./assets/icons/icon-192.png",
@@ -41,5 +41,5 @@
     }
   ],
   "screenshots": [],
-  "_cacheBust": "2026-08-10-v6"
+  "_cacheBust": "2026-08-20-v7"
 }
