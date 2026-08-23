@@ -54,13 +54,19 @@ let cart = []
 let favorites = []
 try {
     const cartRaw = localStorage.getItem('jock-cart')
-    if (cartRaw) cart = JSON.parse(cartRaw).map(item => ({ ...item, id: String(item.id) }))
+    if (cartRaw) {
+        const parsed = JSON.parse(cartRaw)
+        cart = Array.isArray(parsed) ? parsed.map(item => ({ ...item, id: String(item.id) })) : []
+    }
 } catch (e) {
     console.error('Failed to parse cart from localStorage:', e)
 }
 try {
     const favRaw = localStorage.getItem('jock-favorites')
-    if (favRaw) favorites = JSON.parse(favRaw).map(String)
+    if (favRaw) {
+        const parsed = JSON.parse(favRaw)
+        favorites = Array.isArray(parsed) ? parsed.map(String) : []
+    }
 } catch (e) {
     console.error('Failed to parse favorites from localStorage:', e)
 }
@@ -257,22 +263,32 @@ function setupEventListeners() {
         if (sendSpecBtn) sendSpecBtn.addEventListener('click', generateWhatsAppSpec)
 
         const recipientName = document.getElementById('recipientName')
-        if (recipientName) recipientName.addEventListener('input', updateSendSpecBtnState)
+        if (recipientName) recipientName.addEventListener('input', () => {
+            clearFieldError('recipientName')
+        })
 
         const recipientPhone = document.getElementById('recipientPhone')
-        if (recipientPhone) recipientPhone.addEventListener('input', updateSendSpecBtnState)
+        if (recipientPhone) recipientPhone.addEventListener('input', () => {
+            clearFieldError('recipientPhone')
+        })
 
         const deliveryMethod = document.getElementById('deliveryMethod')
-        if (deliveryMethod) deliveryMethod.addEventListener('change', updateSendSpecBtnState)
+        if (deliveryMethod) deliveryMethod.addEventListener('change', () => {
+            updateDeliveryFields()
+        })
 
         const deliveryAddress = document.getElementById('deliveryAddress')
-        if (deliveryAddress) deliveryAddress.addEventListener('input', updateSendSpecBtnState)
+        if (deliveryAddress) deliveryAddress.addEventListener('input', () => {
+            clearFieldError('deliveryAddress')
+        })
 
         const pvzAddress = document.getElementById('pvzAddress')
-        if (pvzAddress) pvzAddress.addEventListener('input', updateSendSpecBtnState)
+        if (pvzAddress) pvzAddress.addEventListener('input', () => {
+            clearFieldError('pvzAddress')
+        })
 
         const taxiDoorbell = document.getElementById('taxiDoorbell')
-        if (taxiDoorbell) taxiDoorbell.addEventListener('change', updateSendSpecBtnState)
+        if (taxiDoorbell) taxiDoorbell.addEventListener('change', () => {})
 
         const pickupToggle = document.getElementById('pickupToggle')
         if (pickupToggle) pickupToggle.addEventListener('change', toggleCartFormFields)
@@ -475,6 +491,17 @@ function clearSearch() {
     }
 }
 
+function toggleSearch() {
+    const searchBar = document.getElementById('searchBar')
+    const searchInput = document.getElementById('searchInput')
+    if (!searchBar) return
+    const isHidden = searchBar.classList.contains('hidden')
+    searchBar.classList.toggle('hidden')
+    if (isHidden && searchInput) {
+        searchInput.focus()
+    }
+}
+
 async function loadSettings() {
     try {
         const response = await fetchWithTimeout(`${CONFIG.supabaseUrl}/rest/v1/settings?select=key,value`, {
@@ -483,21 +510,19 @@ async function loadSettings() {
                 'Authorization': `Bearer ${CONFIG.supabaseAnonKey}`
             }
         })
-        if (response.ok) {
-            const settingsRaw = await response.json().catch(() => [])
-            const settings = {}
-            for (const s of (Array.isArray(settingsRaw) ? settingsRaw : [])) {
-                settings[s.key] = s.value
-            }
-            window.__storeSettings = settings
-
-            if (settings.logo_text) {
-                const logo = document.getElementById('logoLink')
-                if (logo) logo.textContent = settings.logo_text
-            }
-
-            checkOrderTime()
+        const settingsRaw = await response.json().catch(() => [])
+        const settings = {}
+        for (const s of (Array.isArray(settingsRaw) ? settingsRaw : [])) {
+            settings[s.key] = s.value
         }
+        window.__storeSettings = settings
+
+        if (settings.logo_text) {
+            const logo = document.getElementById('logoLink')
+            if (logo) logo.textContent = settings.logo_text
+        }
+
+        checkOrderTime()
     } catch (error) {
         console.error('Error loading settings:', error)
     }
@@ -526,7 +551,6 @@ async function loadProducts(reset = true) {
                             'Authorization': `Bearer ${CONFIG.supabaseAnonKey}`
                         }
                     })
-                    if (!response.ok) throw new Error('Failed to load products: ' + response.status)
                     products = await response.json()
                     if (!products || !Array.isArray(products)) products = []
                     apiCache.products = { data: products, ts: Date.now(), ttl: 30000 }
@@ -554,9 +578,7 @@ async function loadProducts(reset = true) {
                         'Authorization': `Bearer ${CONFIG.supabaseAnonKey}`
                     }
                 })
-                if (relatedRes.ok) {
-                    apiCache.related = { data: await relatedRes.json(), ts: now, ttl: 60000 }
-                }
+                apiCache.related = { data: await relatedRes.json(), ts: now, ttl: 60000 }
             } catch (e) {
                 console.error('Error loading related products:', e)
             }
@@ -628,18 +650,10 @@ async function loadFilters() {
         const categoriesRes = await fetchWithTimeout(`${CONFIG.supabaseUrl}/rest/v1/categories?select=*`, {
             headers: { 'apikey': CONFIG.supabaseAnonKey, 'Authorization': `Bearer ${CONFIG.supabaseAnonKey}` }
         })
-        if (!categoriesRes.ok) {
-            const text = await categoriesRes.text()
-            throw new Error(text || 'Ошибка загрузки категорий')
-        }
 
         const brandsRes = await fetchWithTimeout(`${CONFIG.supabaseUrl}/rest/v1/brands?select=*`, {
             headers: { 'apikey': CONFIG.supabaseAnonKey, 'Authorization': `Bearer ${CONFIG.supabaseAnonKey}` }
         })
-        if (!brandsRes.ok) {
-            const text = await brandsRes.text()
-            throw new Error(text || 'Ошибка загрузки брендов')
-        }
 
         const categoriesRaw = await categoriesRes.json()
         const brandsRaw = await brandsRes.json()
@@ -1287,20 +1301,58 @@ function renderCart() {
     cartTotal.textContent = `${total} ₽`
 }
 
+function getCheckoutFormField(id) {
+    return document.getElementById(id)
+}
+
+function isTaxiMethod(value) {
+    return value === 'taxi'
+}
+
+function isOzonMethod(value) {
+    return value === 'ozon'
+}
+
+function showFieldError(fieldId, message) {
+    const group = document.querySelector(`[data-field="${fieldId}"]`)
+    const errorEl = document.querySelector(`[data-error-for="${fieldId}"]`)
+    const input = getCheckoutFormField(fieldId)
+    if (errorEl) errorEl.textContent = message
+    if (group) group.classList.add('has-error')
+    if (input) input.classList.add('invalid')
+}
+
+function clearFieldError(fieldId) {
+    const group = document.querySelector(`[data-field="${fieldId}"]`)
+    const errorEl = document.querySelector(`[data-error-for="${fieldId}"]`)
+    const input = getCheckoutFormField(fieldId)
+    if (errorEl) errorEl.textContent = ''
+    if (group) group.classList.remove('has-error')
+    if (input) input.classList.remove('invalid')
+}
+
+function clearAllFieldErrors() {
+    document.querySelectorAll('.field-error').forEach(el => { el.textContent = '' })
+    document.querySelectorAll('.form-group.has-error').forEach(el => { el.classList.remove('has-error') })
+    document.querySelectorAll('.form-input.invalid, .form-select.invalid').forEach(el => { el.classList.remove('invalid') })
+    const specError = getCheckoutFormField('specFormError')
+    if (specError) { specError.textContent = ''; specError.classList.add('hidden') }
+}
+
 function updateDeliveryFields() {
-    const method = document.getElementById('deliveryMethod')
-    const taxiFields = document.getElementById('taxiFields')
-    const pvzFields = document.getElementById('pvzFields')
-    const taxiDoorbell = document.getElementById('taxiDoorbell')
-    const ozonPhoneHint = document.getElementById('ozonPhoneHint')
+    const method = getCheckoutFormField('deliveryMethod')
+    const taxiFields = getCheckoutFormField('taxiFields')
+    const pvzFields = getCheckoutFormField('pvzFields')
+    const taxiDoorbell = getCheckoutFormField('taxiDoorbell')
+    const ozonPhoneHint = getCheckoutFormField('ozonPhoneHint')
     if (!method) return
 
     const value = method.value
-    const isTaxi = value === 'taxi'
+    const isTaxi = isTaxiMethod(value)
 
     if (taxiFields) taxiFields.classList.toggle('hidden', !isTaxi)
-    if (pvzFields) pvzFields.classList.toggle('hidden', value !== 'ozon')
-    if (ozonPhoneHint) ozonPhoneHint.classList.toggle('hidden', value !== 'ozon')
+    if (pvzFields) pvzFields.classList.toggle('hidden', !isOzonMethod(value))
+    if (ozonPhoneHint) ozonPhoneHint.classList.toggle('hidden', !isOzonMethod(value))
 
     if (taxiDoorbell) {
         if (isTaxi) {
@@ -1312,44 +1364,14 @@ function updateDeliveryFields() {
         }
     }
 
-    updateSendSpecBtnState()
-}
-
-function updateSendSpecBtnState() {
-    const method = document.getElementById('deliveryMethod')
-    const sendSpecBtn = document.getElementById('sendSpecBtn')
-    if (!sendSpecBtn) return
-
-    const pickupToggle = document.getElementById('pickupToggle')
-    const isPickup = pickupToggle ? pickupToggle.checked : false
-
-    if (isPickup) {
-        sendSpecBtn.disabled = false
-        return
-    }
-
-    if (!method) {
-        sendSpecBtn.disabled = true
-        return
-    }
-
-    const value = method.value
-    const name = (document.getElementById('recipientName') || {}).value || ''
-    const phone = (document.getElementById('recipientPhone') || {}).value || ''
-    let address = ''
-    if (isTaxiMethod(value)) {
-        address = (document.getElementById('deliveryAddress') || {}).value || ''
-    } else if (isPvzMethod(value)) {
-        address = (document.getElementById('pvzAddress') || {}).value || ''
-    }
-
-    const valid = !!name.trim() && !!phone.trim() && !!value && !!address.trim()
-    sendSpecBtn.disabled = !valid
+    clearFieldError('deliveryAddress')
+    clearFieldError('pvzAddress')
+    clearFieldError('deliveryMethod')
 }
 
 function toggleCartFormFields() {
-    const pickupToggle = document.getElementById('pickupToggle')
-    const cartFormFields = document.getElementById('cartFormFields')
+    const pickupToggle = getCheckoutFormField('pickupToggle')
+    const cartFormFields = getCheckoutFormField('cartFormFields')
     if (!pickupToggle || !cartFormFields) return
 
     if (pickupToggle.checked) {
@@ -1357,8 +1379,78 @@ function toggleCartFormFields() {
     } else {
         cartFormFields.classList.remove('hidden')
     }
+    clearAllFieldErrors()
+}
 
-    updateSendSpecBtnState()
+function validateCheckoutForm() {
+    const pickupToggle = getCheckoutFormField('pickupToggle')
+    const isPickup = pickupToggle ? pickupToggle.checked : false
+
+    if (isPickup) {
+        return { valid: true, data: { isPickup: true } }
+    }
+
+    const nameEl = getCheckoutFormField('recipientName')
+    const phoneEl = getCheckoutFormField('recipientPhone')
+    const methodEl = getCheckoutFormField('deliveryMethod')
+    const addressEl = getCheckoutFormField('deliveryAddress')
+    const pvzEl = getCheckoutFormField('pvzAddress')
+
+    const name = nameEl ? nameEl.value.trim() : ''
+    const phone = phoneEl ? phoneEl.value.trim() : ''
+    const methodValue = methodEl ? methodEl.value : ''
+
+    let address = ''
+    if (isTaxiMethod(methodValue)) {
+        address = addressEl ? addressEl.value.trim() : ''
+    } else if (isOzonMethod(methodValue)) {
+        address = pvzEl ? pvzEl.value.trim() : ''
+    }
+
+    let valid = true
+
+    if (!name) {
+        showFieldError('recipientName', 'Введите ФИО получателя')
+        valid = false
+    } else {
+        clearFieldError('recipientName')
+    }
+
+    if (!phone) {
+        showFieldError('recipientPhone', 'Введите контактный телефон')
+        valid = false
+    } else {
+        clearFieldError('recipientPhone')
+    }
+
+    if (!methodValue) {
+        showFieldError('deliveryMethod', 'Выберите способ получения')
+        valid = false
+    } else {
+        clearFieldError('deliveryMethod')
+    }
+
+    if (valid && isTaxiMethod(methodValue) && !address) {
+        showFieldError('deliveryAddress', 'Введите адрес доставки')
+        valid = false
+    }
+
+    if (valid && isOzonMethod(methodValue) && !address) {
+        showFieldError('pvzAddress', 'Введите номер или адрес ПВЗ')
+        valid = false
+    }
+
+    return {
+        valid,
+        data: {
+            isPickup: false,
+            name,
+            phone,
+            methodValue,
+            address,
+            methodLabel: isTaxiMethod(methodValue) ? 'Такси' : isOzonMethod(methodValue) ? 'Ozon Доставка' : ''
+        }
+    }
 }
 
 function proceedToCheckout() {
@@ -1367,9 +1459,9 @@ function proceedToCheckout() {
         return
     }
 
-    const cartFormFields = document.getElementById('cartFormFields')
-    const checkoutBtn = document.getElementById('checkoutBtn')
-    const sendSpecBtn = document.getElementById('sendSpecBtn')
+    const cartFormFields = getCheckoutFormField('cartFormFields')
+    const checkoutBtn = getCheckoutFormField('checkoutBtn')
+    const sendSpecBtn = getCheckoutFormField('sendSpecBtn')
 
     if (checkoutBtn) checkoutBtn.classList.add('hidden')
     if (sendSpecBtn) sendSpecBtn.classList.remove('hidden')
@@ -1381,25 +1473,25 @@ function proceedToCheckout() {
 }
 
 function resetCartFormFields() {
-    const recipientName = document.getElementById('recipientName')
-    const recipientPhone = document.getElementById('recipientPhone')
-    const deliveryMethod = document.getElementById('deliveryMethod')
-    const deliveryAddress = document.getElementById('deliveryAddress')
-    const pvzAddress = document.getElementById('pvzAddress')
-    const taxiDoorbell = document.getElementById('taxiDoorbell')
-    const pickupToggle = document.getElementById('pickupToggle')
-    const specError = document.getElementById('specFormError')
+    const recipientName = getCheckoutFormField('recipientName')
+    const recipientPhone = getCheckoutFormField('recipientPhone')
+    const deliveryMethod = getCheckoutFormField('deliveryMethod')
+    const deliveryAddress = getCheckoutFormField('deliveryAddress')
+    const pvzAddress = getCheckoutFormField('pvzAddress')
+    const taxiDoorbell = getCheckoutFormField('taxiDoorbell')
+    const pickupToggle = getCheckoutFormField('pickupToggle')
 
     if (recipientName) recipientName.value = ''
     if (recipientPhone) recipientPhone.value = ''
-    if (deliveryMethod) deliveryMethod.value = 'taxi'
+    if (deliveryMethod) deliveryMethod.value = ''
     if (deliveryAddress) deliveryAddress.value = ''
     if (pvzAddress) pvzAddress.value = ''
     if (taxiDoorbell) taxiDoorbell.checked = false
     if (pickupToggle) pickupToggle.checked = false
-    if (specError) { specError.textContent = ''; specError.classList.add('hidden') }
 
-    const cartFormFields = document.getElementById('cartFormFields')
+    clearAllFieldErrors()
+
+    const cartFormFields = getCheckoutFormField('cartFormFields')
     if (cartFormFields) cartFormFields.classList.add('hidden')
 
     updateDeliveryFields()
@@ -1476,42 +1568,31 @@ function openWhatsAppUrl(whatsappUrl) {
 }
 
 async function generateWhatsAppSpec() {
-    const sendSpecBtn = document.getElementById('sendSpecBtn')
-    const specError = document.getElementById('specFormError')
+    const sendSpecBtn = getCheckoutFormField('sendSpecBtn')
+    const specError = getCheckoutFormField('specFormError')
 
-    const pickupToggle = document.getElementById('pickupToggle')
-    const isPickup = pickupToggle ? pickupToggle.checked : false
+    clearAllFieldErrors()
 
-    const name = (document.getElementById('recipientName') || {}).value || ''
-    const phone = (document.getElementById('recipientPhone') || {}).value || ''
-    const method = document.getElementById('deliveryMethod')
-    const methodValue = method ? method.value : ''
-    const methodLabel = isPickup ? 'Самовывоз' : (methodValue === 'taxi' ? 'Такси' : methodValue === 'ozon' ? 'Ozon Доставка' : '')
+    const validation = validateCheckoutForm()
 
-    let address = ''
-    if (!isPickup) {
-        if (methodValue === 'taxi') {
-            address = (document.getElementById('deliveryAddress') || {}).value || ''
-        } else if (methodValue === 'ozon') {
-            address = (document.getElementById('pvzAddress') || {}).value || ''
-        }
-    }
-
-    const taxiDoorbell = document.getElementById('taxiDoorbell')
-    const isTaxi = methodValue === 'taxi'
-    const taxiOption = isTaxi && taxiDoorbell
-        ? (taxiDoorbell.checked
-            ? 'С выходом водителя'
-            : 'Без выхода водителя')
-        : ''
-
-    if (!isPickup && (!name.trim() || !phone.trim() || !methodValue || !address.trim())) {
+    if (!validation.valid) {
         if (specError) {
             specError.textContent = 'Пожалуйста, заполните все обязательные поля (*).'
             specError.classList.remove('hidden')
         }
         return
     }
+
+    const { name, phone, methodValue, address, methodLabel, isPickup } = validation.data
+
+    const taxiDoorbell = getCheckoutFormField('taxiDoorbell')
+    const isTaxi = isTaxiMethod(methodValue)
+    const taxiOption = isTaxi && taxiDoorbell
+        ? (taxiDoorbell.checked
+            ? 'С выходом водителя'
+            : 'Без выхода водителя')
+        : ''
+
     if (specError) { specError.textContent = ''; specError.classList.add('hidden') }
 
     if (sendSpecBtn) {
@@ -1531,10 +1612,6 @@ async function generateWhatsAppSpec() {
 
         const data = await response.json().catch(() => ({}))
 
-        if (!response.ok) {
-            throw new Error(data.error || 'Ошибка формирования спецификации')
-        }
-
         const items = data.items || []
         const total = data.total || 0
         const hasError = data.hasError || false
@@ -1542,13 +1619,13 @@ async function generateWhatsAppSpec() {
 
         const whatsappNumber = getWhatsAppNumber()
         const message = buildWhatsAppMessage(items, total, hasError, errorCode, {
-            name: name.trim(),
-            phone: phone.trim(),
-            methodLabel: methodLabel,
-            address: address.trim(),
-            isTaxi: isTaxi,
-            taxiOption: taxiOption,
-            isPickup: isPickup
+            name,
+            phone,
+            methodLabel,
+            address,
+            isTaxi,
+            taxiOption,
+            isPickup
         })
 
         if (!whatsappNumber) {
@@ -1582,10 +1659,10 @@ async function generateWhatsAppSpec() {
 }
 
 function resetCartCheckoutState() {
-    const cartFormFields = document.getElementById('cartFormFields')
-    const pickupToggle = document.getElementById('pickupToggle')
-    const sendSpecBtn = document.getElementById('sendSpecBtn')
-    const checkoutBtn = document.getElementById('checkoutBtn')
+    const cartFormFields = getCheckoutFormField('cartFormFields')
+    const pickupToggle = getCheckoutFormField('pickupToggle')
+    const sendSpecBtn = getCheckoutFormField('sendSpecBtn')
+    const checkoutBtn = getCheckoutFormField('checkoutBtn')
     if (cartFormFields) cartFormFields.classList.add('hidden')
     if (pickupToggle) pickupToggle.checked = false
     if (sendSpecBtn) sendSpecBtn.classList.add('hidden')
@@ -1593,6 +1670,7 @@ function resetCartCheckoutState() {
         checkoutBtn.disabled = cart.length > 0 ? false : true
         checkoutBtn.textContent = 'Далее'
     }
+    clearAllFieldErrors()
 }
 
 async function checkOrderTime() {
@@ -2607,8 +2685,16 @@ function showUpdateNotification() {
 // Add to Home Screen prompt
 let deferredPrompt = null
 
+function safeSessionGet(key) {
+    try { return sessionStorage.getItem(key) } catch (e) { return null }
+}
+
+function safeSessionSet(key, value) {
+    try { sessionStorage.setItem(key, value) } catch (e) { /* storage unavailable */ }
+}
+
 function showA2HSBanner() {
-    if (sessionStorage.getItem('a2hs-dismissed')) return
+    if (safeSessionGet('a2hs-dismissed')) return
     const banner = document.getElementById('a2hsBanner')
     if (!banner) return
     banner.classList.remove('hidden')
@@ -2630,7 +2716,7 @@ function showA2HSBanner() {
                 }
             }
             banner.classList.add('hidden')
-            sessionStorage.setItem('a2hs-dismissed', 'true')
+            safeSessionSet('a2hs-dismissed', 'true')
         })
     }
 
@@ -2639,13 +2725,13 @@ function showA2HSBanner() {
         closeBtn.dataset.a2hsListener = 'true'
         closeBtn.addEventListener('click', () => {
             banner.classList.add('hidden')
-            sessionStorage.setItem('a2hs-dismissed', 'true')
+            safeSessionSet('a2hs-dismissed', 'true')
         })
     }
 }
 
 function showA2HSModal() {
-    if (sessionStorage.getItem('a2hs-modal-dismissed')) return
+    if (safeSessionGet('a2hs-modal-dismissed')) return
     const modal = document.getElementById('a2hsModal')
     if (!modal) return
     modal.classList.remove('hidden')
@@ -2667,7 +2753,7 @@ function showA2HSModal() {
                 }
             }
             modal.classList.add('hidden')
-            sessionStorage.setItem('a2hs-modal-dismissed', 'true')
+            safeSessionSet('a2hs-modal-dismissed', 'true')
         })
     }
 
@@ -2676,7 +2762,7 @@ function showA2HSModal() {
         closeBtn.dataset.a2hsListener = 'true'
         closeBtn.addEventListener('click', () => {
             modal.classList.add('hidden')
-            sessionStorage.setItem('a2hs-modal-dismissed', 'true')
+            safeSessionSet('a2hs-modal-dismissed', 'true')
         })
     }
 }
@@ -2717,19 +2803,22 @@ function initA2HS() {
     const showTarget = isSecondVisit ? showA2HSModal : showA2HSBanner
     const iosDelay = 5000
 
-    function onBeforeInstallPrompt(e) {
-        e.preventDefault()
-        deferredPrompt = e
-        showTarget()
+    if (typeof __a2hsHandlers === 'undefined') {
+        window.__a2hsHandlers = {
+            onBeforeInstallPrompt: (e) => {
+                e.preventDefault()
+                deferredPrompt = e
+                showTarget()
+            },
+            onAppInstalled: () => {
+                deferredPrompt = null
+                trackPWAInstall()
+            }
+        }
     }
 
-    function onAppInstalled() {
-        deferredPrompt = null
-        trackPWAInstall()
-    }
-
-    window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt)
-    window.addEventListener('appinstalled', onAppInstalled)
+    window.addEventListener('beforeinstallprompt', window.__a2hsHandlers.onBeforeInstallPrompt)
+    window.addEventListener('appinstalled', window.__a2hsHandlers.onAppInstalled)
 
     const isIOS = /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase()) && !window.MSStream
     if (isIOS && /safari/i.test(navigator.userAgent) && !/crios|fxios|edgios/.test(navigator.userAgent)) {
@@ -2746,8 +2835,11 @@ function destroyApp() {
         clearInterval(swUpdateInterval)
         swUpdateInterval = null
     }
-    window.removeEventListener('beforeinstallprompt', onBeforeInstallPrompt)
-    window.removeEventListener('appinstalled', onAppInstalled)
+    if (window.__a2hsHandlers) {
+        window.removeEventListener('beforeinstallprompt', window.__a2hsHandlers.onBeforeInstallPrompt)
+        window.removeEventListener('appinstalled', window.__a2hsHandlers.onAppInstalled)
+        delete window.__a2hsHandlers
+    }
 }
 
 function setupOfflineListener() {

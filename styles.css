@@ -1999,6 +1999,25 @@ select:focus:not(:focus-visible) {
     outline-offset: -1px;
 }
 
+.form-input.invalid,
+.form-select.invalid {
+    border-color: var(--error);
+    outline-color: var(--error);
+}
+
+.field-error {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--error);
+    margin-top: 4px;
+    min-height: 1em;
+}
+
+.form-group.has-error .form-input,
+.form-group.has-error .form-select {
+    border-color: var(--error);
+}
+
 .form-select {
     padding: 10px 12px;
     border: 1px solid var(--border);

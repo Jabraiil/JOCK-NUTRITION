@@ -852,18 +852,10 @@ async function loadProducts() {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
         })
         
-        if (!response.ok) {
-            const result = await response.json().catch(() => ({}))
-            const errorEl = document.getElementById('productError')
-            if (errorEl) {
-                errorEl.textContent = translateError(result.error) || 'Ошибка загрузки товаров'
-                errorEl.classList.remove('hidden')
-            }
-            return
-        }
-        
-        const { data, total } = await response.json()
-        productsTotal = total || 0
+        const result = await response.json().catch(() => ({ data: [], total: 0 }))
+        const data = Array.isArray(result.data) ? result.data : []
+        const total = result.total || 0
+        productsTotal = total
         
         const tbody = document.getElementById('productsTable')
         const products = Array.isArray(data) ? data : []
@@ -1686,13 +1678,12 @@ async function loadAnalytics() {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
         })
         
-        if (!response.ok) {
-            const result = await response.json().catch(() => ({}))
-            showError(translateError(result.error) || 'Ошибка загрузки статистики')
+        const data = await response.json().catch(() => ({}))
+        
+        if (!data || (!data.totalRevenue && !data.totalOrders && !data.dailyStats)) {
+            showError('Ошибка загрузки статистики')
             return
         }
-        
-        const data = await response.json()
         
         const totalRevenueEl = document.getElementById('totalRevenue')
         const totalOrdersEl = document.getElementById('totalOrders')
@@ -1720,13 +1711,7 @@ async function loadAnalytics() {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('admin-token')}` }
         })
         
-        if (!ordersRes.ok) {
-            const result = await ordersRes.json().catch(() => ({}))
-            showError(translateError(result.error) || 'Ошибка загрузки заказов')
-            return
-        }
-        
-        const ordersData = await ordersRes.json()
+        const ordersData = await ordersRes.json().catch(() => ({ data: [], total: 0 }))
         ordersTotal = ordersData.total || 0
         
         const ordersTable = document.getElementById('ordersTable')
