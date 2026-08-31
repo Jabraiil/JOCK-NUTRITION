@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Gold Analytics Pro</title>
+    <style>
+        :root {
+            --bg-primary: #000000;
+            --bg-secondary: #08090d;
+            --bg-card: #0f1016;
+            --bg-card-hover: #161820;
+            --text-primary: #ffffff;
+            --text-secondary: #8b8fa3;
+            --text-muted: #4a4d5c;
+            --accent-gold: #f5c842;
+            --accent-gold-dim: #c9a227;
+            --accent-green: #00ff88;
+            --accent-red: #ff4466;
+            --accent-blue: #42a5f5;
+            --accent-purple: #ab47bc;
+            --accent-gray: #6b7280;
+            --glow-gold: rgba(245, 200, 66, 0.35);
+            --glow-green: rgba(0, 255, 136, 0.35);
+            --glow-red: rgba(255, 68, 102, 0.35);
+            --glow-blue: rgba(66, 165, 245, 0.35);
+            --glow-gray: rgba(107, 114, 128, 0.25);
+            --border-subtle: rgba(255, 255, 255, 0.05);
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+            --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.5);
+            --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-smooth: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html, body { height: 100%; overflow: hidden; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            display: flex;
+            flex-direction: column;
+            min-height: 100dvh;
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+        }
+
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            max-width: 480px;
+            margin: 0 auto;
+            width: 100%;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .app-container::-webkit-scrollbar { display: none; }
+
+        /* Header */
+        .header { padding: 20px 20px 16px; position: relative; overflow: hidden; flex-shrink: 0; }
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -60%; left: -20%; right: -20%; height: 200%;
+            background: radial-gradient(ellipse at 50% 0%, rgba(245, 200, 66, 0.1) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .header-title {
+            font-size: 28px; font-weight: 700; letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #f5c842 0%, #ffd700 40%, #f5a623 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+            position: relative;
+        }
+        .header-subtitle { font-size: 13px; color: var(--text-secondary); margin-top: 4px; font-weight: 500; }
+        .market-status {
+            display: inline-flex; align-items: center; gap: 6px;
+            font-size: 11px; color: var(--text-muted); margin-top: 8px;
+            padding: 4px 10px; background: var(--bg-card);
+            border-radius: 20px; border: 1px solid var(--border-subtle);
+        }
+        .market-status-dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: var(--accent-green); box-shadow: 0 0 8px var(--glow-green);
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+        .market-status-dot.closed { background: var(--accent-gray); box-shadow: 0 0 8px var(--glow-gray); animation: none; }
+        @keyframes pulse-dot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(0.85); } }
+
+        /* Selector */
+        .selector-wrapper { padding: 0 20px 16px; position: relative; flex-shrink: 0; }
+        .selector-trigger {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 16px; background: var(--bg-card);
+            border: 1px solid var(--border-subtle); border-radius: var(--radius-lg);
+            cursor: pointer; transition: var(--transition-fast); user-select: none;
+        }
+        .selector-trigger:active { background: var(--bg-card-hover); transform: scale(0.98); }
+        .selector-trigger.open { border-color: var(--accent-gold-dim); box-shadow: 0 0 0 1px rgba(245, 200, 66, 0.2); }
+        .selector-current { display: flex; align-items: center; gap: 10px; }
+        .selector-icon { font-size: 20px; }
+        .selector-name { font-size: 15px; font-weight: 600; }
+        .selector-arrow { width: 20px; height: 20px; transition: transform var(--transition-fast); color: var(--text-secondary); }
+        .selector-trigger.open .selector-arrow { transform: rotate(180deg); }
+        .selector-dropdown {
+            position: absolute; top: calc(100% + 8px); left: 20px; right: 20px;
+            background: var(--bg-card); border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg); box-shadow: var(--shadow-card), 0 0 40px rgba(0, 0, 0, 0.5);
+            overflow: hidden; opacity: 0; transform: translateY(-8px) scale(0.96);
+            pointer-events: none; transition: var(--transition-smooth); z-index: 100;
+        }
+        .selector-dropdown.open { opacity: 1; transform: translateY(0) scale(1); pointer-events: all; }
+        .selector-option {
+            display: flex; align-items: center; gap: 12px;
+            padding: 14px 16px; cursor: pointer; transition: var(--transition-fast);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .selector-option:last-child { border-bottom: none; }
+        .selector-option:active { background: var(--bg-card-hover); }
+        .selector-option.selected { background: rgba(245, 200, 66, 0.08); }
+        .selector-option.selected .selector-option-name { color: var(--accent-gold); }
+        .selector-option-icon { font-size: 18px; width: 28px; text-align: center; }
+        .selector-option-name { flex: 1; font-size: 14px; font-weight: 500; }
+        .selector-option-check { width: 18px; height: 18px; color: var(--accent-gold); opacity: 0; transition: var(--transition-fast); }
+        .selector-option.selected .selector-option-check { opacity: 1; }
+
+        /* Cards */
+        .card { margin: 0 20px 16px; padding: 20px; background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-xl); box-shadow: var(--shadow-card); flex-shrink: 0; }
+        .card-title { font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px; }
+
+        /* Price Card */
+        .price-main { font-size: 36px; font-weight: 700; letter-spacing: -1px; line-height: 1.1; }
+        .price-change { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+        .price-change-value { font-size: 15px; font-weight: 600; padding: 4px 10px; border-radius: var(--radius-sm); }
+        .price-change-value.positive { color: var(--accent-green); background: rgba(0, 255, 136, 0.1); }
+        .price-change-value.negative { color: var(--accent-red); background: rgba(255, 68, 102, 0.1); }
+        .price-change-percent { font-size: 13px; color: var(--text-secondary); }
+        .price-meta { display: flex; justify-content: space-between; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-subtle); }
+        .price-meta-item { text-align: center; }
+        .price-meta-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+        .price-meta-value { font-size: 13px; font-weight: 600; margin-top: 2px; }
+
+        /* Analyst Card */
+        .analyst-consensus { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+        .analyst-rating-badge {
+            padding: 8px 16px; border-radius: var(--radius-md); font-size: 14px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .analyst-rating-badge.buy { background: rgba(0, 255, 136, 0.15); color: var(--accent-green); border: 1px solid rgba(0, 255, 136, 0.3); }
+        .analyst-rating-badge.hold { background: rgba(107, 114, 128, 0.15); color: var(--accent-gray); border: 1px solid rgba(107, 114, 128, 0.3); }
+        .analyst-rating-badge.sell { background: rgba(255, 68, 102, 0.15); color: var(--accent-red); border: 1px solid rgba(255, 68, 102, 0.3); }
+        .analyst-count { font-size: 12px; color: var(--text-muted); }
+        .price-target-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border-subtle); }
+        .price-target-row:last-child { border-bottom: none; }
+        .price-target-label { font-size: 13px; color: var(--text-secondary); }
+        .price-target-value { font-size: 14px; font-weight: 600; }
+        .price-target-upside { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 4px; }
+        .price-target-upside.positive { color: var(--accent-green); background: rgba(0, 255, 136, 0.1); }
+        .price-target-upside.negative { color: var(--accent-red); background: rgba(255, 68, 102, 0.1); }
+
+        /* Ratings Bar */
+        .ratings-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; margin-top: 12px; }
+        .ratings-bar-segment { height: 100%; transition: width 0.5s ease; }
+        .ratings-bar-segment.strong-buy { background: #00c853; }
+        .ratings-bar-segment.buy { background: #00ff88; }
+        .ratings-bar-segment.hold { background: #6b7280; }
+        .ratings-bar-segment.sell { background: #ff4466; }
+        .ratings-bar-segment.strong-sell { background: #c62828; }
+        .ratings-legend { display: flex; justify-content: space-between; margin-top: 8px; flex-wrap: wrap; gap: 4px; }
+        .ratings-legend-item { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text-muted); }
+        .ratings-legend-dot { width: 6px; height: 6px; border-radius: 50%; }
+
+        /* Technical Indicators */
+        .tech-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .tech-item { background: var(--bg-secondary); border-radius: var(--radius-md); padding: 12px; }
+        .tech-item-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+        .tech-item-value { font-size: 18px; font-weight: 700; margin-top: 4px; }
+        .tech-item-signal { font-size: 11px; margin-top: 2px; font-weight: 600; }
+        .tech-item-value.bullish { color: var(--accent-green); }
+        .tech-item-value.bearish { color: var(--accent-red); }
+        .tech-item-value.neutral { color: var(--accent-gray); }
+
+        /* News Sentiment */
+        .sentiment-gauge { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+        .sentiment-score {
+            width: 64px; height: 64px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px; font-weight: 700; flex-shrink: 0;
+        }
+        .sentiment-score.bullish { background: rgba(0, 255, 136, 0.15); color: var(--accent-green); border: 2px solid var(--accent-green); }
+        .sentiment-score.bearish { background: rgba(255, 68, 102, 0.15); color: var(--accent-red); border: 2px solid var(--accent-red); }
+        .sentiment-score.neutral { background: rgba(107, 114, 128, 0.15); color: var(--accent-gray); border: 2px solid var(--accent-gray); }
+        .sentiment-info { flex: 1; }
+        .sentiment-label { font-size: 14px; font-weight: 600; }
+        .sentiment-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+        .news-item { padding: 10px 0; border-bottom: 1px solid var(--border-subtle); }
+        .news-item:last-child { border-bottom: none; }
+        .news-title { font-size: 13px; font-weight: 500; line-height: 1.4; }
+        .news-meta { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+        .news-source { font-size: 11px; color: var(--text-muted); }
+        .news-sentiment { font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 600; }
+        .news-sentiment.positive { background: rgba(0, 255, 136, 0.1); color: var(--accent-green); }
+        .news-sentiment.negative { background: rgba(255, 68, 102, 0.1); color: var(--accent-red); }
+        .news-sentiment.neutral { background: rgba(107, 114, 128, 0.1); color: var(--accent-gray); }
+
+        /* Chart */
+        .chart-container { margin: 0 20px 16px; padding: 16px; background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-xl); flex-shrink: 0; }
+        .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .chart-title { font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+        .chart-period { font-size: 10px; color: var(--text-muted); padding: 4px 8px; background: var(--bg-secondary); border-radius: var(--radius-sm); }
+        .chart-svg-wrapper { width: 100%; height: 160px; position: relative; }
+        .chart-svg-wrapper svg { width: 100%; height: 100%; display: block; }
+        .chart-empty { display: flex; align-items: center; justify-content: center; height: 100%; color: var(--text-muted); font-size: 13px; }
+
+        /* Refresh Button */
+        .refresh-section { padding: 0 20px 20px; flex-shrink: 0; }
+        .refresh-btn {
+            width: 100%; padding: 16px;
+            background: linear-gradient(135deg, var(--accent-gold) 0%, var(--accent-gold-dim) 100%);
+            border: none; border-radius: var(--radius-lg);
+            font-size: 15px; font-weight: 700; color: #000;
+            cursor: pointer; transition: var(--transition-fast);
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            position: relative; overflow: hidden;
+        }
+        .refresh-btn::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 50%); pointer-events: none; }
+        .refresh-btn:active { transform: scale(0.97); }
+        .refresh-btn.loading { opacity: 0.7; pointer-events: none; }
+        .refresh-icon { width: 18px; height: 18px; transition: transform 0.5s ease; }
+        .refresh-btn.loading .refresh-icon { animation: spin 1s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        /* Toast */
+        .toast-container { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 1000; display: flex; flex-direction: column; gap: 8px; pointer-events: none; width: calc(100% - 40px); max-width: 440px; }
+        .toast { display: flex; align-items: center; gap: 12px; padding: 14px 18px; background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6); transform: translateY(100px); opacity: 0; transition: var(--transition-smooth); pointer-events: all; }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast-icon { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+        .toast.success .toast-icon { background: rgba(0, 255, 136, 0.2); color: var(--accent-green); }
+        .toast.error .toast-icon { background: rgba(255, 68, 102, 0.2); color: var(--accent-red); }
+        .toast.info .toast-icon { background: rgba(245, 200, 66, 0.2); color: var(--accent-gold); }
+        .toast-message { font-size: 14px; font-weight: 500; flex: 1; }
+
+        /* Skeleton */
+        .skeleton { background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--bg-card-hover) 50%, var(--bg-secondary) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: var(--radius-sm); }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        .skeleton-price { height: 40px; width: 60%; margin-bottom: 8px; }
+        .skeleton-line { height: 16px; width: 100%; margin-bottom: 8px; }
+
+        /* Backdrop */
+        .dropdown-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); opacity: 0; pointer-events: none; transition: opacity var(--transition-fast); z-index: 50; }
+        .dropdown-backdrop.open { opacity: 1; pointer-events: all; }
+
+        .bottom-spacer { height: 20px; flex-shrink: 0; }
+        .no-data { font-size: 13px; color: var(--text-muted); text-align: center; padding: 16px 0; }
+    </style>
+</head>
+<body>
+    <div class="app-container" id="app">
+        <!-- Header -->
+        <header class="header">
+            <h1 class="header-title">Gold Analytics</h1>
+            <p class="header-subtitle">Аналитика и прогнозы</p>
+            <div class="market-status">
+                <span class="market-status-dot" id="marketStatusDot"></span>
+                <span id="marketStatusText">Market Open</span>
+            </div>
+        </header>
+
+        <!-- Asset Selector -->
+        <div class="selector-wrapper">
+            <div class="selector-trigger" id="selectorTrigger">
+                <div class="selector-current">
+                    <span class="selector-icon" id="currentIcon">🥇</span>
+                    <span class="selector-name" id="currentName">Gold</span>
+                </div>
+                <svg class="selector-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+            <div class="selector-dropdown" id="selectorDropdown"></div>
+        </div>
+
+        <!-- Price Card -->
+        <div class="card" id="priceCard">
+            <div class="price-main" id="priceMain">—</div>
+            <div class="price-change">
+                <span class="price-change-value" id="priceChangeValue">—</span>
+                <span class="price-change-percent" id="priceChangePercent">—</span>
+            </div>
+            <div class="price-meta">
+                <div class="price-meta-item"><div class="price-meta-label">Open</div><div class="price-meta-value" id="priceOpen">—</div></div>
+                <div class="price-meta-item"><div class="price-meta-label">High</div><div class="price-meta-value" id="priceHigh">—</div></div>
+                <div class="price-meta-item"><div class="price-meta-label">Low</div><div class="price-meta-value" id="priceLow">—</div></div>
+                <div class="price-meta-item"><div class="price-meta-label">Vol</div><div class="price-meta-value" id="priceVolume">—</div></div>
+            </div>
+        </div>
+
+        <!-- Analyst Recommendations -->
+        <div class="card" id="analystCard">
+            <div class="card-title">📊 Рекомендации аналитиков</div>
+            <div id="analystContent">
+                <div class="no-data">Загрузка данных аналитиков...</div>
+            </div>
+        </div>
+
+        <!-- Technical Analysis -->
+        <div class="card" id="technicalCard">
+            <div class="card-title">📈 Технический анализ</div>
+            <div class="tech-grid" id="technicalContent">
+                <div class="no-data">Расчёт индикаторов...</div>
+            </div>
+        </div>
+
+        <!-- News Sentiment -->
+        <div class="card" id="sentimentCard">
+            <div class="card-title">📰 Sentiment новостей</div>
+            <div id="sentimentContent">
+                <div class="no-data">Анализ новостей...</div>
+            </div>
+        </div>
+
+        <!-- Chart -->
+        <div class="chart-container">
+            <div class="chart-header">
+                <span class="chart-title">Price History</span>
+                <span class="chart-period">30 дней</span>
+            </div>
+            <div class="chart-svg-wrapper" id="chartWrapper">
+                <div class="chart-empty">Loading chart...</div>
+            </div>
+        </div>
+
+        <!-- Refresh -->
+        <div class="refresh-section">
+            <button class="refresh-btn" id="refreshBtn">
+                <svg class="refresh-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 11-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+                <span>Обновить аналитику</span>
+            </button>
+        </div>
+        <div class="bottom-spacer"></div>
+    </div>
+
+    <div class="dropdown-backdrop" id="dropdownBackdrop"></div>
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+    (function() {
+        'use strict';
+
+        // ===== CONFIGURATION =====
+        const ASSETS = [
+            { key: 'GLDRUB_TOM', name: 'Gold (GLDRUB)', icon: '🥇', engine: 'currency', market: 'selt', board: 'CETS', decimals: 2, finnhub: 'GOLD', fmp: 'GLD' },
+            { key: 'TGLD', name: 'T-Gold Fund', icon: '📈', engine: 'stock', market: 'shares', board: 'TQBR', decimals: 2, finnhub: 'TGLD.ME', fmp: 'TGLD.ME' },
+            { key: 'PLZL', name: 'Polyus Gold', icon: '⛏️', engine: 'stock', market: 'shares', board: 'TQBR', decimals: 2, finnhub: 'PLZL.ME', fmp: 'PLZL.ME' },
+            { key: 'UGLD', name: 'Ural Gold', icon: '🏔️', engine: 'stock', market: 'shares', board: 'TQBR', decimals: 2, finnhub: 'UGLD.ME', fmp: 'UGLD.ME' },
+            { key: 'GOLD', name: 'Gold Futures', icon: '📊', engine: 'futures', market: 'forts', board: 'RFUD', decimals: 2, finnhub: 'GOLD', fmp: 'GC=F' }
+        ];
+
+        // ===== STATE =====
+        let currentAsset = ASSETS[0];
+        let priceData = null;
+        let historyData = [];
+        let analystData = null;
+        let technicalData = null;
+        let sentimentData = null;
+        let isLoading = false;
+
+        // ===== DOM =====
+        const $ = id => document.getElementById(id);
+        const selectorTrigger = $('selectorTrigger');
+        const selectorDropdown = $('selectorDropdown');
+        const dropdownBackdrop = $('dropdownBackdrop');
+        const refreshBtn = $('refreshBtn');
+        const toastContainer = $('toastContainer');
+
+        // ===== DROPDOWN =====
+        function initDropdown() {
+            selectorDropdown.innerHTML = '';
+            ASSETS.forEach(asset => {
+                const opt = document.createElement('div');
+                opt.className = 'selector-option' + (asset.key === currentAsset.key ? ' selected' : '');
+                opt.innerHTML = `<span class="selector-option-icon">${asset.icon}</span><span class="selector-option-name">${asset.name}</span><svg class="selector-option-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l5 5L20 7"/></svg>`;
+                opt.onclick = () => { selectAsset(asset); };
+                selectorDropdown.appendChild(opt);
+            });
+        }
+
+        function selectAsset(asset) {
+            currentAsset = asset;
+            $('currentIcon').textContent = asset.icon;
+            $('currentName').textContent = asset.name;
+            closeDropdown();
+            initDropdown();
+            loadAllData();
+        }
+
+        function toggleDropdown() {
+            selectorTrigger.classList.contains('open') ? closeDropdown() : openDropdown();
+        }
+        function openDropdown() { selectorTrigger.classList.add('open'); selectorDropdown.classList.add('open'); dropdownBackdrop.classList.add('open'); }
+        function closeDropdown() { selectorTrigger.classList.remove('open'); selectorDropdown.classList.remove('open'); dropdownBackdrop.classList.remove('open'); }
+        selectorTrigger.onclick = toggleDropdown;
+        dropdownBackdrop.onclick = closeDropdown;
+
+        // ===== MARKET STATUS =====
+        function isMarketOpen() {
+            const now = new Date();
+            const moscow = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Moscow' }));
+            const day = moscow.getDay();
+            const mins = moscow.getHours() * 60 + moscow.getMinutes();
+            if (day === 0 || day === 6) return false;
+            return mins >= 600 && mins <= 1125;
+        }
+
+        function updateMarketStatus() {
+            const isOpen = isMarketOpen();
+            $('marketStatusDot').classList.toggle('closed', !isOpen);
+            $('marketStatusText').textContent = isOpen ? 'Market Open' : 'Market Closed';
+            return isOpen;
+        }
+
+        // ===== API FETCHING =====
+        async function fetchJSON(url) {
+            const resp = await fetch(url);
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            return resp.json();
+        }
+
+        // MOEX ISS API - Current price
+        async function fetchPriceData(asset) {
+            const url = `https://iss.moex.com/iss/engines/${asset.engine}/markets/${asset.market}/boards/${asset.board}/securities/${asset.key}.json`;
+            const data = await fetchJSON(url);
+            const md = data.marketdata;
+            if (!md || !md.data || !md.data.length) throw new Error('No market data');
+            const cols = md.columns;
+            const row = md.data[0];
+            const get = name => { const i = cols.indexOf(name); return i >= 0 ? row[i] : null; };
+            return { last: get('LAST'), open: get('OPEN'), high: get('HIGH'), low: get('LOW'), volume: get('VOLUME'), prev: get('PREVPRICE') };
+        }
+
+        // MOEX ISS API - History
+        async function fetchHistory(asset, days = 30) {
+            const url = `https://iss.moex.com/iss/history/engines/${asset.engine}/markets/${asset.market}/boards/${asset.board}/securities/${asset.key}.json?limit=${days}`;
+            const data = await fetchJSON(url);
+            const hist = data.history;
+            if (!hist || !hist.data || !hist.data.length) return [];
+            const cols = hist.columns;
+            const idx = name => cols.indexOf(name);
+            return hist.data.map(r => ({
+                date: r[idx('TRADEDATE')],
+                close: r[idx('CLOSE')],
+                open: r[idx('OPEN')],
+                high: r[idx('HIGH')],
+                low: r[idx('LOW')],
+                volume: r[idx('VOLUME')]
+            })).filter(r => r.close !== null).reverse();
+        }
+
+        // Finnhub - Analyst Recommendations
+        async function fetchAnalystData(symbol) {
+            try {
+                const url = `https://finnhub.io/api/v1/stock/recommendation?symbol=${symbol}&token=demo`;
+                const data = await fetchJSON(url);
+                if (Array.isArray(data) && data.length > 0) {
+                    return {
+                        strongBuy: data[0].strongBuy || 0,
+                        buy: data[0].buy || 0,
+                        hold: data[0].hold || 0,
+                        sell: data[0].sell || 0,
+                        strongSell: data[0].strongSell || 0,
+                        period: data[0].period,
+                        source: 'Finnhub'
+                    };
+                }
+                return null;
+            } catch (e) {
+                console.warn('Finnhub analyst fetch failed:', e);
+                return null;
+            }
+        }
+
+        // Finnhub - Price Target
+        async function fetchPriceTarget(symbol) {
+            try {
+                const url = `https://finnhub.io/api/v1/stock/price-target?symbol=${symbol}&token=demo`;
+                const data = await fetchJSON(url);
+                if (data && data.targetMean) {
+                    return {
+                        high: data.targetHigh,
+                        low: data.targetLow,
+                        mean: data.targetMean,
+                        median: data.targetMedian,
+                        analysts: data.numberAnalysts,
+                        updated: data.lastUpdated,
+                        source: 'Finnhub'
+                    };
+                }
+                return null;
+            } catch (e) {
+                console.warn('Price target fetch failed:', e);
+                return null;
+            }
+        }
+
+        // Marketaux - News Sentiment
+        async function fetchNewsSentiment(symbol) {
+            try {
+                const url = `https://api.marketaux.com/v1/news/all?symbols=${symbol}&filter_entities=true&language=en&api_token=demo`;
+                const data = await fetchJSON(url);
+                if (data && data.data && data.data.length > 0) {
+                    const articles = data.data.slice(0, 5).map(a => ({
+                        title: a.title,
+                        source: a.source,
+                        sentiment: a.entities && a.entities[0] ? a.entities[0].sentiment_score : 0,
+                        url: a.url
+                    }));
+                    const avgSentiment = articles.reduce((s, a) => s + (a.sentiment || 0), 0) / articles.length;
+                    return { articles, overallScore: avgSentiment, source: 'Marketaux' };
+                }
+                return null;
+            } catch (e) {
+                console.warn('News sentiment fetch failed:', e);
+                return null;
+            }
+        }
+
+        // XAUS - Gold specific data
+        async function fetchGoldData() {
+            try {
+                const url = 'https://xaus.com/api/v1/spot';
+                const data = await fetchJSON(url);
+                return {
+                    price: data.price || data.spot,
+                    currency: data.currency || 'USD',
+                    unit: data.unit || 'oz',
+                    updated: data.updated_at || data.price_as_of
+                };
+            } catch (e) {
+                console.warn('XAUS fetch failed:', e);
+                return null;
+            }
+        }
+
+        // ===== TECHNICAL ANALYSIS CALCULATIONS =====
+        function calculateTechnicalAnalysis(closes) {
+            if (!closes || closes.length < 20) return null;
+
+            const result = {};
+
+            // RSI (14-period)
+            const rsiPeriod = Math.min(14, closes.length - 1);
+            let gains = 0, losses = 0;
+            for (let i = closes.length - rsiPeriod; i < closes.length; i++) {
+                const diff = closes[i] - closes[i - 1];
+                if (diff > 0) gains += diff;
+                else losses -= diff;
+            }
+            const avgGain = gains / rsiPeriod;
+            const avgLoss = losses / rsiPeriod;
+            const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+            result.rsi = 100 - (100 / (1 + rs));
+            result.rsiSignal = result.rsi > 70 ? 'Перекуплен' : result.rsi < 30 ? 'Продан' : 'Нейтральный';
+
+            // SMA
+            const sma20 = closes.slice(-20).reduce((a, b) => a + b, 0) / Math.min(20, closes.length);
+            const sma10 = closes.slice(-10).reduce((a, b) => a + b, 0) / Math.min(10, closes.length);
+            result.sma20 = sma20;
+            result.sma10 = sma10;
+            result.smaSignal = closes[closes.length - 1] > sma20 ? 'Бычий' : 'Медвежий';
+
+            // MACD (simplified)
+            const ema12 = calculateEMA(closes, 12);
+            const ema26 = calculateEMA(closes, 26);
+            result.macd = ema12 - ema26;
+            result.macdSignal = result.macd > 0 ? 'Бычий' : 'Медвежий';
+
+            // Momentum
+            result.momentum = ((closes[closes.length - 1] - closes[Math.max(0, closes.length - 10)]) / closes[Math.max(0, closes.length - 10)]) * 100;
+            result.momentumSignal = result.momentum > 2 ? 'Рост' : result.momentum < -2 ? 'Падение' : 'Боковой';
+
+            // Overall signal
+            let bullish = 0, bearish = 0;
+            if (result.rsi < 30) bullish++; else if (result.rsi > 70) bearish++;
+            if (closes[closes.length - 1] > sma20) bullish++; else bearish++;
+            if (result.macd > 0) bullish++; else bearish++;
+            if (result.momentum > 0) bullish++; else bearish++;
+
+            result.overallSignal = bullish > bearish ? 'BUY' : bearish > bullish ? 'SELL' : 'HOLD';
+            result.bullishCount = bullish;
+            result.bearishCount = bearish;
+
+            return result;
+        }
+
+        function calculateEMA(data, period) {
+            const k = 2 / (period + 1);
+            let ema = data[0];
+            for (let i = 1; i < data.length; i++) {
+                ema = data[i] * k + ema * (1 - k);
+            }
+            return ema;
+        }
+
+        // ===== UI UPDATES =====
+        function updatePriceUI() {
+            if (!priceData) return;
+            const d = currentAsset.decimals;
+            const last = priceData.last;
+            const open = priceData.open;
+            const change = last - open;
+            const changePercent = open > 0 ? (change / open) * 100 : 0;
+
+            $('priceMain').textContent = last ? last.toLocaleString('ru-RU', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—';
+            $('priceChangeValue').textContent = change >= 0 ? '+' + change.toFixed(d) : change.toFixed(d);
+            $('priceChangeValue').className = 'price-change-value ' + (change >= 0 ? 'positive' : 'negative');
+            $('priceChangePercent').textContent = (changePercent >= 0 ? '+' : '') + changePercent.toFixed(2) + '%';
+            $('priceOpen').textContent = open ? open.toLocaleString('ru-RU', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—';
+            $('priceHigh').textContent = priceData.high ? priceData.high.toLocaleString('ru-RU', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—';
+            $('priceLow').textContent = priceData.low ? priceData.low.toLocaleString('ru-RU', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—';
+            $('priceVolume').textContent = priceData.volume ? priceData.volume.toLocaleString('ru-RU') : '—';
+        }
+
+        function updateAnalystUI() {
+            const container = $('analystContent');
+            if (!analystData) {
+                container.innerHTML = '<div class="no-data">Данные аналитиков недоступны для этого актива</div>';
+                return;
+            }
+
+            const total = analystData.strongBuy + analystData.buy + analystData.hold + analystData.sell + analystData.strongSell;
+            if (total === 0) {
+                container.innerHTML = <div class="no-data">Нет рекомендаций</div>;
+                return;
+            }
+
+            // Determine consensus
+            const buyTotal = analystData.strongBuy + analystData.buy;
+            const sellTotal = analystData.sell + analystData.strongSell;
+            let consensus = 'HOLD';
+            let consensusClass = 'hold';
+            if (buyTotal > sellTotal && buyTotal > analystData.hold) {
+                consensus = 'BUY';
+                consensusClass = 'buy';
+            } else if (sellTotal > buyTotal && sellTotal > analystData.hold) {
+                consensus = 'SELL';
+                consensusClass = 'sell';
+            }
+
+            // Build ratings bar
+            const sb_pct = (analystData.strongBuy / total * 100).toFixed(0);
+            const b_pct = (analystData.buy / total * 100).toFixed(0);
+            const h_pct = (analystData.hold / total * 100).toFixed(0);
+            const s_pct = (analystData.sell / total * 100).toFixed(0);
+            const ss_pct = (analystData.strongSell / total * 100).toFixed(0);
+
+            container.innerHTML = `
+                <div class="analyst-consensus">
+                    <div class="analyst-rating-badge ${consensusClass}">${consensus}</div>
+                    <div class="analyst-count">${total} аналитиков • ${analystData.period || 'N/A'}</div>
+                </div>
+                <div class="ratings-bar">
+                    <div class="ratings-bar-segment strong-buy" style="width: ${sb_pct}%"></div>
+                    <div class="ratings-bar-segment buy" style="width: ${b_pct}%"></div>
+                    <div class="ratings-bar-segment hold" style="width: ${h_pct}%"></div>
+                    <div class="ratings-bar-segment sell" style="width: ${s_pct}%"></div>
+                    <div class="ratings-bar-segment strong-sell" style="width: ${ss_pct}%"></div>
+                </div>
+                <div class="ratings-legend">
+                    <div class="ratings-legend-item"><div class="ratings-legend-dot strong-buy"></div>Сильная покупка: ${analystData.strongBuy}</div>
+                    <div class="ratings-legend-item"><div class="ratings-legend-dot buy"></div>Покупка: ${analystData.buy}</div>
+                    <div class="ratings-legend-item"><div class="ratings-legend-dot hold"></div>Держать: ${analystData.hold}</div>
+                    <div class="ratings-legend-item"><div class="ratings-legend-dot sell"></div>Продажа: ${analystData.sell}</div>
+                    <div class="ratings-legend-item"><div class="ratings-legend-dot strong-sell"></div>Сильная продажа: ${analystData.strongSell}</div>
+                </div>
+            `;
+        }
+
+        function updateTechnicalUI() {
+            const container = $('technicalContent');
+            if (!technicalData) {
+                container.innerHTML = '<div class="no-data">Недостаточно данных для анализа</div>';
+                return;
+            }
+
+            const signalClass = signal => signal.includes('Бычий') || signal === 'BUY' || signal === 'Рост' || signal === 'Продан' ? 'bullish' :
+                                 signal.includes('Медвежий') || signal === 'SELL' || signal === 'Падение' || signal === 'Перекуплен' ? 'bearish' : 'neutral';
+
+            container.innerHTML = `
+                <div class="tech-item">
+                    <div class="tech-item-label">RSI (14)</div>
+                    <div class="tech-item-value ${signalClass(technicalData.rsiSignal)}">${technicalData.rsi.toFixed(1)}</div>
+                    <div class="tech-item-signal ${signalClass(technicalData.rsiSignal)}">${technicalData.rsiSignal}</div>
+                </div>
+                <div class="tech-item">
+                    <div class="tech-item-label">SMA 20</div>
+                    <div class="tech-item-value ${signalClass(technicalData.smaSignal)}">${technicalData.sma20.toFixed(2)}</div>
+                    <div class="tech-item-signal ${signalClass(technicalData.smaSignal)}">${technicalData.smaSignal}</div>
+                </div>
+                <div class="tech-item">
+                    <div class="tech-item-label">MACD</div>
+                    <div class="tech-item-value ${signalClass(technicalData.macdSignal)}">${technicalData.macd > 0 ? '+' : ''}${technicalData.macd.toFixed(2)}</div>
+                    <div class="tech-item-signal ${signalClass(technicalData.macdSignal)}">${technicalData.macdSignal}</div>
+                </div>
+                <div class="tech-item">
+                    <div class="tech-item-label">Momentum</div>
+                    <div class="tech-item-value ${signalClass(technicalData.momentumSignal)}">${technicalData.momentum > 0 ? '+' : ''}${technicalData.momentum.toFixed(2)}%</div>
+                    <div class="tech-item-signal ${signalClass(technicalData.momentumSignal)}">${technicalData.momentumSignal}</div>
+                </div>
+            `;
+        }
+
+        function updateSentimentUI() {
+            const container = $('sentimentContent');
+            if (!sentimentData || !sentimentData.articles || sentimentData.articles.length === 0) {
+                container.innerHTML = '<div class="no-data">Новостные данные недоступны</div>';
+                return;
+            }
+
+            const score = sentimentData.overallScore;
+            let sentimentClass = score > 0.2 ? 'bullish' : score < -0.2 ? 'bearish' : 'neutral';
+            let sentimentLabel = score > 0.2 ? 'Позитивный' : score < -0.2 ? 'Негативный' : 'Нейтральный';
+            let sentimentDesc = score > 0.2 ? 'Новости поддерживают рост' : score < -0.2 ? 'Новости давят на цену' : 'Новостной фон нейтральный';
+
+            let articlesHtml = '';
+            sentimentData.articles.forEach(a => {
+                let ns = a.sentiment > 0.1 ? 'positive' : a.sentiment < -0.1 ? 'negative' : 'neutral';
+                articlesHtml += `
+                    <div class="news-item">
+                        <div class="news-title">${a.title}</div>
+                        <div class="news-meta">
+                            <span class="news-source">${a.source}</span>
+                            <span class="news-sentiment ${ns}">${ns === 'positive' ? 'Позитив' : ns === 'negative' ? 'Негатив' : 'Нейтрал'}</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = `
+                <div class="sentiment-gauge">
+                    <div class="sentiment-score ${sentimentClass}">${(score * 100).toFixed(0)}</div>
+                    <div class="sentiment-info">
+                        <div class="sentiment-label">${sentimentLabel}</div>
+                        <div class="sentiment-desc">${sentimentDesc}</div>
+                    </div>
+                </div>
+                ${articlesHtml}
+            `;
+        }
+
+        function generateChartSVG(prices, width, height) {
+            if (!prices || prices.length < 2) return '<div class="chart-empty">No data</div>';
+            const closes = prices.map(p => p.close).filter(c => c !== null);
+            if (closes.length < 2) return '<div class="chart-empty">No data</div>';
+
+            const min = Math.min(...closes);
+            const max = Math.max(...closes);
+            const range = max - min || 1;
+            const padding = { top: 10, right: 10, bottom: 20, left: 10 };
+            const chartWidth = width - padding.left - padding.right;
+            const chartHeight = height - padding.top - padding.bottom;
+
+            const points = closes.map((price, i) => ({
+                x: padding.left + (i / (closes.length - 1)) * chartWidth,
+                y: padding.top + chartHeight - ((price - min) / range) * chartHeight
+            }));
+
+            let pathD = `M ${points[0].x.toFixed(2)} ${points[0].y.toFixed(2)}`;
+            for (let i = 1; i < points.length; i++) {
+                const prev = points[i - 1], curr = points[i];
+                const cpx1 = prev.x + (curr.x - prev.x) * 0.4;
+                const cpx2 = curr.x - (curr.x - prev.x) * 0.4;
+                pathD += ` C ${cpx1.toFixed(2)} ${prev.y.toFixed(2)}, ${cpx2.toFixed(2)} ${curr.y.toFixed(2)}, ${curr.x.toFixed(2)} ${curr.y.toFixed(2)}`;
+            }
+
+            const areaD = pathD + ` L ${points[points.length - 1].x.toFixed(2)} ${(height - padding.bottom).toFixed(2)} L ${points[0].x.toFixed(2)} ${(height - padding.bottom).toFixed(2)} Z`;
+            const isUp = closes[closes.length - 1] >= closes[0];
+            const lineColor = isUp ? '#00ff88' : '#ff4466';
+            const gradientId = 'chartGrad_' + Date.now();
+
+            let gridLines = '';
+            for (let i = 1; i < 4; i++) {
+                const y = padding.top + (chartHeight * i / 4);
+                gridLines += `<line x1="${padding.left}" y1="${y.toFixed(2)}" x2="${width - padding.right}" y2="${y.toFixed(2)}" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>`;
+            }
+
+            return `
+                <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" style="width:100%;height:100%;">
+                    <defs>
+                        <linearGradient id="${gradientId}" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stop-color="${lineColor}" stop-opacity="0.25"/>
+                            <stop offset="100%" stop-color="${lineColor}" stop-opacity="0"/>
+                        </linearGradient>
+                    </defs>
+                    ${gridLines}
+                    <path d="${areaD}" fill="url(#${gradientId})"/>
+                    <path d="${pathD}" fill="none" stroke="${lineColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="${points[points.length - 1].x.toFixed(2)}" cy="${points[points.length - 1].y.toFixed(2)}" r="4" fill="${lineColor}"/>
+                    <circle cx="${points[points.length - 1].x.toFixed(2)}" cy="${points[points.length - 1].y.toFixed(2)}" r="8" fill="${lineColor}" opacity="0.3">
+                        <animate attributeName="r" values="8;14;8" dur="2s" repeatCount="indefinite"/>
+                        <animate attributeName="opacity" values="0.3;0.1;0.3" dur="2s" repeatCount="indefinite"/>
+                    </circle>
+                </svg>
+            `;
+        }
+
+        function updateChartUI() {
+            const wrapper = $('chartWrapper');
+            if (historyData.length >= 2) {
+                wrapper.innerHTML = generateChartSVG(historyData, 400, 160);
+            } else {
+                wrapper.innerHTML = '<div class="chart-empty">Нет данных для графика</div>';
+            }
+        }
+
+        // ===== TOAST =====
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = 'toast ' + type;
+            const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ';
+            toast.innerHTML = `<div class="toast-icon">${icon}</div><div class="toast-message">${message}</div>`;
+            toastContainer.appendChild(toast);
+            requestAnimationFrame(() => requestAnimationFrame(() => toast.classList.add('show')));
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 400);
+            }, 3000);
+        }
+
+        // ===== LOAD ALL DATA =====
+        async function loadAllData() {
+            if (isLoading) return;
+            isLoading = true;
+            refreshBtn.classList.add('loading');
+
+            try {
+                // Fetch price and history from MOEX
+                const [price, history] = await Promise.all([
+                    fetchPriceData(currentAsset),
+                    fetchHistory(currentAsset, 30)
+                ]);
+                priceData = price;
+                historyData = history;
+
+                // Calculate technical analysis
+                const closes = historyData.map(h => h.close).filter(c => c !== null);
+                technicalData = calculateTechnicalAnalysis(closes);
+
+                // Fetch analyst data from Finnhub (using .ME suffix for Moscow Exchange)
+                const finnhubSymbol = currentAsset.finnhub;
+                analystData = await fetchAnalystData(finnhubSymbol);
+
+                // Fetch news sentiment
+                sentimentData = await fetchNewsSentiment(currentAsset.fmp);
+
+                // Update all UI
+                updatePriceUI();
+                updateAnalystUI();
+                updateTechnicalUI();
+                updateSentimentUI();
+                updateChartUI();
+
+                const marketOpen = updateMarketStatus();
+                if (!marketOpen) {
+                    showToast('Рынок закрыт. Показаны последние данные.', 'info');
+                } else {
+                    showToast('Аналитика обновлена', 'success');
+                }
+            } catch (error) {
+                console.error('Error loading data:', error);
+                showToast('Ошибка сети. Попробуйте снова.', 'error');
+                updatePriceUI();
+                updateChartUI();
+            } finally {
+                isLoading = false;
+                refreshBtn.classList.remove('loading');
+            }
+        }
+
+        // ===== INIT =====
+        function init() {
+            initDropdown();
+            updateMarketStatus();
+            loadAllData();
+            setInterval(updateMarketStatus, 60000);
+        }
+
+        refreshBtn.onclick = loadAllData;
+        init();
+    })();
+    </script>
+</body>
+</html>
