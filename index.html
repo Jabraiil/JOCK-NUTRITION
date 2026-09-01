@@ -22,7 +22,7 @@
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="https://jabraiil.github.io/JOCK-NUTRITION/">
     <title>JOCK NUTRITION</title>
-    <link rel="stylesheet" href="styles.css?v=40">
+    <link rel="stylesheet" href="styles.css?v=41">
     <link rel="sitemap" type="application/xml" title="Sitemap" href="./sitemap.xml">
     <script type="application/ld+json">
     {
@@ -191,19 +191,32 @@
             <div id="cartDrawerOverlay" class="cart-drawer-overlay"></div>
             <div id="cartDrawer" class="cart-drawer" role="dialog" aria-modal="true" aria-label="Ваш выбор">
                 <div class="cart-drawer-header">
-                    <h2>Ваш выбор</h2>
-                     <button id="cartDrawerClose" class="cart-drawer-close" aria-label="Закрыть">&times;</button>
+                    <div class="cart-drawer-title">
+                        <h2>Ваш выбор</h2>
+                        <span id="cartCountLabel" class="cart-drawer-count" aria-live="polite">0 товаров</span>
+                    </div>
+                    <div class="cart-drawer-header-actions">
+                        <button id="cartClearBtn" class="cart-clear-btn hidden" aria-label="Очистить корзину">Очистить</button>
+                        <button id="cartDrawerClose" class="cart-drawer-close" aria-label="Закрыть">&times;</button>
+                    </div>
                 </div>
                 <div class="cart-drawer-body">
                     <div id="cartItems"></div>
+                    <div id="cartRecommended" class="cart-recommended hidden">
+                        <h3>Рекомендуем</h3>
+                        <div id="cartRecommendedList" class="cart-recommended-list"></div>
+                    </div>
                 </div>
                 <div class="cart-drawer-footer">
+                    <div id="cartStockWarning" class="cart-stock-warning hidden" role="alert"></div>
                     <div id="cartDeliveryNote" class="cart-delivery-note">
                         <span class="cart-delivery-icon" aria-hidden="true">⚠️</span>
                         <span class="cart-delivery-text">Транспортная плата оплачивается при получении. Для ПВЗ — уточняйте при передаче отправления.</span>
                     </div>
                     <div class="cart-total">
-                        <span>Итого:</span>
+                        <span class="cart-total-label">
+                            <span id="cartItemsCount">0</span> товаров на сумму
+                        </span>
                         <span id="cartTotal">0 ₽</span>
                     </div>
 
@@ -266,7 +279,7 @@
         </div>
     </div>
 
-    <script src="app.js?v=42"></script>
+    <script src="app.js?v=43"></script>
 
     <div id="cookieBanner" class="cookie-banner hidden">
         <div class="cookie-banner-content">

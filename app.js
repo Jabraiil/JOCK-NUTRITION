@@ -339,6 +339,12 @@ function setupEventListeners() {
         const cartDrawerClose = document.getElementById('cartDrawerClose')
         if (cartDrawerClose) cartDrawerClose.addEventListener('click', closeCart)
 
+        const cartClearBtn = document.getElementById('cartClearBtn')
+        if (cartClearBtn) cartClearBtn.addEventListener('click', () => {
+            if (cart.length === 0) return
+            if (confirm('Очистить весь выбор?')) clearCart()
+        })
+
         const cartDrawerOverlay = document.getElementById('cartDrawerOverlay')
         if (cartDrawerOverlay) cartDrawerOverlay.addEventListener('click', closeCart)
 
@@ -1101,14 +1107,16 @@ function switchSection(nav) {
 
 function addToCart(productId, quantity) {
     const id = String(productId)
+    const product = allProducts.find(p => String(p.id) === id)
+    const maxQty = product ? product.stock : 99
     const existing = cart.find(c => c.id === id)
     if (existing) {
-        existing.quantity += quantity
+        existing.quantity = Math.max(0, Math.min(maxQty, existing.quantity + quantity))
         if (existing.quantity <= 0) {
             cart = cart.filter(c => c.id !== id)
         }
-    } else if (quantity > 0) {
-        cart.push({ id: id, quantity })
+    } else if (quantity > 0 && maxQty > 0) {
+        cart.push({ id: id, quantity: Math.min(quantity, maxQty) })
     }
 
     saveCart()
@@ -1238,47 +1246,150 @@ function closeCart() {
 function renderCart() {
     const cartItems = document.getElementById('cartItems')
     const cartTotal = document.getElementById('cartTotal')
+    const cartItemsCountEl = document.getElementById('cartItemsCount')
+    const cartCountLabel = document.getElementById('cartCountLabel')
+    const cartClearBtn = document.getElementById('cartClearBtn')
     const sendSpecBtn = document.getElementById('sendSpecBtn')
+    const cartStockWarning = document.getElementById('cartStockWarning')
+    const cartRecommended = document.getElementById('cartRecommended')
     if (!cartItems || !cartTotal || !sendSpecBtn) return
 
     if (cart.length === 0) {
-        cartItems.innerHTML = '<p class="cart-empty-text">Ваш выбор пуст</p>'
+        cartItems.innerHTML = `
+            <div class="cart-empty">
+                <div class="cart-empty-icon" aria-hidden="true">🛒</div>
+                <p class="cart-empty-text">Ваш выбор пуст</p>
+                <p class="cart-empty-hint">Добавьте товары из каталога, чтобы оформить спецификацию</p>
+                <button type="button" class="btn btn-primary btn-block" id="cartEmptyGoBtn">Перейти к каталогу</button>
+            </div>
+        `
         cartTotal.textContent = '0 ₽'
+        if (cartItemsCountEl) cartItemsCountEl.textContent = '0'
+        if (cartCountLabel) cartCountLabel.textContent = '0 товаров'
+        if (cartClearBtn) cartClearBtn.classList.add('hidden')
+        if (cartStockWarning) cartStockWarning.classList.add('hidden')
         sendSpecBtn.disabled = true
+        renderCartRecommended(cartRecommended)
+        const goBtn = document.getElementById('cartEmptyGoBtn')
+        if (goBtn) goBtn.onclick = () => { closeCart(); switchSection('catalog'); window.scrollTo({ top: 0, behavior: 'smooth' }) }
         resetCartCheckoutState()
         return
     }
 
-    sendSpecBtn.disabled = false
+    if (cartClearBtn) cartClearBtn.classList.remove('hidden')
 
     let total = 0
+    let totalItems = 0
+    let outOfStockItems = []
     cartItems.innerHTML = cart.map(cartItem => {
         const product = allProducts.find(p => String(p.id) === String(cartItem.id))
         if (!product) return ''
 
-        const itemTotal = product.price * cartItem.quantity
+        const inStock = product.stock > 0
+        const availableQty = Math.min(cartItem.quantity, product.stock)
+        const itemTotal = product.price * availableQty
         total += itemTotal
+        totalItems += availableQty
+
+        if (!inStock || availableQty < cartItem.quantity) {
+            outOfStockItems.push({ name: cleanProductName(product.name, product.brands?.name), requested: cartItem.quantity, available: product.stock })
+        }
 
         const cartImg = product.product_images?.[0]?.url || 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="120" height="160"><rect fill="%23f0f0f0" width="120" height="160"/><text fill="%23999" font-family="sans-serif" font-size="12" x="50%" y="50%" text-anchor="middle" dy=".3em">Нет фото</text></svg>')
 
+        const stockClass = !inStock ? 'out-of-stock' : (availableQty < cartItem.quantity ? 'partial-stock' : 'in-stock')
+        const stockBadge = !inStock ? '<span class="cart-item-stock-badge">Нет в наличии</span>'
+            : (availableQty < cartItem.quantity ? `<span class="cart-item-stock-badge partial">Доступно ${availableQty} из ${cartItem.quantity}</span>` : '')
+
         return `
-            <div class="cart-item">
+            <div class="cart-item ${stockClass}">
                 <img src="${escapeHtml(cartImg)}" alt="${escapeHtml(product.name)}" class="cart-item-image" decoding="async" width="120" height="160">
                 <div class="cart-item-info">
                     <div class="cart-item-name">${escapeHtml(cleanProductName(product.name, product.brands?.name))}</div>
-                    <div class="cart-item-price">${product.price} ₽ × ${cartItem.quantity} = ${itemTotal} ₽</div>
+                    ${stockBadge}
+                    <div class="cart-item-price">${product.price} ₽ × ${availableQty} = ${itemTotal} ₽</div>
                     <div class="cart-item-controls">
-                        <button class="cart-minus" data-id="${escapeHtml(String(product.id))}">-</button>
-                        <span>${cartItem.quantity}</span>
-                        <button class="cart-plus" data-id="${escapeHtml(String(product.id))}">+</button>
-                        <button class="cart-item-remove" data-id="${escapeHtml(String(product.id))}">&times;</button>
+                        <button class="cart-minus" data-id="${escapeHtml(String(product.id))}" aria-label="Уменьшить" ${!inStock ? 'disabled' : ''}>−</button>
+                        <span class="cart-item-qty" aria-label="Количество">${availableQty}</span>
+                        <button class="cart-plus" data-id="${escapeHtml(String(product.id))}" aria-label="Увеличить" ${(!inStock || availableQty >= product.stock) ? 'disabled' : ''}>+</button>
+                        <button class="cart-item-remove" data-id="${escapeHtml(String(product.id))}" aria-label="Удалить из корзины">&times;</button>
                     </div>
                 </div>
             </div>
         `
     }).join('')
 
+    const itemsWord = pluralizeItems(totalItems)
+    if (cartItemsCountEl) cartItemsCountEl.textContent = String(totalItems)
+    if (cartCountLabel) cartCountLabel.textContent = `${totalItems} ${itemsWord}`
+
+    if (cartStockWarning) {
+        if (outOfStockItems.length === 0) {
+            cartStockWarning.classList.add('hidden')
+            cartStockWarning.textContent = ''
+        } else {
+            cartStockWarning.classList.remove('hidden')
+            const list = outOfStockItems.map(i => i.available === 0
+                ? `«${escapeHtml(i.name)}» — нет в наличии`
+                : `«${escapeHtml(i.name)}» — доступно ${i.available} из ${i.requested}`
+            ).join('; ')
+            cartStockWarning.textContent = `Внимание: ${list}.`
+        }
+    }
+
+    if (cartRecommended) cartRecommended.classList.add('hidden')
+
+    sendSpecBtn.disabled = outOfStockItems.length > 0
     cartTotal.textContent = `${total} ₽`
+}
+
+function pluralizeItems(n) {
+    const mod10 = n % 10
+    const mod100 = n % 100
+    if (mod10 === 1 && mod100 !== 11) return 'товар'
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return 'товара'
+    return 'товаров'
+}
+
+function renderCartRecommended(container) {
+    if (!container) return
+    const recommended = (allProducts || [])
+        .filter(p => p.is_visible && !cart.some(c => String(c.id) === String(p.id)))
+        .slice(0, 4)
+    if (!recommended.length) {
+        container.classList.add('hidden')
+        return
+    }
+    container.classList.remove('hidden')
+    const list = document.getElementById('cartRecommendedList')
+    if (!list) return
+    list.innerHTML = recommended.map(p => {
+        const img = p.product_images?.[0]?.url || ''
+        return `
+            <button type="button" class="cart-recommended-item" data-id="${escapeHtml(String(p.id))}">
+                ${img ? `<img src="${escapeHtml(img)}" alt="${escapeHtml(p.name)}" loading="lazy" decoding="async" width="120" height="160">` : '<div class="cart-recommended-img-placeholder"></div>'}
+                <div class="cart-recommended-info">
+                    <div class="cart-recommended-name">${escapeHtml(cleanProductName(p.name, p.brands?.name))}</div>
+                    <div class="cart-recommended-price">${p.price} ₽</div>
+                </div>
+                <span class="cart-recommended-add" aria-hidden="true">+</span>
+            </button>
+        `
+    }).join('')
+    list.onclick = (e) => {
+        const btn = e.target.closest('.cart-recommended-item')
+        if (!btn) return
+        addToCart(btn.dataset.id, 1)
+    }
+}
+
+function clearCart() {
+    if (cart.length === 0) return
+    cart = []
+    saveCart()
+    updateCartCount()
+    renderCart()
+    applyFilters()
 }
 
 function getCheckoutFormField(id) {
