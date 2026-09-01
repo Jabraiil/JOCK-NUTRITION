@@ -6,7 +6,6 @@
   "start_url": "/JOCK-NUTRITION/",
   "scope": "/JOCK-NUTRITION/",
   "display": "standalone",
-  "display_override": ["standalone", "fullscreen", "minimal-ui"],
   "background_color": "#F2F2F7",
   "theme_color": "#007AFF",
   "orientation": "any",
@@ -40,5 +39,18 @@
       "purpose": "maskable"
     }
   ],
-  "screenshots": []
+  "shortcuts": [
+    {
+      "name": "Каталог",
+      "short_name": "Каталог",
+      "description": "Открыть каталог БАДов",
+      "url": "/JOCK-NUTRITION/?#catalog",
+      "icons": [
+        {
+          "src": "/JOCK-NUTRITION/assets/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
 }
