@@ -91,6 +91,7 @@ serve(async (req) => {
     const customerIsPickup = customer?.isPickup === true
     const customerMethodValue = typeof customer?.methodValue === 'string' ? customer.methodValue.slice(0, 50) : ''
     const customerMethodLabel = typeof customer?.methodLabel === 'string' ? customer.methodLabel.slice(0, 100) : ''
+    const customerPhone = typeof customer?.phone === 'string' ? customer.phone.trim().slice(0, 50) : ''
     const customerAddress = typeof customer?.address === 'string' ? customer.address.trim().slice(0, 500) : ''
 
     const { data: settings, error: settingsError } = await supabase
@@ -234,6 +235,8 @@ serve(async (req) => {
       message += `• ${item.name}\n  ${item.quantity} шт. × ${item.price}${currency} = ${item.total}${currency}\n`
     }
     message += `\n*Итого: ${total}${currency}*\n\n`
+
+    if (customerPhone) message += `Телефон: ${customerPhone}\n`
 
     if (customerIsPickup) {
       message += `Получение: Самовывоз\n`

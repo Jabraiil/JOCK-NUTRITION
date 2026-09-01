@@ -265,6 +265,11 @@ function setupEventListeners() {
             updateDeliveryAddressVisibility()
         })
 
+        const recipientPhone = document.getElementById('recipientPhone')
+        if (recipientPhone) recipientPhone.addEventListener('input', () => {
+            clearFieldError('recipientPhone')
+        })
+
         const deliveryAddress = document.getElementById('deliveryAddress')
         if (deliveryAddress) deliveryAddress.addEventListener('input', () => {
             clearFieldError('deliveryAddress')
@@ -1455,9 +1460,13 @@ function updateDeliveryAddressVisibility() {
 
 function validateCheckoutForm() {
     const methodEl = getCheckoutFormField('deliveryMethod')
+    const phoneEl = getCheckoutFormField('recipientPhone')
     const addressEl = getCheckoutFormField('deliveryAddress')
 
     const methodValue = methodEl ? methodEl.value.trim() : ''
+    const rawPhone = phoneEl ? phoneEl.value.trim() : ''
+    const phoneDigits = rawPhone.replace(/\D/g, '')
+    const phone = phoneDigits.length >= 10 ? ('+' + phoneDigits) : rawPhone
     const address = addressEl ? addressEl.value.trim() : ''
     const isPickup = methodValue === 'pickup'
     const needsAddress = !!methodValue && !isPickup
@@ -1469,6 +1478,13 @@ function validateCheckoutForm() {
         valid = false
     } else {
         clearFieldError('deliveryMethod')
+    }
+
+    if (phoneDigits.length < 10) {
+        showFieldError('recipientPhone', 'Введите телефон (минимум 10 цифр)')
+        valid = false
+    } else {
+        clearFieldError('recipientPhone')
     }
 
     if (needsAddress && !address) {
@@ -1484,6 +1500,7 @@ function validateCheckoutForm() {
             methodValue,
             methodLabel: DELIVERY_LABELS[methodValue] || '',
             isPickup,
+            phone,
             address: needsAddress ? address : ''
         }
     }
@@ -1491,9 +1508,11 @@ function validateCheckoutForm() {
 
 function resetCartFormFields() {
     const deliveryMethod = getCheckoutFormField('deliveryMethod')
+    const recipientPhone = getCheckoutFormField('recipientPhone')
     const deliveryAddress = getCheckoutFormField('deliveryAddress')
 
     if (deliveryMethod) deliveryMethod.value = ''
+    if (recipientPhone) recipientPhone.value = ''
     if (deliveryAddress) deliveryAddress.value = ''
 
     clearAllFieldErrors()
@@ -1528,7 +1547,7 @@ async function generateWhatsAppSpec() {
         return
     }
 
-    const { methodValue, methodLabel, isPickup, address } = validation.data
+    const { methodValue, methodLabel, isPickup, phone, address } = validation.data
 
     if (specError) { specError.textContent = ''; specError.classList.add('hidden') }
 
@@ -1547,7 +1566,7 @@ async function generateWhatsAppSpec() {
             body: JSON.stringify({
                 cart,
                 whatsappAccountType: accountType,
-                customer: { isPickup, methodValue, methodLabel, address }
+                customer: { isPickup, methodValue, methodLabel, phone, address }
             })
         })
 
