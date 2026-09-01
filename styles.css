@@ -3088,8 +3088,12 @@ textarea.form-input {
     }
     
     .bottom-nav {
-        bottom: 0;
-        padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+        bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+        left: 12px;
+        right: 12px;
+        width: auto;
+        max-width: calc(420px - 24px);
+        padding-bottom: 12px;
     }
     
     .main {
@@ -3103,7 +3107,12 @@ textarea.form-input {
 }
 
 .pwa-standalone .bottom-nav {
-    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-width: calc(420px - 24px);
+    padding-bottom: 12px;
 }
 
 .pwa-standalone .main {
@@ -3115,7 +3124,12 @@ textarea.form-input {
 }
 
 .pwa-standalone.ios .bottom-nav {
-    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-width: calc(420px - 24px);
+    padding-bottom: 14px;
 }
 
 .pwa-standalone.ios .main {
