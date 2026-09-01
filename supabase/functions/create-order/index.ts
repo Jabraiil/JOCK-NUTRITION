@@ -127,11 +127,9 @@ serve(async (req) => {
       }
     }
 
-    const validCart = cart.filter((item: { id: unknown }) => {
-      const id = Number(item.id)
-      return !Number.isNaN(id)
-    })
-    const productIds = validCart.map((item: { id: unknown }) => Number(item.id))
+    const productIds = cart
+      .map((item: { id: unknown }) => String(item.id))
+      .filter((id) => id && id !== 'undefined' && id !== 'null')
     const { data: products, error: productsError } = await supabase
       .from("products")
       .select("id, name, price, stock, is_visible, volume, dosage, brands(name)")
