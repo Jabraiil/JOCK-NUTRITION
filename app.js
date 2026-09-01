@@ -49,7 +49,7 @@ function cleanProductName(name, brand) {
 
 let allProducts = []
 let filteredProducts = []
-let relatedMap = []
+let relatedList = []
 let cart = []
 let favorites = []
 try {
@@ -256,9 +256,6 @@ function setupEventListeners() {
         const manualBarcodeSubmit = document.getElementById('manualBarcodeSubmit')
         if (manualBarcodeSubmit) manualBarcodeSubmit.addEventListener('click', handleManualBarcode)
 
-        const checkoutBtn = document.getElementById('checkoutBtn')
-        if (checkoutBtn) checkoutBtn.addEventListener('click', proceedToCheckout)
-
         const sendSpecBtn = document.getElementById('sendSpecBtn')
         if (sendSpecBtn) sendSpecBtn.addEventListener('click', generateWhatsAppSpec)
 
@@ -274,24 +271,11 @@ function setupEventListeners() {
 
         const deliveryMethod = document.getElementById('deliveryMethod')
         if (deliveryMethod) deliveryMethod.addEventListener('change', () => {
-            updateDeliveryFields()
+            clearFieldError('deliveryMethod')
         })
-
-        const deliveryAddress = document.getElementById('deliveryAddress')
-        if (deliveryAddress) deliveryAddress.addEventListener('input', () => {
-            clearFieldError('deliveryAddress')
-        })
-
-        const pvzAddress = document.getElementById('pvzAddress')
-        if (pvzAddress) pvzAddress.addEventListener('input', () => {
-            clearFieldError('pvzAddress')
-        })
-
-        const taxiDoorbell = document.getElementById('taxiDoorbell')
-        if (taxiDoorbell) taxiDoorbell.addEventListener('change', () => {})
 
         const pickupToggle = document.getElementById('pickupToggle')
-        if (pickupToggle) pickupToggle.addEventListener('change', toggleCartFormFields)
+        if (pickupToggle) pickupToggle.addEventListener('change', togglePickupMode)
 
         const loadMoreBtn = document.getElementById('loadMoreBtn')
         if (loadMoreBtn) loadMoreBtn.addEventListener('click', loadMoreProducts)
@@ -477,10 +461,6 @@ function toggleTheme() {
     applyTheme()
 }
 
-function handleSearch(e) {
-    applyFilters()
-}
-
 function clearSearch() {
     const searchInput = document.getElementById('searchInput')
     if (searchInput) searchInput.value = ''
@@ -583,7 +563,7 @@ async function loadProducts(reset = true) {
                 console.error('Error loading related products:', e)
             }
         }
-        relatedMap = apiCache.related.data || []
+        relatedList = apiCache.related.data || []
         
         // Load categories and brands for filters (cached)
         try {
@@ -697,7 +677,7 @@ function filterAndRenderProducts(filters = {}) {
      }
 
      if (filters.favoritesOnly) {
-         filtered = filtered.filter(p => favorites.includes(p.id))
+         filtered = filtered.filter(p => favorites.includes(String(p.id)))
      }
 
     if (filters.priceFrom) {
@@ -919,7 +899,7 @@ function createProductCard(product) {
 }
 
 function getRelatedProductsHtml(product) {
-    const explicitIds = (relatedMap || [])
+    const explicitIds = (relatedList || [])
         .filter(rel => rel.product_id === product.id)
         .map(rel => rel.related_id)
 
@@ -1258,18 +1238,18 @@ function closeCart() {
 function renderCart() {
     const cartItems = document.getElementById('cartItems')
     const cartTotal = document.getElementById('cartTotal')
-    const checkoutBtn = document.getElementById('checkoutBtn')
-    if (!cartItems || !cartTotal || !checkoutBtn) return
+    const sendSpecBtn = document.getElementById('sendSpecBtn')
+    if (!cartItems || !cartTotal || !sendSpecBtn) return
 
     if (cart.length === 0) {
         cartItems.innerHTML = '<p class="cart-empty-text">Ваш выбор пуст</p>'
         cartTotal.textContent = '0 ₽'
-        checkoutBtn.disabled = true
+        sendSpecBtn.disabled = true
         resetCartCheckoutState()
         return
     }
 
-    checkoutBtn.disabled = false
+    sendSpecBtn.disabled = false
 
     let total = 0
     cartItems.innerHTML = cart.map(cartItem => {
@@ -1305,14 +1285,6 @@ function getCheckoutFormField(id) {
     return document.getElementById(id)
 }
 
-function isTaxiMethod(value) {
-    return value === 'taxi'
-}
-
-function isOzonMethod(value) {
-    return value === 'ozon'
-}
-
 function showFieldError(fieldId, message) {
     const group = document.querySelector(`[data-field="${fieldId}"]`)
     const errorEl = document.querySelector(`[data-error-for="${fieldId}"]`)
@@ -1339,225 +1311,82 @@ function clearAllFieldErrors() {
     if (specError) { specError.textContent = ''; specError.classList.add('hidden') }
 }
 
-function updateDeliveryFields() {
-    const method = getCheckoutFormField('deliveryMethod')
-    const taxiFields = getCheckoutFormField('taxiFields')
-    const pvzFields = getCheckoutFormField('pvzFields')
-    const taxiDoorbell = getCheckoutFormField('taxiDoorbell')
-    const ozonPhoneHint = getCheckoutFormField('ozonPhoneHint')
-    if (!method) return
+const DELIVERY_LABELS = {
+    taxi: 'Такси',
+    ozon: 'Ozon',
+    pochta: 'Почта России',
+    cdek: 'СДЭК',
+    mezhgorod: 'Межгород'
+}
 
-    const value = method.value
-    const isTaxi = isTaxiMethod(value)
-
-    if (taxiFields) taxiFields.classList.toggle('hidden', !isTaxi)
-    if (pvzFields) pvzFields.classList.toggle('hidden', !isOzonMethod(value))
-    if (ozonPhoneHint) ozonPhoneHint.classList.toggle('hidden', !isOzonMethod(value))
-
-    if (taxiDoorbell) {
-        if (isTaxi) {
-            taxiDoorbell.disabled = false
-            taxiDoorbell.parentElement.classList.remove('disabled')
-        } else {
-            taxiDoorbell.disabled = true
-            taxiDoorbell.parentElement.classList.add('disabled')
-        }
-    }
-
-    clearFieldError('deliveryAddress')
-    clearFieldError('pvzAddress')
+function togglePickupMode() {
+    const pickupToggle = getCheckoutFormField('pickupToggle')
+    const deliveryGroup = getCheckoutFormField('deliveryMethodGroup')
+    if (!pickupToggle) return
+    const isPickup = pickupToggle.checked
+    if (deliveryGroup) deliveryGroup.classList.toggle('hidden', isPickup)
     clearFieldError('deliveryMethod')
 }
 
-function toggleCartFormFields() {
-    const pickupToggle = getCheckoutFormField('pickupToggle')
-    const cartFormFields = getCheckoutFormField('cartFormFields')
-    if (!pickupToggle || !cartFormFields) return
-
-    if (pickupToggle.checked) {
-        cartFormFields.classList.add('hidden')
-    } else {
-        cartFormFields.classList.remove('hidden')
-    }
-    clearAllFieldErrors()
-}
-
 function validateCheckoutForm() {
-    const pickupToggle = getCheckoutFormField('pickupToggle')
-    const isPickup = pickupToggle ? pickupToggle.checked : false
-
-    if (isPickup) {
-        return { valid: true, data: { isPickup: true } }
-    }
-
     const nameEl = getCheckoutFormField('recipientName')
     const phoneEl = getCheckoutFormField('recipientPhone')
+    const pickupToggle = getCheckoutFormField('pickupToggle')
     const methodEl = getCheckoutFormField('deliveryMethod')
-    const addressEl = getCheckoutFormField('deliveryAddress')
-    const pvzEl = getCheckoutFormField('pvzAddress')
 
     const name = nameEl ? nameEl.value.trim() : ''
     const phone = phoneEl ? phoneEl.value.trim() : ''
-    const methodValue = methodEl ? methodEl.value : ''
-
-    let address = ''
-    if (isTaxiMethod(methodValue)) {
-        address = addressEl ? addressEl.value.trim() : ''
-    } else if (isOzonMethod(methodValue)) {
-        address = pvzEl ? pvzEl.value.trim() : ''
-    }
+    const isPickup = pickupToggle ? pickupToggle.checked : false
+    const methodValue = !isPickup && methodEl ? methodEl.value : ''
 
     let valid = true
 
     if (!name) {
-        showFieldError('recipientName', 'Введите ФИО получателя')
+        showFieldError('recipientName', 'Введите ФИО')
         valid = false
     } else {
         clearFieldError('recipientName')
     }
 
     if (!phone) {
-        showFieldError('recipientPhone', 'Введите контактный телефон')
+        showFieldError('recipientPhone', 'Введите телефон')
         valid = false
     } else {
         clearFieldError('recipientPhone')
     }
 
-    if (!methodValue) {
-        showFieldError('deliveryMethod', 'Выберите способ получения')
+    if (!isPickup && !methodValue) {
+        showFieldError('deliveryMethod', 'Выберите способ доставки')
         valid = false
     } else {
         clearFieldError('deliveryMethod')
     }
 
-    if (valid && isTaxiMethod(methodValue) && !address) {
-        showFieldError('deliveryAddress', 'Введите адрес доставки')
-        valid = false
-    }
-
-    if (valid && isOzonMethod(methodValue) && !address) {
-        showFieldError('pvzAddress', 'Введите номер или адрес ПВЗ')
-        valid = false
-    }
-
     return {
         valid,
         data: {
-            isPickup: false,
             name,
             phone,
+            isPickup,
             methodValue,
-            address,
-            methodLabel: isTaxiMethod(methodValue) ? 'Такси' : isOzonMethod(methodValue) ? 'Ozon Доставка' : ''
+            methodLabel: isPickup ? 'Самовывоз' : (DELIVERY_LABELS[methodValue] || '')
         }
     }
-}
-
-function proceedToCheckout() {
-    if (cart.length === 0) {
-        showError('Ваш выбор пуст')
-        return
-    }
-
-    const cartFormFields = getCheckoutFormField('cartFormFields')
-    const checkoutBtn = getCheckoutFormField('checkoutBtn')
-    const sendSpecBtn = getCheckoutFormField('sendSpecBtn')
-
-    if (checkoutBtn) checkoutBtn.classList.add('hidden')
-    if (sendSpecBtn) sendSpecBtn.classList.remove('hidden')
-
-    resetCartFormFields()
-
-    if (cartFormFields) cartFormFields.classList.remove('hidden')
-    updateDeliveryFields()
 }
 
 function resetCartFormFields() {
     const recipientName = getCheckoutFormField('recipientName')
     const recipientPhone = getCheckoutFormField('recipientPhone')
     const deliveryMethod = getCheckoutFormField('deliveryMethod')
-    const deliveryAddress = getCheckoutFormField('deliveryAddress')
-    const pvzAddress = getCheckoutFormField('pvzAddress')
-    const taxiDoorbell = getCheckoutFormField('taxiDoorbell')
     const pickupToggle = getCheckoutFormField('pickupToggle')
 
     if (recipientName) recipientName.value = ''
     if (recipientPhone) recipientPhone.value = ''
     if (deliveryMethod) deliveryMethod.value = ''
-    if (deliveryAddress) deliveryAddress.value = ''
-    if (pvzAddress) pvzAddress.value = ''
-    if (taxiDoorbell) taxiDoorbell.checked = false
     if (pickupToggle) pickupToggle.checked = false
 
     clearAllFieldErrors()
-
-    const cartFormFields = getCheckoutFormField('cartFormFields')
-    if (cartFormFields) cartFormFields.classList.add('hidden')
-
-    updateDeliveryFields()
-}
-
-function getWhatsAppNumber() {
-    const settings = window.__storeSettings || {}
-    const accountType = (settings.whatsapp_account_type || 'personal') === 'business' ? 'business' : 'personal'
-    let number = ''
-    if (accountType === 'business') {
-        number = (settings.whatsapp_business_number || settings.whatsapp_number || '').replace(/\D/g, '')
-    } else {
-        number = (settings.whatsapp_number || '').replace(/\D/g, '')
-    }
-    return number
-}
-
-function buildWhatsAppMessage(items, total, hasError, errorCode, formData) {
-    const settings = window.__storeSettings || {}
-    const currency = settings.currency || '₽'
-    const lines = []
-
-    lines.push('*Новая спецификация*')
-    lines.push('')
-
-    if (formData.isPickup) {
-        lines.push('*Получатель:* Самовывоз')
-        lines.push(`*ФИО:* ${formData.name || '-'}`)
-        lines.push(`*Телефон:* ${formData.phone || '-'}`)
-    } else {
-        lines.push(`*Получатель:* ${formData.name}`)
-        lines.push(`*Способ получения:* ${formData.methodLabel}`)
-
-        if (formData.isTaxi) {
-            lines.push(`*Опция такси:* ${formData.taxiOption}`)
-        }
-
-        lines.push(`*Телефон:* ${formData.phone}`)
-        lines.push(`*Адрес или ПВЗ:* ${formData.address}`)
-    }
-
-    lines.push('')
-    lines.push('*Выбранные позиции:*')
-
-    if (items && items.length) {
-        for (const item of items) {
-            lines.push(`• ${item.name} — ${item.quantity} шт. × ${item.price}${currency}`)
-        }
-    } else {
-        lines.push('— позиции не выбраны —')
-    }
-
-    lines.push('')
-    lines.push(`*Итоговая стоимость позиций: ${total}${currency}*`)
-    if (formData.isPickup) {
-        lines.push('(Товар берёт покупатель самостоятельно)')
-    } else {
-        lines.push('(Транспорт оплачивается при получении — для ПВЗ уточняйте при передаче отправления)')
-    }
-
-    if (hasError && errorCode) {
-        lines.push('')
-        lines.push(`${errorCode} — проверьте наличие`)
-    }
-
-    return lines.join('\n')
+    togglePickupMode()
 }
 
 function openWhatsAppUrl(whatsappUrl) {
@@ -1571,6 +1400,11 @@ async function generateWhatsAppSpec() {
     const sendSpecBtn = getCheckoutFormField('sendSpecBtn')
     const specError = getCheckoutFormField('specFormError')
 
+    if (cart.length === 0) {
+        showError('Ваш выбор пуст')
+        return
+    }
+
     clearAllFieldErrors()
 
     const validation = validateCheckoutForm()
@@ -1583,15 +1417,7 @@ async function generateWhatsAppSpec() {
         return
     }
 
-    const { name, phone, methodValue, address, methodLabel, isPickup } = validation.data
-
-    const taxiDoorbell = getCheckoutFormField('taxiDoorbell')
-    const isTaxi = isTaxiMethod(methodValue)
-    const taxiOption = isTaxi && taxiDoorbell
-        ? (taxiDoorbell.checked
-            ? 'С выходом водителя'
-            : 'Без выхода водителя')
-        : ''
+    const { name, phone, methodValue, methodLabel, isPickup } = validation.data
 
     if (specError) { specError.textContent = ''; specError.classList.add('hidden') }
 
@@ -1607,33 +1433,25 @@ async function generateWhatsAppSpec() {
         const response = await fetchWithTimeout(CONFIG.orderFunctionUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ cart, whatsappAccountType: accountType })
+            body: JSON.stringify({
+                cart,
+                whatsappAccountType: accountType,
+                customer: { name, phone, isPickup, methodValue, methodLabel }
+            })
         })
 
         const data = await response.json().catch(() => ({}))
 
-        const items = data.items || []
-        const total = data.total || 0
-        const hasError = data.hasError || false
-        const errorCode = data.errorCode || ''
-
-        const whatsappNumber = getWhatsAppNumber()
-        const message = buildWhatsAppMessage(items, total, hasError, errorCode, {
-            name,
-            phone,
-            methodLabel,
-            address,
-            isTaxi,
-            taxiOption,
-            isPickup
-        })
-
-        if (!whatsappNumber) {
-            throw new Error('Номер WhatsApp не настроен')
+        if (!response.ok) {
+            const errMsg = (data && data.error) ? data.error : `Ошибка оформления (HTTP ${response.status})`
+            throw new Error(errMsg)
         }
 
-        const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`
-        openWhatsAppUrl(whatsappUrl)
+        if (!data.whatsappUrl) {
+            throw new Error('Не получен WhatsApp URL')
+        }
+
+        openWhatsAppUrl(data.whatsappUrl)
 
         resetCartFormFields()
         cart = []
@@ -1652,38 +1470,35 @@ async function generateWhatsAppSpec() {
         console.error('generateWhatsAppSpec error:', error)
     } finally {
         if (sendSpecBtn) {
-            sendSpecBtn.disabled = false
-            sendSpecBtn.textContent = 'Сформировать спецификацию в WhatsApp'
+            sendSpecBtn.disabled = cart.length === 0
+            sendSpecBtn.textContent = 'Сформировать'
         }
     }
 }
 
 function resetCartCheckoutState() {
-    const cartFormFields = getCheckoutFormField('cartFormFields')
     const pickupToggle = getCheckoutFormField('pickupToggle')
     const sendSpecBtn = getCheckoutFormField('sendSpecBtn')
-    const checkoutBtn = getCheckoutFormField('checkoutBtn')
-    if (cartFormFields) cartFormFields.classList.add('hidden')
     if (pickupToggle) pickupToggle.checked = false
-    if (sendSpecBtn) sendSpecBtn.classList.add('hidden')
-    if (checkoutBtn) {
-        checkoutBtn.disabled = cart.length > 0 ? false : true
-        checkoutBtn.textContent = 'Далее'
+    if (sendSpecBtn) {
+        sendSpecBtn.disabled = cart.length === 0
+        sendSpecBtn.textContent = 'Сформировать'
     }
     clearAllFieldErrors()
+    togglePickupMode()
 }
 
 async function checkOrderTime() {
     const timeMessage = document.getElementById('orderTimeMessage')
-    const checkoutBtn = document.getElementById('checkoutBtn')
+    const sendSpecBtn = document.getElementById('sendSpecBtn')
 
-    if (!timeMessage || !checkoutBtn) return
+    if (!timeMessage || !sendSpecBtn) return
 
     const settings = window.__storeSettings || {}
     const timeLimitEnabled = settings.order_time_limit_enabled === 'true'
 
     if (!timeLimitEnabled) {
-        checkoutBtn.disabled = false
+        sendSpecBtn.disabled = cart.length === 0
         timeMessage.classList.add('hidden')
         return
     }
@@ -1701,11 +1516,11 @@ async function checkOrderTime() {
     const currentHour = parseInt(formatter.format(now), 10)
 
     if (currentHour < startHour || currentHour >= endHour) {
-        checkoutBtn.disabled = true
+        sendSpecBtn.disabled = true
         timeMessage.textContent = `Формирование спецификации доступно с ${startHour}:00 до ${endHour}:00. Добавьте позиции в список и повторите действие в рабочее время.`
         timeMessage.classList.remove('hidden')
     } else {
-        checkoutBtn.disabled = false
+        sendSpecBtn.disabled = cart.length === 0
         timeMessage.classList.add('hidden')
     }
 }
@@ -2238,7 +2053,7 @@ function initBanner() {
         const imagePosition = slide.image_position || 'center'
         const hasImage = slide.image && slide.image.trim() !== ''
         const badgeHtml = slide.badge ? `<div class="promo-badge">${escapeHtml(slide.badge)}</div>` : ''
-        const linkHtml = slide.link ? `<a href="${escapeHtml(slide.link)}" class="promo-link" ${slide.link.startsWith('http') ? 'target="_blank" rel="noopener" ' : ''}>Подробнее</a>` : ''
+         const linkHtml = slide.link ? `<a href="${escapeHtml(slide.link)}" class="promo-link" ${slide.link && slide.link.startsWith('http') ? 'target="_blank" rel="noopener" ' : ''}>Подробнее</a>` : ''
         const textHtml = slide.text ? `<div class="promo-text">${escapeHtml(slide.text)}</div>` : ''
         const activeClass = idx === 0 ? 'active' : ''
         const splitPosClass = isSplit ? `split-${imagePosition}` : ''
@@ -2311,7 +2126,7 @@ function initBanner() {
         slide.addEventListener('click', (e) => {
             const link = slide.dataset.link
             const productId = slide.dataset.productId
-            if (productId) {
+            if (productId && productId.trim()) {
                 openProductModal(productId)
             } else if (link) {
                 if (link.startsWith('http')) {
@@ -2803,17 +2618,15 @@ function initA2HS() {
     const showTarget = isSecondVisit ? showA2HSModal : showA2HSBanner
     const iosDelay = 5000
 
-    if (typeof __a2hsHandlers === 'undefined') {
-        window.__a2hsHandlers = {
-            onBeforeInstallPrompt: (e) => {
-                e.preventDefault()
-                deferredPrompt = e
-                showTarget()
-            },
-            onAppInstalled: () => {
-                deferredPrompt = null
-                trackPWAInstall()
-            }
+    window.__a2hsHandlers = window.__a2hsHandlers || {
+        onBeforeInstallPrompt: (e) => {
+            e.preventDefault()
+            deferredPrompt = e
+            showTarget()
+        },
+        onAppInstalled: () => {
+            deferredPrompt = null
+            trackPWAInstall()
         }
     }
 

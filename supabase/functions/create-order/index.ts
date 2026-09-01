@@ -78,7 +78,7 @@ serve(async (req) => {
       )
     }
 
-    const { cart, whatsappAccountType = 'personal' } = body
+    const { cart, whatsappAccountType = 'personal', customer } = body
 
     if (!cart || !Array.isArray(cart) || cart.length === 0) {
       return jsonResponse(
@@ -87,6 +87,12 @@ serve(async (req) => {
         corsHeaders,
       )
     }
+
+    const customerName = typeof customer?.name === 'string' ? customer.name.trim().slice(0, 200) : ''
+    const customerPhone = typeof customer?.phone === 'string' ? customer.phone.trim().slice(0, 50) : ''
+    const customerIsPickup = customer?.isPickup === true
+    const customerMethodValue = typeof customer?.methodValue === 'string' ? customer.methodValue.slice(0, 50) : ''
+    const customerMethodLabel = typeof customer?.methodLabel === 'string' ? customer.methodLabel.slice(0, 100) : ''
 
     const { data: settings, error: settingsError } = await supabase
       .from("settings")
@@ -225,19 +231,22 @@ serve(async (req) => {
       structuredLog("error", "Analytics insert error", { error: analyticsError.message, orderNumber })
     }
 
-    const storeName = settingsMap.store_name || "JOCK NUTRITION"
     const currency = settingsMap.currency || "₽"
-    const timeOpts = { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }
-    const timeFormatter = new Intl.DateTimeFormat("ru-RU", timeOpts)
-    const formattedDate = timeFormatter.format(now)
-
     let message = `_Новый заказ ${orderNumber}_\n\n`
     for (const item of orderItems) {
       message += `• ${item.name}\n  ${item.quantity} шт. × ${item.price}${currency} = ${item.total}${currency}\n`
     }
     message += `\n*Итого: ${total}${currency}*\n\n`
-    if (hasError) message += `${errorCode} - проверьте цены\n`
-    message += `Дата: ${formattedDate}`
+
+    if (customerName) message += `ФИО: ${customerName}\n`
+    if (customerPhone) message += `Телефон: ${customerPhone}\n`
+    if (customerIsPickup) {
+      message += `Получение: Самовывоз\n`
+    } else if (customerMethodLabel || customerMethodValue) {
+      message += `Доставка: ${customerMethodLabel || customerMethodValue}\n`
+    }
+
+    if (hasError) message += `\n${errorCode} - проверьте наличие\n`
 
     const accountType = whatsappAccountType === 'business' ? 'business' : 'personal'
     const whatsappNumber = accountType === 'business'

@@ -22,7 +22,7 @@
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="https://jabraiil.github.io/JOCK-NUTRITION/">
     <title>JOCK NUTRITION</title>
-    <link rel="stylesheet" href="styles.css?v=39">
+    <link rel="stylesheet" href="styles.css?v=40">
     <link rel="sitemap" type="application/xml" title="Sitemap" href="./sitemap.xml">
     <script type="application/ld+json">
     {
@@ -207,47 +207,33 @@
                         <span id="cartTotal">0 ₽</span>
                     </div>
 
-                    <label class="toggle-switch-wrap pickup-switch">
-                        <input type="checkbox" id="pickupToggle" class="toggle-switch-input">
-                        <span class="toggle-switch-slider"></span>
-                        Самовывоз (я сам заберу)
-                    </label>
-
-                    <div id="cartFormFields" class="cart-form-fields hidden">
+                    <div id="cartFormFields" class="cart-form-fields">
                         <div class="form-group" data-field="recipientName">
-                            <label for="recipientName">ФИО получателя *</label>
+                            <label for="recipientName">ФИО *</label>
                             <input type="text" id="recipientName" class="form-input" placeholder="Введите ФИО" autocomplete="name" spellcheck="off" required>
                             <span class="field-error" data-error-for="recipientName"></span>
                         </div>
                         <div class="form-group" data-field="recipientPhone">
-                            <label for="recipientPhone">Контактный телефон *</label>
+                            <label for="recipientPhone">Телефон *</label>
                             <input type="tel" id="recipientPhone" class="form-input" placeholder="+7 (___) ___-__-__" autocomplete="tel" inputmode="tel" required>
-                            <small id="ozonPhoneHint" class="phone-hint hidden">Номер должен быть привязан к вашему личному приложению Ozon — на него придёт штрихкод для получения.</small>
                             <span class="field-error" data-error-for="recipientPhone"></span>
                         </div>
-                        <div class="form-group" data-field="deliveryMethod">
-                            <label for="deliveryMethod">Способ получения *</label>
+                        <label class="toggle-switch-wrap pickup-switch">
+                            <input type="checkbox" id="pickupToggle" class="toggle-switch-input">
+                            <span class="toggle-switch-slider"></span>
+                            Самовывоз (я сам заберу)
+                        </label>
+                        <div class="form-group hidden" data-field="deliveryMethod" id="deliveryMethodGroup">
+                            <label for="deliveryMethod">Способ доставки *</label>
                             <select id="deliveryMethod" class="form-select" required>
                                 <option value="">— Выберите способ —</option>
                                 <option value="taxi">Такси</option>
-                                <option value="ozon">Ozon Доставка</option>
+                                <option value="ozon">Ozon</option>
+                                <option value="pochta">Почта России</option>
+                                <option value="cdek">СДЭК</option>
+                                <option value="mezhgorod">Межгород</option>
                             </select>
                             <span class="field-error" data-error-for="deliveryMethod"></span>
-                        </div>
-                        <div id="taxiFields" class="form-group hidden" data-field="deliveryAddress">
-                            <label for="deliveryAddress">Адрес доставки (Улица, дом, квартира) *</label>
-                            <input type="text" id="deliveryAddress" class="form-input" placeholder="Улица, дом, квартира" autocomplete="street-address" spellcheck="off" required>
-                            <span class="field-error" data-error-for="deliveryAddress"></span>
-                            <label class="toggle-switch-wrap" for="taxiDoorbell">
-                                <input type="checkbox" id="taxiDoorbell" class="toggle-switch-input">
-                                <span class="toggle-switch-slider"></span>
-                                Подача такси с выходом водителя (подъем до двери / передача лично)
-                            </label>
-                        </div>
-                        <div id="pvzFields" class="form-group hidden" data-field="pvzAddress">
-                            <label for="pvzAddress">Номер или адрес пункта выдачи (ПВЗ) *</label>
-                            <input type="text" id="pvzAddress" class="form-input" placeholder="Введите номер или адрес пункта" autocomplete="off" spellcheck="off" required>
-                            <span class="field-error" data-error-for="pvzAddress"></span>
                         </div>
                         <div id="specFormError" class="spec-error hidden" role="alert"></div>
                     </div>
@@ -255,8 +241,7 @@
                     <div class="cart-consent">
                         Нажимая кнопку, вы соглашаетесь с <a href="#" id="consentPrivacyLink" class="consent-link" tabindex="0">Правилами использования сайта</a>
                     </div>
-                    <button id="checkoutBtn" class="btn btn-primary btn-block">Далее</button>
-                    <button id="sendSpecBtn" class="btn btn-primary btn-block hidden">Сформировать спецификацию в WhatsApp</button>
+                    <button id="sendSpecBtn" class="btn btn-primary btn-block">Сформировать</button>
                     <div id="orderTimeMessage" class="order-time-message hidden"></div>
                 </div>
             </div>
@@ -281,7 +266,7 @@
         </div>
     </div>
 
-    <script src="app.js?v=41"></script>
+    <script src="app.js?v=42"></script>
 
     <div id="cookieBanner" class="cookie-banner hidden">
         <div class="cookie-banner-content">

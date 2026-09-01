@@ -1,9 +1,9 @@
-const CACHE_VERSION = 'jock-nutrition-v42-2026-08-20'
+const CACHE_VERSION = 'jock-nutrition-v43-2026-09-01'
 const PRECACHE_URLS = [
     'index.html',
     'offline.html',
-    'styles.css?v=39',
-    'app.js?v=41',
+    'styles.css?v=40',
+    'app.js?v=42',
     'scanner-worker.js',
     'manifest.json',
     'favicon.ico',
