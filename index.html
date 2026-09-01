@@ -22,7 +22,7 @@
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="https://jabraiil.github.io/JOCK-NUTRITION/">
     <title>JOCK NUTRITION</title>
-    <link rel="stylesheet" href="styles.css?v=41">
+    <link rel="stylesheet" href="styles.css?v=42">
     <link rel="sitemap" type="application/xml" title="Sitemap" href="./sitemap.xml">
     <script type="application/ld+json">
     {
@@ -221,25 +221,11 @@
                     </div>
 
                     <div id="cartFormFields" class="cart-form-fields">
-                        <div class="form-group" data-field="recipientName">
-                            <label for="recipientName">ФИО *</label>
-                            <input type="text" id="recipientName" class="form-input" placeholder="Введите ФИО" autocomplete="name" spellcheck="off" required>
-                            <span class="field-error" data-error-for="recipientName"></span>
-                        </div>
-                        <div class="form-group" data-field="recipientPhone">
-                            <label for="recipientPhone">Телефон *</label>
-                            <input type="tel" id="recipientPhone" class="form-input" placeholder="+7 (___) ___-__-__" autocomplete="tel" inputmode="tel" required>
-                            <span class="field-error" data-error-for="recipientPhone"></span>
-                        </div>
-                        <label class="toggle-switch-wrap pickup-switch">
-                            <input type="checkbox" id="pickupToggle" class="toggle-switch-input">
-                            <span class="toggle-switch-slider"></span>
-                            Самовывоз (я сам заберу)
-                        </label>
-                        <div class="form-group hidden" data-field="deliveryMethod" id="deliveryMethodGroup">
-                            <label for="deliveryMethod">Способ доставки *</label>
+                        <div class="form-group" data-field="deliveryMethod">
+                            <label for="deliveryMethod">Способ получения *</label>
                             <select id="deliveryMethod" class="form-select" required>
                                 <option value="">— Выберите способ —</option>
+                                <option value="pickup">Самовывоз</option>
                                 <option value="taxi">Такси</option>
                                 <option value="ozon">Ozon</option>
                                 <option value="pochta">Почта России</option>
@@ -247,6 +233,11 @@
                                 <option value="mezhgorod">Межгород</option>
                             </select>
                             <span class="field-error" data-error-for="deliveryMethod"></span>
+                        </div>
+                        <div id="addressField" class="form-group hidden" data-field="deliveryAddress">
+                            <label for="deliveryAddress"><span id="addressLabel">Адрес доставки</span> *</label>
+                            <textarea id="deliveryAddress" class="form-input" rows="2" placeholder="Улица, дом, квартира" spellcheck="off"></textarea>
+                            <span class="field-error" data-error-for="deliveryAddress"></span>
                         </div>
                         <div id="specFormError" class="spec-error hidden" role="alert"></div>
                     </div>
@@ -279,7 +270,7 @@
         </div>
     </div>
 
-    <script src="app.js?v=43"></script>
+    <script src="app.js?v=44"></script>
 
     <div id="cookieBanner" class="cookie-banner hidden">
         <div class="cookie-banner-content">

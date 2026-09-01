@@ -259,23 +259,16 @@ function setupEventListeners() {
         const sendSpecBtn = document.getElementById('sendSpecBtn')
         if (sendSpecBtn) sendSpecBtn.addEventListener('click', generateWhatsAppSpec)
 
-        const recipientName = document.getElementById('recipientName')
-        if (recipientName) recipientName.addEventListener('input', () => {
-            clearFieldError('recipientName')
-        })
-
-        const recipientPhone = document.getElementById('recipientPhone')
-        if (recipientPhone) recipientPhone.addEventListener('input', () => {
-            clearFieldError('recipientPhone')
-        })
-
         const deliveryMethod = document.getElementById('deliveryMethod')
         if (deliveryMethod) deliveryMethod.addEventListener('change', () => {
             clearFieldError('deliveryMethod')
+            updateDeliveryAddressVisibility()
         })
 
-        const pickupToggle = document.getElementById('pickupToggle')
-        if (pickupToggle) pickupToggle.addEventListener('change', togglePickupMode)
+        const deliveryAddress = document.getElementById('deliveryAddress')
+        if (deliveryAddress) deliveryAddress.addEventListener('input', () => {
+            clearFieldError('deliveryAddress')
+        })
 
         const loadMoreBtn = document.getElementById('loadMoreBtn')
         if (loadMoreBtn) loadMoreBtn.addEventListener('click', loadMoreProducts)
@@ -1423,6 +1416,7 @@ function clearAllFieldErrors() {
 }
 
 const DELIVERY_LABELS = {
+    pickup: 'Самовывоз',
     taxi: 'Такси',
     ozon: 'Ozon',
     pochta: 'Почта России',
@@ -1430,74 +1424,80 @@ const DELIVERY_LABELS = {
     mezhgorod: 'Межгород'
 }
 
-function togglePickupMode() {
-    const pickupToggle = getCheckoutFormField('pickupToggle')
-    const deliveryGroup = getCheckoutFormField('deliveryMethodGroup')
-    if (!pickupToggle) return
-    const isPickup = pickupToggle.checked
-    if (deliveryGroup) deliveryGroup.classList.toggle('hidden', isPickup)
-    clearFieldError('deliveryMethod')
+const DELIVERY_ADDRESS_HINTS = {
+    taxi: { label: 'Адрес доставки (улица, дом, квартира)', placeholder: 'Улица, дом, квартира' },
+    ozon: { label: 'Адрес или номер ПВЗ Ozon', placeholder: 'Город, номер или адрес ПВЗ' },
+    pochta: { label: 'Почтовый адрес (индекс, город, улица, дом, квартира)', placeholder: 'Индекс, город, улица, дом, квартира' },
+    cdek: { label: 'Адрес или номер ПВЗ СДЭК', placeholder: 'Город, номер или адрес ПВЗ' },
+    mezhgorod: { label: 'Адрес доставки (город, улица, дом, квартира)', placeholder: 'Город, улица, дом, квартира' }
+}
+
+function updateDeliveryAddressVisibility() {
+    const methodEl = getCheckoutFormField('deliveryMethod')
+    const addressField = document.getElementById('addressField')
+    const addressInput = getCheckoutFormField('deliveryAddress')
+    const addressLabel = document.getElementById('addressLabel')
+    if (!methodEl || !addressField) return
+    const value = methodEl.value
+    const needsAddress = value && value !== 'pickup'
+    addressField.classList.toggle('hidden', !needsAddress)
+    if (needsAddress) {
+        const hint = DELIVERY_ADDRESS_HINTS[value]
+        if (hint) {
+            if (addressLabel) addressLabel.textContent = hint.label
+            if (addressInput) addressInput.placeholder = hint.placeholder
+        }
+    } else {
+        if (addressInput) addressInput.value = ''
+        clearFieldError('deliveryAddress')
+    }
 }
 
 function validateCheckoutForm() {
-    const nameEl = getCheckoutFormField('recipientName')
-    const phoneEl = getCheckoutFormField('recipientPhone')
-    const pickupToggle = getCheckoutFormField('pickupToggle')
     const methodEl = getCheckoutFormField('deliveryMethod')
+    const addressEl = getCheckoutFormField('deliveryAddress')
 
-    const name = nameEl ? nameEl.value.trim() : ''
-    const phone = phoneEl ? phoneEl.value.trim() : ''
-    const isPickup = pickupToggle ? pickupToggle.checked : false
-    const methodValue = !isPickup && methodEl ? methodEl.value : ''
+    const methodValue = methodEl ? methodEl.value.trim() : ''
+    const address = addressEl ? addressEl.value.trim() : ''
+    const isPickup = methodValue === 'pickup'
+    const needsAddress = !!methodValue && !isPickup
 
     let valid = true
 
-    if (!name) {
-        showFieldError('recipientName', 'Введите ФИО')
-        valid = false
-    } else {
-        clearFieldError('recipientName')
-    }
-
-    if (!phone) {
-        showFieldError('recipientPhone', 'Введите телефон')
-        valid = false
-    } else {
-        clearFieldError('recipientPhone')
-    }
-
-    if (!isPickup && !methodValue) {
-        showFieldError('deliveryMethod', 'Выберите способ доставки')
+    if (!methodValue) {
+        showFieldError('deliveryMethod', 'Выберите способ получения')
         valid = false
     } else {
         clearFieldError('deliveryMethod')
     }
 
+    if (needsAddress && !address) {
+        showFieldError('deliveryAddress', 'Укажите адрес доставки')
+        valid = false
+    } else {
+        clearFieldError('deliveryAddress')
+    }
+
     return {
         valid,
         data: {
-            name,
-            phone,
-            isPickup,
             methodValue,
-            methodLabel: isPickup ? 'Самовывоз' : (DELIVERY_LABELS[methodValue] || '')
+            methodLabel: DELIVERY_LABELS[methodValue] || '',
+            isPickup,
+            address: needsAddress ? address : ''
         }
     }
 }
 
 function resetCartFormFields() {
-    const recipientName = getCheckoutFormField('recipientName')
-    const recipientPhone = getCheckoutFormField('recipientPhone')
     const deliveryMethod = getCheckoutFormField('deliveryMethod')
-    const pickupToggle = getCheckoutFormField('pickupToggle')
+    const deliveryAddress = getCheckoutFormField('deliveryAddress')
 
-    if (recipientName) recipientName.value = ''
-    if (recipientPhone) recipientPhone.value = ''
     if (deliveryMethod) deliveryMethod.value = ''
-    if (pickupToggle) pickupToggle.checked = false
+    if (deliveryAddress) deliveryAddress.value = ''
 
     clearAllFieldErrors()
-    togglePickupMode()
+    updateDeliveryAddressVisibility()
 }
 
 function openWhatsAppUrl(whatsappUrl) {
@@ -1528,7 +1528,7 @@ async function generateWhatsAppSpec() {
         return
     }
 
-    const { name, phone, methodValue, methodLabel, isPickup } = validation.data
+    const { methodValue, methodLabel, isPickup, address } = validation.data
 
     if (specError) { specError.textContent = ''; specError.classList.add('hidden') }
 
@@ -1547,7 +1547,7 @@ async function generateWhatsAppSpec() {
             body: JSON.stringify({
                 cart,
                 whatsappAccountType: accountType,
-                customer: { name, phone, isPickup, methodValue, methodLabel }
+                customer: { isPickup, methodValue, methodLabel, address }
             })
         })
 
@@ -1588,15 +1588,13 @@ async function generateWhatsAppSpec() {
 }
 
 function resetCartCheckoutState() {
-    const pickupToggle = getCheckoutFormField('pickupToggle')
     const sendSpecBtn = getCheckoutFormField('sendSpecBtn')
-    if (pickupToggle) pickupToggle.checked = false
     if (sendSpecBtn) {
         sendSpecBtn.disabled = cart.length === 0
         sendSpecBtn.textContent = 'Сформировать'
     }
     clearAllFieldErrors()
-    togglePickupMode()
+    updateDeliveryAddressVisibility()
 }
 
 async function checkOrderTime() {

@@ -34,10 +34,10 @@
 - В проекте используется реальный `anon key`, он прописан в `app.js` и `admin/app.js`
 - Обе Edge Functions развёрнуты, `create-order` имеет рабочий эндпоинт `/health`
 - В репозитории есть `.nojekyll` для отключения Jekyll на GitHub Pages
-- Service Worker версия: `jock-nutrition-v44-2026-09-01`
-- `manifest.json` cache bust: `2026-09-01-v8`
-- `index.html` deploy marker: `2026-09-01-v8`
-- Версии статики в query params: `styles.css?v=41`, `app.js?v=43`
+- Service Worker версия: `jock-nutrition-v45-2026-09-02`
+- `manifest.json` cache bust: `2026-09-02-v1`
+- `index.html` deploy marker: `2026-09-02-v1`
+- Версии статики в query params: `styles.css?v=42`, `app.js?v=44`
 - Админка: `admin/styles.css` (без version query), `admin/app.js?v=37`
 
 ---
@@ -259,16 +259,15 @@ products (1) ──< (N) product_related
   ],
   "whatsappAccountType": "personal",
   "customer": {
-    "name": "Иванов Иван",
-    "phone": "+79991234567",
     "isPickup": false,
     "methodValue": "taxi",
-    "methodLabel": "Такси"
+    "methodLabel": "Такси",
+    "address": "Москва, ул. Тверская, 1, кв. 5"
   }
 }
 ```
 
-Поле `customer` опционально (все его подполя опциональны, обрезаются по длине). Если передано — используется для формирования текста WhatsApp.
+Поле `customer` опционально (все его подполя опциональны, обрезаются по длине). Если передано — используется для формирования текста WhatsApp. ФИО/телефон НЕ собираются (будут введены покупателем в WhatsApp вручную — это сделано для соответствия требованиям Роскомнадзора, order_id `ДДММГГ/XXX` используется для связи).
 
 **Логика**:
 1. Проверяет, что корзина не пуста.

@@ -88,11 +88,10 @@ serve(async (req) => {
       )
     }
 
-    const customerName = typeof customer?.name === 'string' ? customer.name.trim().slice(0, 200) : ''
-    const customerPhone = typeof customer?.phone === 'string' ? customer.phone.trim().slice(0, 50) : ''
     const customerIsPickup = customer?.isPickup === true
     const customerMethodValue = typeof customer?.methodValue === 'string' ? customer.methodValue.slice(0, 50) : ''
     const customerMethodLabel = typeof customer?.methodLabel === 'string' ? customer.methodLabel.slice(0, 100) : ''
+    const customerAddress = typeof customer?.address === 'string' ? customer.address.trim().slice(0, 500) : ''
 
     const { data: settings, error: settingsError } = await supabase
       .from("settings")
@@ -236,12 +235,12 @@ serve(async (req) => {
     }
     message += `\n*Итого: ${total}${currency}*\n\n`
 
-    if (customerName) message += `ФИО: ${customerName}\n`
-    if (customerPhone) message += `Телефон: ${customerPhone}\n`
     if (customerIsPickup) {
       message += `Получение: Самовывоз\n`
-    } else if (customerMethodLabel || customerMethodValue) {
-      message += `Доставка: ${customerMethodLabel || customerMethodValue}\n`
+    } else {
+      if (customerMethodLabel) message += `Доставка: ${customerMethodLabel}\n`
+      else if (customerMethodValue) message += `Доставка: ${customerMethodValue}\n`
+      if (customerAddress) message += `Адрес: ${customerAddress}\n`
     }
 
     if (hasError) message += `\n${errorCode} - проверьте наличие\n`

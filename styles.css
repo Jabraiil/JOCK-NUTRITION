@@ -2049,6 +2049,13 @@ select:focus:not(:focus-visible) {
     font-size: 0.95rem;
     width: 100%;
     box-sizing: border-box;
+    font-family: inherit;
+}
+
+textarea.form-input {
+    resize: vertical;
+    min-height: 60px;
+    line-height: 1.4;
 }
 
 .form-input:focus {
