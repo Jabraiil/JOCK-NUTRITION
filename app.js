@@ -1724,11 +1724,15 @@ async function toggleBarcodeScanner() {
                 check()
             })
 
+        try {
             scannerWorker = new Worker('./scanner-worker.js')
             scannerWorker.onmessage = onWorkerMessage
             scannerWorker.onerror = (err) => console.error('Scanner worker error:', err)
+        } catch (workerError) {
+            console.error('Worker init failed:', workerError)
+        }
 
-            try {
+        try {
                 scannerDetector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128'] })
             } catch (err) {
                 console.warn('BarcodeDetector init failed, falling back to manual')
@@ -2061,7 +2065,7 @@ async function searchByBarcode(barcode) {
             return false
         }
 
-        const products = await response.json().catch(() => ({}))
+        const products = await response.json().catch(() => [])
 
         if (products && products.length > 0) {
             const product = products[0]
