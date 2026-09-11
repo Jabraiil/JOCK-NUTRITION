@@ -3307,7 +3307,8 @@ async function handleBackupSql() {
 // ============================================
 
 async function handleGenerateDescriptions() {
-    const apiKey = document.getElementById('geminiApiKey')?.value || localStorage.getItem('gemini-api-key') || ''
+    let apiKey = ''
+    try { apiKey = document.getElementById('geminiApiKey')?.value || localStorage.getItem('gemini-api-key') || '' } catch { apiKey = '' }
     if (!apiKey) {
         showError('Введите Gemini API ключ в настройках')
         return

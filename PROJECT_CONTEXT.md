@@ -366,7 +366,6 @@ products (1) ──< (N) product_related
 ├── scanner-worker.js — Web Worker для детекта штрих-кодов (OffscreenCanvas + BarcodeDetector)
 ├── sw.js             — Service Worker (версионированный кеш статики, защита от кеша GitHub Pages, относительные пути)
 ├── manifest.json     — PWA-манифест (относительные пути `./`)
-├── favicon.ico       — фавикон сайта
 ├── .nojekyll         — отключает Jekyll на GitHub Pages
 ├── .gitignore        — игнорируемые файлы
 ├── README.md         — описание проекта
@@ -919,7 +918,7 @@ CSS-переменные для цветов и шрифтов.
 В репозитории существуют:
 - `manifest.json` — PWA-манифест (PNG-иконки из `./assets/icons/`, `display: standalone`, относительные пути)
 - `assets/icons/` — папка с PNG-иконками: `icon-192.png`, `icon-192-maskable.png`, `icon-512.png`, `icon-512-maskable.png`
-- `icons/` — папка с SVG-иконками: `icon-192.svg`, `icon-512.svg`, `apple-touch-icon.svg` (не используются в манифесте)
+- `icons/` — папка с SVG-иконками: `icon-192.svg`, `favicon.svg` (используются в HTML как favicon/mask-icon)
 - `index.html` — содержит `<link rel="manifest" href="./manifest.json">`, `<link rel="icon" href="./assets/icons/icon-192.png">`, `<link rel="apple-touch-icon" href="./assets/icons/icon-192.png">`, SVG sprite для бейджей
 
 `admin/index.html` **не содержит** тегов `<link rel="manifest">` и `<link rel="apple-touch-icon">` — PWA для админки не настроена. Также содержит SVG sprite для бейджей.

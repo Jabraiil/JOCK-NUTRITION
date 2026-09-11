@@ -6,7 +6,6 @@ const PRECACHE_URLS = [
     'app.js?v=48',
     'scanner-worker.js',
     'manifest.json?v=4',
-    'favicon.ico',
     'privacy.html',
     'assets/icons/icon-192.png',
     'assets/icons/icon-192-maskable.png',
