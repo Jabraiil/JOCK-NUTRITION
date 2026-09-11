@@ -5,7 +5,7 @@ const PRECACHE_URLS = [
     'styles.css?v=48',
     'app.js?v=48',
     'scanner-worker.js',
-    'manifest.json?v=4',
+    'manifest.json?v=3',
     'privacy.html',
     'assets/icons/icon-192.png',
     'assets/icons/icon-192-maskable.png',
@@ -38,7 +38,7 @@ function isAPI(url) {
     return url.pathname.startsWith('/rest/v1/') ||
            url.pathname.startsWith('/functions/') ||
            url.pathname.startsWith('/auth/') ||
-           url.pathname.startsWith('/storage/')
+           (url.pathname.startsWith('/storage/') && !url.pathname.startsWith('/storage/v1/object/'))
 }
 
 function isStaticAsset(url) {

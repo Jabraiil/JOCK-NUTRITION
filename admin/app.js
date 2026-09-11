@@ -3858,19 +3858,7 @@ function debounce(func, wait) {
 // Service Worker (обход кеша GitHub Pages)
 let swControllerListenerAdded = false
 
-function registerServiceWorker() {
-    if ('serviceWorker' in navigator && location.pathname.startsWith('/admin/')) {
-        navigator.serviceWorker.register('../sw.js')
-            .then(reg => {
-                if (navigator.serviceWorker.controller && !swControllerListenerAdded) {
-                    swControllerListenerAdded = true
-                    navigator.serviceWorker.addEventListener('controllerchange', () => location.reload())
-                }
-                reg.update()
-            })
-            .catch(error => console.error('Service Worker registration failed:', error))
-    }
-}
+// Service Worker registered via storefront only (JS-15)
 
 // Focus trap for modals and drawers
 (function() {
@@ -3915,7 +3903,6 @@ initErrorLog()
 
 function bootstrap() {
     init()
-    registerServiceWorker()
 }
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', bootstrap)

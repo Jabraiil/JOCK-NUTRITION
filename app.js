@@ -2582,7 +2582,7 @@ function getPrivacyFallbackContent() {
 let swControllerListenerAdded = false
 
 async function registerServiceWorker() {
-    if (!('serviceWorker' in navigator) || location.pathname.startsWith('/admin/')) return
+    if (!('serviceWorker' in navigator) || location.pathname.includes('/admin/')) return
 
     try {
         const registration = await navigator.serviceWorker.register('./sw.js')
