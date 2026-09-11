@@ -1125,7 +1125,6 @@ async function handleProductSubmit(e) {
         is_hit: document.getElementById('prodIsHit')?.checked || false,
         is_new: document.getElementById('prodIsNew')?.checked || false,
         is_discount: document.getElementById('prodIsDiscount')?.checked || false,
-        is_related_enabled: document.getElementById('prodIsRelated')?.checked || false,
         shelf_life: document.getElementById('prodShelfLife')?.value.trim() || '',
         is_visible: document.getElementById('prodIsVisible')?.value === 'true'
     }
