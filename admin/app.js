@@ -1090,6 +1090,88 @@ async function loadFormOptions() {
     }
 }
 
+function getErrorLog() {
+    try {
+        return JSON.parse(localStorage.getItem('jock-error-log') || '{"admin":[],"catalog":[]}')
+    } catch { return {admin: [], catalog: []} }
+}
+
+function saveErrorLog(log) {
+    try { localStorage.setItem('jock-error-log', JSON.stringify(log)) } catch {}
+}
+
+function addError(category, message) {
+    var log = getErrorLog()
+    if (!log[category]) log[category] = []
+    log[category].unshift({ message: message, time: new Date().toISOString() })
+    if (log[category].length > 50) log[category].pop()
+    saveErrorLog(log)
+    renderErrorLog()
+}
+
+function renderErrorLog() {
+    var log = getErrorLog()
+    var adminList = document.getElementById('errorLogAdmin')
+    var catalogList = document.getElementById('errorLogCatalog')
+    if (adminList) {
+        adminList.innerHTML = (log.admin || []).map(function(e) {
+            return '<li><small>' + new Date(e.time).toLocaleTimeString() + '</small> ' + escapeHtml(e.message) + '</li>'
+        }).join('') || '<li style="color:var(--text-secondary);padding:4px 0">Пусто</li>'
+    }
+    if (catalogList) {
+        catalogList.innerHTML = (log.catalog || []).map(function(e) {
+            return '<li><small>' + new Date(e.time).toLocaleTimeString() + '</small> ' + escapeHtml(e.message) + '</li>'
+        }).join('') || '<li style="color:var(--text-secondary);padding:4px 0">Пусто</li>'
+    }
+}
+
+function initErrorLog() {
+    var toggle = document.getElementById('errorLogToggle')
+    var panel = document.getElementById('errorLogPanel')
+    var close = document.getElementById('errorLogClose')
+    var addBtn = document.getElementById('errorLogAdd')
+    var clearBtn = document.getElementById('errorLogClear')
+    var catSelect = document.getElementById('errorLogCategory')
+    var msgInput = document.getElementById('errorLogMessage')
+
+    if (toggle) toggle.addEventListener('click', function() { panel.classList.remove('hidden') })
+    if (close) close.addEventListener('click', function() { panel.classList.add('hidden') })
+    if (addBtn) addBtn.addEventListener('click', function() {
+        var cat = catSelect ? catSelect.value : 'admin'
+        var msg = msgInput ? msgInput.value.trim() : ''
+        if (msg) { addError(cat, msg); if (msgInput) msgInput.value = '' }
+    })
+    if (clearBtn) clearBtn.addEventListener('click', function() {
+        saveErrorLog({admin: [], catalog: []})
+        renderErrorLog()
+    })
+    if (msgInput) msgInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') addBtn.click() })
+
+    window.onerror = function(msg, src, line, col, err) {
+        var category = (src && src.includes('/admin/')) ? 'admin' : 'catalog'
+        addError(category, msg + (err && err.stack ? ' | ' + err.stack : ''))
+    }
+
+    renderErrorLog()
+}
+function showToast(message, type, reason) {
+    type = type || 'success';
+    var container = document.getElementById('toastContainer');
+    if (!container) return;
+    var toast = document.createElement('div');
+    toast.className = 'toast ' + type;
+    toast.setAttribute('role', 'alert');
+    var icon = type === 'success' ? '✓' : '⚠';
+    var content = icon + ' ' + escapeHtml(message);
+    if (reason) content += ': ' + escapeHtml(reason);
+    toast.innerHTML = content;
+    container.appendChild(toast);
+    setTimeout(function() {
+        toast.classList.add('removing');
+        setTimeout(function() { toast.remove(); }, 300);
+    }, 5000);
+}
+
 async function handleProductSubmit(e) {
     e.preventDefault()
 
@@ -1204,6 +1286,7 @@ async function handleProductSubmit(e) {
 
     if (response.ok) {
         closeProductModal()
+        showToast('Товар сохранён', 'success')
         const searchInput = document.getElementById('productSearch')
         if (searchInput) searchInput.value = ''
         productsPage = 1
@@ -1214,6 +1297,7 @@ async function handleProductSubmit(e) {
     }
     } catch (err) {
         console.error('Product save error:', err)
+        showToast('Ошибка сохранения товара', 'error', err.message)
         const translated = translateError(err.message) || 'Неизвестная ошибка при сохранении'
         errorEl.textContent = translated + (err.message && err.message !== translated ? ' (' + err.message + ')' : '')
         errorEl.classList.remove('hidden')
@@ -3826,6 +3910,8 @@ function registerServiceWorker() {
 })();
 
 // Initialize
+initErrorLog()
+
 function bootstrap() {
     init()
     registerServiceWorker()

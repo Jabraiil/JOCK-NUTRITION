@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -695,6 +695,33 @@
     <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script defer src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <div id="globalTooltip" class="global-tooltip" role="tooltip" aria-hidden="true"></div>
+    <button id="errorLogToggle" class="error-log-toggle" aria-label="Панель ошибок" title="Панель ошибок">🐛</button>
+<div id="errorLogPanel" class="error-log-panel hidden" role="dialog" aria-label="Панель ошибок">
+    <div class="error-log-header">
+        <span>Ошибки</span>
+        <button id="errorLogClose" class="error-log-close" aria-label="Закрыть панель">&times;</button>
+    </div>
+    <div class="error-log-inputs">
+        <select id="errorLogCategory" aria-label="Категория ошибки">
+            <option value="admin">Админка</option>
+            <option value="catalog">Каталог</option>
+        </select>
+        <input id="errorLogMessage" type="text" placeholder="Описание ошибки" aria-label="Текст ошибки" maxlength="200">
+        <button id="errorLogAdd" class="btn btn-sm btn-primary">Добавить</button>
+        <button id="errorLogClear" class="btn btn-sm btn-danger">Очистить</button>
+    </div>
+    <div class="error-log-columns">
+        <div class="error-log-column">
+            <h4>Админка</h4>
+            <ul id="errorLogAdmin" class="error-log-list"></ul>
+        </div>
+        <div class="error-log-column">
+            <h4>Каталог</h4>
+            <ul id="errorLogCatalog" class="error-log-list"></ul>
+        </div>
+    </div>
+</div>
+    <div id="toastContainer" aria-live="polite" aria-atomic="true"></div>
     <script defer src="app.js?v=48"></script>
 </body>
 </html>
