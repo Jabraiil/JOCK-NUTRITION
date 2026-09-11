@@ -475,8 +475,27 @@
                         <input type="number" id="prodStock" value="0" autocomplete="off" inputmode="numeric">
                     </div>
                     <div class="form-group">
-                        <label for="prodVolume">Объём <span class="field-hint" data-tooltip="Объём или количество в упаковке. Например: «30 капсул», «100 г», «500 мл».">?</span></label>
-                        <input type="text" id="prodVolume" placeholder="30 капсул" autocomplete="off">
+                        <label>Единица измерения <span class="field-hint" data-tooltip="Выберите единицу: шт — штуки, г — граммы, кг — килограммы, мл — миллилитры, л — литры, м — метры, см — сантиметры, др — другое.">?</span></label>
+                        <div class="unit-input-wrap">
+                            <input type="number" id="prodUnitValue" min="0" step="any" placeholder="Кол-во" autocomplete="off" inputmode="numeric">
+                            <select id="prodUnitType" class="unit-select">
+                                <option value="шт">шт</option>
+                                <option value="г">г</option>
+                                <option value="кг">кг</option>
+                                <option value="мл">мл</option>
+                                <option value="л">л</option>
+                                <option value="м">м</option>
+                                <option value="см">см</option>
+                                <option value="др">др</option>
+                            </select>
+                        </div>
+                        <small class="hint">Количество и единица измерения. Например: 50 мл, 30 шт, 100 г.</small>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="prodVolume">Объём <span class="field-hint" data-tooltip="Объём или количество в упаковке. Заполняется автоматически из полей выше, но можно уточнить вручную.">?</span></label>
+                        <input type="text" id="prodVolume" placeholder="50 мл" autocomplete="off">
                     </div>
                 </div>
                 <div class="form-row">

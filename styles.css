@@ -2092,6 +2092,28 @@ textarea.form-input {
     cursor: pointer;
 }
 
+.unit-input-wrap {
+    display: flex;
+    gap: 6px;
+    align-items: stretch;
+}
+
+.unit-input-wrap .form-input {
+    flex: 1;
+}
+
+.unit-input-wrap .unit-select {
+    width: 80px;
+    flex-shrink: 0;
+    padding: 10px 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 0.95rem;
+    cursor: pointer;
+}
+
 .checkbox-label {
     display: flex;
     align-items: flex-start;

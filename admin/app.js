@@ -66,6 +66,13 @@ function renderImagePreview(container, images) {
     container.innerHTML = images.map((img, idx) => `<span class="image-wrapper"><img src="${escapeHtml(img.url)}" alt="" decoding="async"><button type="button" class="remove-image" data-idx="${idx}">&times;</button></span>`).join('')
 }
 
+function parseVolumeToUnit(volumeStr) {
+    if (!volumeStr) return null
+    const match = String(volumeStr).trim().match(/^(\d+(?:\.\d+)?)\s*([а-яёa-zA-Z]+)?$/i)
+    if (!match) return null
+    return { value: match[1], type: match[2] || 'шт' }
+}
+
 function fillProductForm(product, opts = {}) {
     const { nameSuffix = '', skipOldPrice = false, clearSku = false, clearBarcode = false } = opts
     const prodName = document.getElementById('prodName')
@@ -105,6 +112,13 @@ function fillProductForm(product, opts = {}) {
     }
     if (prodStock) prodStock.value = product.stock ?? ''
     if (prodVolume) prodVolume.value = product.volume || ''
+    const unitInfo = parseVolumeToUnit(product.volume || '')
+    if (unitInfo) {
+        const prodUnitValue = document.getElementById('prodUnitValue')
+        const prodUnitType = document.getElementById('prodUnitType')
+        if (prodUnitValue) prodUnitValue.value = unitInfo.value
+        if (prodUnitType) prodUnitType.value = unitInfo.type
+    }
     if (prodSku) prodSku.value = clearSku ? '' : (product.sku || '')
     if (prodBarcode) prodBarcode.value = clearBarcode ? '' : (product.barcode || '')
     if (prodIsHit) prodIsHit.checked = Boolean(product.is_hit)
@@ -684,6 +698,24 @@ function setupEventListeners() {
             if (adminScanRafId || adminHtml5QrCode) closeAdminBarcodeScanner()
         })
     }
+
+    // Auto-compute prodVolume from prodUnitValue + prodUnitType
+    const prodUnitValue = document.getElementById('prodUnitValue')
+    const prodUnitType = document.getElementById('prodUnitType')
+    const prodVolume = document.getElementById('prodVolume')
+    if (prodUnitValue && prodUnitType && prodVolume) {
+        const syncVolume = () => {
+            const val = prodUnitValue.value.trim()
+            const type = prodUnitType.value
+            if (val) {
+                prodVolume.value = val + ' ' + type
+            } else {
+                prodVolume.value = ''
+            }
+        }
+        prodUnitValue.addEventListener('input', syncVolume)
+        prodUnitType.addEventListener('change', syncVolume)
+    }
 }
 
 function showAuthPage() {
@@ -1086,6 +1118,8 @@ async function handleProductSubmit(e) {
         old_price: (() => { const el = document.getElementById('prodOldPrice'); return el?.value ? parseInt(el.value, 10) : null })(),
         stock: parseInt(prodStock.value, 10) || 0,
         volume: document.getElementById('prodVolume')?.value.trim() || '',
+        unitType: document.getElementById('prodUnitType')?.value || 'шт',
+        unitValue: parseFloat(document.getElementById('prodUnitValue')?.value) || null,
         sku: document.getElementById('prodSku')?.value.trim() || null,
         barcode: document.getElementById('prodBarcode')?.value.trim() || null,
         is_hit: document.getElementById('prodIsHit')?.checked || false,
