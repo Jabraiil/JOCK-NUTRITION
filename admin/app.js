@@ -2860,6 +2860,10 @@ async function handleImportFileSelect(e) {
     reader.onload = async (e) => {
         try {
             const data = new Uint8Array(e.target.result)
+            if (!XLSX) {
+                showError('Библиотека XLSX не загружена')
+                return
+            }
             const workbook = XLSX.read(data, { type: 'array' })
             if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
                 throw new Error('В файле нет листов')
