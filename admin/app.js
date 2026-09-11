@@ -1017,6 +1017,8 @@ async function openProductModal(productId = null) {
     }
 
     document.getElementById('productModal')?.classList.remove('hidden')
+    const f = document.querySelector('#productModal button:not([disabled]), #productModal a[href], #productModal input:not([disabled]), #productModal select:not([disabled]), #productModal textarea:not([disabled]), #productModal [tabindex]:not([tabindex="-1"])')
+    if (f) setTimeout(() => f.focus(), 50)
 }
 
 function closeProductModal() {
@@ -2181,6 +2183,8 @@ function openBannerSlideModal(slideIndex = null) {
 
     updateBannerFormVisibility()
     modal.classList.remove('hidden')
+    const f = modal.querySelector('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')
+    if (f) setTimeout(() => f.focus(), 50)
 }
 
 function closeBannerSlideModal() {
@@ -3781,6 +3785,44 @@ function registerServiceWorker() {
             .catch(error => console.error('Service Worker registration failed:', error))
     }
 }
+
+// Focus trap for modals and drawers
+(function() {
+    function getFocusable(container) {
+        return Array.from(container.querySelectorAll(
+            'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )).filter(el => el.offsetParent !== null && !el.closest('.hidden'));
+    }
+    function isModalOpen(el) {
+        if (el.classList.contains('cart-drawer') || el.classList.contains('sidebar-drawer')) return el.classList.contains('open')
+        if (el.classList.contains('admin-barcode-scanner')) return !el.classList.contains('hidden')
+        return !el.classList.contains('hidden')
+    }
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Tab') return
+        const modals = document.querySelectorAll('.modal, .cart-drawer, .sidebar-drawer, .admin-barcode-scanner, .welcome-modal, .privacy-modal, .a2hs-modal')
+        let active = null
+        for (let i = 0; i < modals.length; i++) {
+            if (isModalOpen(modals[i])) { active = modals[i]; break }
+        }
+        if (!active) return
+        const focusable = getFocusable(active)
+        if (focusable.length === 0) return
+        const first = focusable[0]
+        const last = focusable[focusable.length - 1]
+        if (e.shiftKey) {
+            if (document.activeElement === first || !active.contains(document.activeElement)) {
+                e.preventDefault()
+                last.focus()
+            }
+        } else {
+            if (document.activeElement === last || !active.contains(document.activeElement)) {
+                e.preventDefault()
+                first.focus()
+            }
+        }
+    })
+})();
 
 // Initialize
 function bootstrap() {

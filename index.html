@@ -10,19 +10,19 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="JOCK NUTRITION">
     <meta name="mobile-web-app-capable" content="yes">
-    <link rel="manifest" href="./manifest.json?v=2">
+    <link rel="manifest" href="./manifest.json?v=3">
     <link rel="icon" type="image/svg+xml" href="./icons/favicon.svg">
     <link rel="icon" type="image/png" sizes="16x16" href="./assets/icons/favicon-16x16.png">
     <link rel="icon" type="image/png" sizes="32x32" href="./assets/icons/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="192x192" href="./assets/icons/icon-192.png">
     <link rel="apple-touch-icon" sizes="180x180" href="./assets/icons/apple-touch-icon.png">
-    <link rel="mask-icon" href="./icons/icon-192.svg" color="#000000">
+    <link rel="mask-icon" href="./assets/icons/icon-192.svg" color="#000000">
     <link rel="preconnect" href="https://hpphfeojjejculvdundj.supabase.co">
     <link rel="dns-prefetch" href="https://hpphfeojjejculvdundj.supabase.co">
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="https://jabraiil.github.io/JOCK-NUTRITION/">
     <title>JOCK NUTRITION</title>
-    <link rel="stylesheet" href="styles.css?v=44">
+    <link rel="stylesheet" href="styles.css?v=48">
     <link rel="sitemap" type="application/xml" title="Sitemap" href="./sitemap.xml">
     <script type="application/ld+json">
     {
@@ -40,6 +40,7 @@
     </script>
 </head>
 <body>
+    <a href="#main-content" class="skip-link">Перейти к основному содержимому</a>
     <script>
         (function() {
             const hash = window.location.hash;
@@ -83,9 +84,9 @@
         </div>
     </header>
 
-    <main class="main">
+    <main id="main-content" class="main">
         <div class="container">
-            <div id="promoBanner" class="promo-banner hidden" role="region" aria-label="Промо-баннер" aria-roledescription="carousel">
+            <div id="promoBanner" class="promo-banner hidden" role="region" aria-label="Промо-баннер">
                 <div class="promo-banner-track" id="promoBannerTrack" aria-live="polite">
                 </div>
                 <button id="bannerPauseBtn" class="promo-banner-pause" aria-label="Пауза автопролистывания" title="Пауза">
@@ -102,7 +103,7 @@
                         <circle cx="11" cy="11" r="8"></circle>
                         <path d="m21 21-4.35-4.35"></path>
                     </svg>
-                    <input type="text" id="searchInput" placeholder="Поиск по названию и бренду..." autocomplete="off">
+                    <input type="text" id="searchInput" aria-label="Поиск" placeholder="Поиск по названию и бренду..." autocomplete="off">
                 </div>
                 <div class="search-actions">
                     <button id="barcodeToggle" class="icon-btn" aria-label="Сканировать штрих-код" title="Сканировать штрих-код">
@@ -120,7 +121,7 @@
                             <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"></path>
                         </svg>
                     </button>
-                    <button id="searchClear" class="icon-btn" aria-label="Очистить поиск">&times;</button>
+                    <button type="button" id="searchClear" class="icon-btn" aria-label="Очистить поиск">&times;</button>
                 </div>
             </div>
 
@@ -141,7 +142,7 @@
                 </div>
                 <div id="scannerManual" class="scanner-manual hidden">
                     <input type="text" id="manualBarcodeInput" placeholder="Введите штрих-код..." autocomplete="off">
-                    <button id="manualBarcodeSubmit" class="scanner-manual-btn">Найти</button>
+                    <button type="button" id="manualBarcodeSubmit" class="scanner-manual-btn">Найти</button>
                 </div>
             </div>
 
@@ -248,7 +249,7 @@
                     </div>
 
                     <div class="cart-consent">
-                        Нажимая кнопку, вы соглашаетесь с <a href="#" id="consentPrivacyLink" class="consent-link" tabindex="0">Правилами использования сайта</a>
+                        Нажимая кнопку, вы соглашаетесь с <a href="privacy.html" id="consentPrivacyLink" class="consent-link" tabindex="0">Правилами использования сайта</a>
                     </div>
                     <button id="sendSpecBtn" class="btn btn-primary btn-block">Сформировать</button>
                     <div id="orderTimeMessage" class="order-time-message hidden"></div>
@@ -268,14 +269,12 @@
         </div>
     </main>
 
-    <div id="productModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalBody">
+    <div id="productModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalHeading">
         <div class="modal-content">
-            <button class="modal-close">&times;</button>
-            <div id="modalBody"></div>
+            <button type="button" class="modal-close">&times;</button>
+            <div id="modalBody"><h2 id="modalHeading"></h2></div>
         </div>
     </div>
-
-    <script src="app.js?v=46"></script>
 
     <div id="cookieBanner" class="cookie-banner hidden">
         <div class="cookie-banner-content">
@@ -283,6 +282,8 @@
             <button id="cookieAccept" class="btn btn-primary">Понятно</button>
         </div>
     </div>
+
+    <script src="app.js?v=48"></script>
 
     <div id="welcomeModal" class="welcome-modal hidden" role="dialog" aria-modal="true" aria-labelledby="welcomeModalHeading">
         <div class="welcome-modal-backdrop"></div>
@@ -324,17 +325,17 @@
 </div>
 
 <!-- Bottom Navigation Bar (mobile) -->
-<nav class="bottom-nav" id="bottomNav">
+<nav class="bottom-nav" id="bottomNav" aria-label="Основная навигация">
     <button type="button" class="bottom-nav-item" data-nav="catalog" id="navCatalog" role="button" tabindex="0" aria-label="Главная">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
             <polyline points="9 22 9 12 15 12 15 22"></polyline>
         </svg>
         <span class="nav-label">Главная</span>
     </button>
     <button type="button" class="bottom-nav-item" id="navSearch" data-nav="search" role="button" tabindex="0" aria-label="Поиск">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="11" cy="11" r="8"></circle>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <circle cx="11" cy="11" r="8"></circle>
             <path d="m21 21-4.35-4.35"></path>
         </svg>
         <span class="nav-label">Поиск</span>
@@ -346,8 +347,8 @@
         <span class="nav-label">Избранное</span>
     </button>
     <button type="button" class="bottom-nav-item" id="navCart" data-nav="cart" role="button" tabindex="0" aria-label="Ваш выбор">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="9" cy="21" r="1"></circle>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <circle cx="9" cy="21" r="1"></circle>
             <circle cx="20" cy="21" r="1"></circle>
             <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
         </svg>
@@ -370,7 +371,7 @@
             <p><strong>iOS Safari:</strong> Нажмите «Поделиться» → «Добавить на главный экран»</p>
             <p><strong>Android:</strong> Нажмите кнопку ниже или откройте меню браузера → «Добавить на главный экран»</p>
         </div>
-        <button id="a2hsModalInstall" class="a2hs-modal-install btn btn-primary">Установить приложение</button>
+        <button type="button" id="a2hsModalInstall" class="a2hs-modal-install btn btn-primary">Установить приложение</button>
         </div>
     </div>
 

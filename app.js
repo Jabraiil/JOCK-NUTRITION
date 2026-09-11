@@ -435,6 +435,7 @@ function setupEventListeners() {
         }
     } catch (error) {
         console.error('setupEventListeners error:', error)
+        showError('Ошибка инициализации интерфейса: ' + (error && error.message ? error.message : 'неизвестная'))
     }
 }
 
@@ -444,6 +445,8 @@ function openFilters() {
     if (!sidebar || !overlay) return
     sidebar.classList.add('open')
     overlay.classList.add('open')
+    const f = sidebar.querySelector('button, a, input, select, textarea, [tabindex]:not([tabindex="-1"])')
+    if (f) setTimeout(() => f.focus(), 50)
 }
 
 function closeFilters() {
@@ -1045,7 +1048,11 @@ function openProductModal(productId) {
     initSlider(track, dots)
 
     const productModal = document.getElementById('productModal')
-    if (productModal) productModal.classList.remove('hidden')
+    if (productModal) {
+        productModal.classList.remove('hidden')
+        const f = productModal.querySelector('button, a, input, select, textarea, [tabindex]:not([tabindex="-1"])')
+        if (f) setTimeout(() => f.focus(), 50)
+    }
 }
 
 function closeModal() {
@@ -1232,6 +1239,8 @@ function openCart() {
     const overlay = document.getElementById('cartDrawerOverlay')
     if (drawer) drawer.classList.add('open')
     if (overlay) overlay.classList.add('open')
+    const f = drawer.querySelector('button, a, input, select, textarea, [tabindex]:not([tabindex="-1"])')
+    if (f) setTimeout(() => f.focus(), 50)
 }
 
 function closeCart() {
@@ -2798,6 +2807,44 @@ function setupOfflineListener() {
     window.addEventListener('offline', updateOnlineStatus)
     updateOnlineStatus()
 }
+
+// Focus trap for modals and drawers
+(function() {
+    function getFocusable(container) {
+        return Array.from(container.querySelectorAll(
+            'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )).filter(el => el.offsetParent !== null && !el.closest('.hidden'));
+    }
+    function isModalOpen(el) {
+        if (el.classList.contains('cart-drawer') || el.classList.contains('sidebar-drawer')) return el.classList.contains('open')
+        if (el.classList.contains('admin-barcode-scanner')) return !el.classList.contains('hidden')
+        return !el.classList.contains('hidden')
+    }
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Tab') return
+        const modals = document.querySelectorAll('.modal, .cart-drawer, .sidebar-drawer, .admin-barcode-scanner, .welcome-modal, .privacy-modal, .a2hs-modal')
+        let active = null
+        for (let i = 0; i < modals.length; i++) {
+            if (isModalOpen(modals[i])) { active = modals[i]; break }
+        }
+        if (!active) return
+        const focusable = getFocusable(active)
+        if (focusable.length === 0) return
+        const first = focusable[0]
+        const last = focusable[focusable.length - 1]
+        if (e.shiftKey) {
+            if (document.activeElement === first || !active.contains(document.activeElement)) {
+                e.preventDefault()
+                last.focus()
+            }
+        } else {
+            if (document.activeElement === last || !active.contains(document.activeElement)) {
+                e.preventDefault()
+                first.focus()
+            }
+        }
+    })
+})();
 
 // Global error handler
 window.addEventListener('error', (event) => {

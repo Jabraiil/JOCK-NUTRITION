@@ -106,6 +106,24 @@ body {
     border: 0;
 }
 
+.skip-link:focus {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    padding: 12px 16px;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+    background: var(--primary);
+    color: #FFFFFF;
+    font-size: 1rem;
+    z-index: 10000;
+    display: inline-block;
+    text-decoration: none;
+    border-radius: var(--radius-sm);
+}
+
 :focus-visible {
     outline: 2px solid var(--primary);
     outline-offset: 2px;

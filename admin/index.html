@@ -10,7 +10,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="JOCK ADMIN">
     <meta name="mobile-web-app-capable" content="yes">
-    <link rel="manifest" href="../manifest.json?v=2">
+    <link rel="manifest" href="../manifest.json?v=3">
     <link rel="icon" type="image/svg+xml" href="../icons/favicon.svg">
     <link rel="icon" type="image/png" sizes="16x16" href="../assets/icons/favicon-16x16.png">
     <link rel="icon" type="image/png" sizes="32x32" href="../assets/icons/favicon-32x32.png">
@@ -21,9 +21,10 @@
     <meta name="robots" content="noindex, nofollow">
     <link rel="canonical" href="https://jabraiil.github.io/JOCK-NUTRITION/admin/">
     <title>JOCK NUTRITION — Админ-панель</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=48">
 </head>
 <body>
+    <a href="#main-content" class="skip-link">Перейти к основному содержимому</a>
     <div id="authPage" class="auth-page">
         <div class="auth-container">
             <h1>JOCK NUTRITION</h1>
@@ -42,44 +43,44 @@
 
     <div id="adminPage" class="admin-page hidden">
         <div class="sidebar-overlay" id="sidebarOverlay"></div>
-        <aside class="sidebar">
+        <aside class="sidebar" aria-label="Панель администрирования">
             <div class="sidebar-header">
                 <h2>JOCK NUTRITION</h2>
             </div>
             <nav class="sidebar-nav">
-                <button class="nav-item active" data-page="products">
+                <button type="button" class="nav-item active" data-page="products" aria-current="page">
                     <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
                     <span>Товары</span>
                 </button>
-                <button class="nav-item" data-page="categories">
+                <button type="button" class="nav-item" data-page="categories">
                     <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"></path></svg>
                     <span>Категории</span>
                 </button>
-                <button class="nav-item" data-page="brands">
+                <button type="button" class="nav-item" data-page="brands">
                     <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>
                     <span>Бренды</span>
                 </button>
-                <button class="nav-item" data-page="banner">
+                <button type="button" class="nav-item" data-page="banner">
                     <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
                     <span>Баннер</span>
                 </button>
-                <button class="nav-item" data-page="analytics">
+                <button type="button" class="nav-item" data-page="analytics">
                     <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
                     <span>Статистика</span>
                 </button>
-                <button class="nav-item" data-page="settings">
+                <button type="button" class="nav-item" data-page="settings">
                     <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                     <span>Настройки</span>
                 </button>
-                <button class="nav-item" data-page="import">
+                <button type="button" class="nav-item" data-page="import">
                     <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
                     <span>Импорт</span>
                 </button>
-                <button class="nav-item" data-page="export">
+                <button type="button" class="nav-item" data-page="export">
                     <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                     <span>Экспорт</span>
                 </button>
-                <button class="nav-item" data-page="backup">
+                <button type="button" class="nav-item" data-page="backup">
                     <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"></path><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"></path><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path></svg>
                     <span>Резерв</span>
                 </button>
@@ -89,20 +90,20 @@
             </div>
         </aside>
 
-        <main class="admin-main">
+        <main id="main-content" class="admin-main">
             <header class="admin-header">
                 <div class="admin-header-left">
-                    <button id="hamburgerBtn" class="hamburger-btn" aria-label="Меню">☰</button>
+                    <button type="button" id="hamburgerBtn" class="hamburger-btn" aria-label="Меню">☰</button>
                     <h1 id="pageTitle">Товары</h1>
                 </div>
                 <div class="admin-header-actions">
-                    <button id="themeToggle" class="icon-btn" aria-label="Тема" title="Светлая/тёмная тема">
+                    <button type="button" id="themeToggle" class="icon-btn" aria-label="Тема" title="Светлая/тёмная тема">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="12" cy="12" r="5"></circle>
                             <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path>
                         </svg>
                     </button>
-                    <button class="monitor-indicator" title="Статус Edge Function">
+                    <button type="button" class="monitor-indicator" aria-label="Статус Edge Function" title="Статус Edge Function">
                         <span class="indicator-dot"></span>
                         <span class="indicator-text">Проверка...</span>
                     </button>
@@ -116,8 +117,8 @@
                         <input type="text" id="productSearch" placeholder="Поиск товаров..." autocomplete="off">
                     </div>
                     <div class="page-header-actions">
-                        <button id="generateDescBtn" class="btn btn-secondary">🤖 Сгенерировать</button>
-                        <button id="addProductBtn" class="btn btn-primary">+ Добавить</button>
+                        <button type="button" id="generateDescBtn" class="btn btn-secondary">🤖 Сгенерировать</button>
+                        <button type="button" id="addProductBtn" class="btn btn-primary">+ Добавить</button>
                     </div>
                 </div>
                 <div class="table-container">
@@ -131,7 +132,7 @@
                                 <th>Бренд</th>
                                 <th>Цена</th>
                                 <th>Остаток</th>
-                                <th class="status-header">Статус <label class="toggle-switch" title="Все товары видны / скрыты"><input type="checkbox" id="bulkToggleVisibilityBtn"><span class="toggle-slider"></span></label></th>
+                                <th class="status-header">Статус <label class="toggle-switch" aria-label="Показать/скрыть все товары" title="Все товары видны / скрыты"><input type="checkbox" id="bulkToggleVisibilityBtn"><span class="toggle-slider"></span></label></th>
                                 <th>Бейджи</th>
                                 <th class="actions-header">Действия</th>
                             </tr>
@@ -151,7 +152,7 @@
 
             <div id="categoriesPage" class="page">
                 <div class="page-header">
-                    <button id="addCategoryBtn" class="btn btn-primary">+ Добавить категорию</button>
+                    <button type="button" id="addCategoryBtn" class="btn btn-primary">+ Добавить категорию</button>
                 </div>
                 <div class="table-container">
                     <table class="data-table">
@@ -230,7 +231,7 @@
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th class="checkbox-header"><label for="selectAllOrders" class="sr-only">Выбрать все</label><input type="checkbox" id="selectAllOrders" title="Выбрать все"></th>
+                                <th class="checkbox-header"><label for="selectAllOrders" class="sr-only">Выбрать все</label><input type="checkbox" id="selectAllOrders" aria-label="Выбрать все" title="Выбрать все"></th>
                                 <th>Номер</th>
                                 <th>Товары</th>
                                 <th>Сумма</th>
@@ -257,8 +258,8 @@
                         <span class="banner-enabled-text">Баннер включён</span>
                     </div>
                     <div class="page-header-actions">
-                        <button id="addBannerSlideBtn" class="btn btn-primary">+ Добавить слайд <span class="field-hint" data-tooltip="Создаёт новый слайд для баннера. Вы сможете выбрать товар, загрузить фото, добавить текст и ссылку.">?</span></button>
-                        <button id="saveBannerBtn" class="btn btn-secondary">Сохранить баннер <span class="field-hint" data-tooltip="Сохраняет все слайды в настройки. После сохранения изменения сразу появятся на сайте.">?</span></button>
+                        <button type="button" id="addBannerSlideBtn" class="btn btn-primary">+ Добавить слайд <span class="field-hint" data-tooltip="Создаёт новый слайд для баннера. Вы сможете выбрать товар, загрузить фото, добавить текст и ссылку.">?</span></button>
+                        <button type="button" id="saveBannerBtn" class="btn btn-secondary">Сохранить баннер <span class="field-hint" data-tooltip="Сохраняет все слайды в настройки. После сохранения изменения сразу появятся на сайте.">?</span></button>
                     </div>
                 </div>
                 <div id="bannerSlidesList" class="banner-slides-list"></div>
@@ -440,7 +441,7 @@
                         <textarea id="prodUsage" rows="2"></textarea>
                 </div>
                 <div class="form-group">
-                    <label class="checkbox-label">
+                    <label class="checkbox-label" for="showContraindications">
                         <input type="checkbox" id="showContraindications">
                         Показать противопоказания <span class="field-hint" data-tooltip="Включите, если у товара есть противопоказания. Появится отдельное поле для их заполнения.">?</span>
                     </label>
@@ -475,7 +476,7 @@
                         <input type="number" id="prodStock" value="0" autocomplete="off" inputmode="numeric">
                     </div>
                     <div class="form-group">
-                        <label>Единица измерения <span class="field-hint" data-tooltip="Выберите единицу: шт — штуки, г — граммы, кг — килограммы, мл — миллилитры, л — литры, м — метры, см — сантиметры, др — другое.">?</span></label>
+                        <label for="prodUnitValue">Единица измерения <span class="field-hint" data-tooltip="Выберите единицу: шт — штуки, г — граммы, кг — килограммы, мл — миллилитры, л — литры, м — метры, см — сантиметры, др — другое.">?</span></label>
                         <div class="unit-input-wrap">
                             <input type="number" id="prodUnitValue" min="0" step="any" placeholder="Кол-во" autocomplete="off" inputmode="numeric">
                             <select id="prodUnitType" class="unit-select">
@@ -535,16 +536,16 @@
                 <div class="form-group">
                     <label>Бейджи <span class="field-hint" data-tooltip="Визуальные плашки на карточке товара. HIT — популярный товар, NEW — новинка, SALE — скидка. Влияют на авто-генерацию баннера.">?</span></label>
                     <div class="checkbox-group">
-                        <label class="checkbox-label">
+                        <label class="checkbox-label" for="prodIsHit">
                             <input type="checkbox" id="prodIsHit"> Хит
                         </label>
-                        <label class="checkbox-label">
+                        <label class="checkbox-label" for="prodIsNew">
                             <input type="checkbox" id="prodIsNew"> Новинка
                         </label>
-                        <label class="checkbox-label">
+                        <label class="checkbox-label" for="prodIsDiscount">
                             <input type="checkbox" id="prodIsDiscount"> Скидка
                         </label>
-                        <label class="checkbox-label">
+                        <label class="checkbox-label" for="prodIsRelated">
                             <input type="checkbox" id="prodIsRelated"> Связанные товары
                         </label>
                     </div>
@@ -690,11 +691,11 @@
 
     <div id="adminScannerFileContainer" class="admin-scanner-file-container"></div>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script defer src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <div id="globalTooltip" class="global-tooltip" role="tooltip" aria-hidden="true"></div>
-    <script src="app.js?v=37"></script>
+    <script src="app.js?v=48"></script>
 </body>
 </html>
 

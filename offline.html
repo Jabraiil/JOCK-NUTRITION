@@ -1,8 +1,15 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-offline="true">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="offline" content="true">
+    <meta name="description" content="JOCK NUTRITION — магазин БАДов. Вы офлайн. Проверьте интернет-соединение и попробуйте снова.">
+    <meta name="robots" content="noindex">
+    <link rel="canonical" href="./offline.html">
+    <link rel="icon" type="image/svg+xml" href="./icons/favicon.svg">
+    <meta name="theme-color" content="#007AFF">
+    <meta name="color-scheme" content="light dark">
     <title>Вы офлайн — JOCK NUTRITION</title>
     <style>
         :root {
@@ -98,7 +105,7 @@
     </style>
 </head>
 <body>
-    <div class="offline-container">
+    <main class="offline-container">
         <div class="offline-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="1" y1="1" x2="23" y2="23"></line>
@@ -112,8 +119,8 @@
         </div>
         <h1>Нет подключения</h1>
         <p>Проверьте интернет-соединение и попробуйте снова. Некоторые данные могут быть доступны из кеша.</p>
-        <button class="btn" id="retryBtn">Попробовать снова</button>
-    </div>
+        <button class="btn" id="retryBtn" type="button">Попробовать снова</button>
+    </main>
     <script>
         document.getElementById('retryBtn').addEventListener('click', () => window.location.reload())
     </script>

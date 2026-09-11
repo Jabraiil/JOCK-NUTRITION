@@ -1,11 +1,11 @@
-const CACHE_VERSION = 'jock-nutrition-v49-2026-09-02'
+const CACHE_VERSION = 'jock-nutrition-v51-2026-09-11'
 const PRECACHE_URLS = [
     'index.html',
     'offline.html',
-    'styles.css?v=44',
-    'app.js?v=46',
+    'styles.css?v=48',
+    'app.js?v=48',
     'scanner-worker.js',
-    'manifest.json?v=2',
+    'manifest.json?v=4',
     'favicon.ico',
     'privacy.html',
     'assets/icons/icon-192.png',
@@ -15,8 +15,8 @@ const PRECACHE_URLS = [
     'assets/icons/favicon-16x16.png',
     'assets/icons/favicon-32x32.png',
     'assets/icons/apple-touch-icon.png',
-    'admin/styles.css',
-    'admin/app.js?v=37',
+    'admin/styles.css?v=48',
+    'admin/app.js?v=48',
     'admin/index.html',
     'sitemap.xml'
 ]

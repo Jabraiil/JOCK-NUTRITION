@@ -1,6 +1,6 @@
 {
   "name": "jock-nutrition",
-  "version": "1.0.0",
+  "version": "2026.09.11.2",
   "private": true,
   "description": "Интернет-магазин БАДов — статический фронтенд + Supabase",
   "scripts": {
