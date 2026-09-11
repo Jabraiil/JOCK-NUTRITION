@@ -477,7 +477,7 @@ ${composition ? `Состав: "${composition}"` : ''}
     // POST /products
     if (req.method === "POST" && path === "/products") {
       const body = await req.json()
-      const { images, links, related, ...productData } = body
+      const { images, links, related, unitType, unitValue, ...productData } = body
 
       const normalized = {
         ...productData,
@@ -531,7 +531,7 @@ ${composition ? `Состав: "${composition}"` : ''}
     if (req.method === "PUT" && path.match(/^\/products\/[^/]+$/)) {
       const productId = path.split("/")[2]
       const body = await req.json()
-      const { images, links, related, ...productData } = body
+      const { images, links, related, unitType, unitValue, ...productData } = body
 
       const normalized = {
         ...productData,

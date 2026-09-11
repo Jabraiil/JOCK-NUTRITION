@@ -1120,8 +1120,6 @@ async function handleProductSubmit(e) {
         old_price: (() => { const el = document.getElementById('prodOldPrice'); return el?.value ? parseInt(el.value, 10) : null })(),
         stock: parseInt(prodStock.value, 10) || 0,
         volume: document.getElementById('prodVolume')?.value.trim() || '',
-        unitType: document.getElementById('prodUnitType')?.value || 'шт',
-        unitValue: parseFloat(document.getElementById('prodUnitValue')?.value) || null,
         sku: document.getElementById('prodSku')?.value.trim() || null,
         barcode: document.getElementById('prodBarcode')?.value.trim() || null,
         is_hit: document.getElementById('prodIsHit')?.checked || false,
