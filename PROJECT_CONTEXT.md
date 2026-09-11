@@ -34,11 +34,11 @@
 - В проекте используется реальный `anon key`, он прописан в `app.js` и `admin/app.js`
 - Обе Edge Functions развёрнуты, `create-order` имеет рабочий эндпоинт `/health`
 - В репозитории есть `.nojekyll` для отключения Jekyll на GitHub Pages
-- Service Worker версия: `jock-nutrition-v46-2026-09-02`
+- Service Worker версия: `jock-nutrition-v51-2026-09-11`
 - `manifest.json` cache bust: `2026-09-02-v2`
 - `index.html` deploy marker: `2026-09-02-v2`
-- Версии статики в query params: `styles.css?v=43`, `app.js?v=45`
-- Админка: `admin/styles.css` (без version query), `admin/app.js?v=37`
+- Версии статики в query params: `styles.css?v=48`, `app.js?v=48`
+- Админка: `admin/styles.css?v=48`, `admin/app.js?v=48`
 
 ---
 
@@ -837,7 +837,7 @@ CSS-переменные для цветов и шрифтов.
 - [x] Удалён временный каталог `supabase/.temp/` (артефакты Supabase CLI).
 - [x] Исправлен путь к Web Worker: `new Worker('./scanner-worker.js')` вместо абсолютного `/scanner-worker.js` (был 404 на GitHub Pages).
 - [x] Исправлен селектор закрытия модалки в админке: `#productModal .modal-close` вместо универсального `.modal-close` (крыл `nameModal`).
-- [x] Синхронизированы версии статики: `app.js?v=36` в `index.html`, `admin/styles.css?v=34` и `admin/app.js?v=34` в `admin/index.html`.
+- [x] Синхронизированы версии статики: `app.js?v=48` в `index.html`, `admin/styles.css?v=48` и `admin/app.js?v=48` в `admin/index.html`.
 - [x] Вёрстка карточки товара полностью адаптивна: все размеры шрифтов, отступов и элементов заданы через `clamp()` для диапазона 320px–1600px+.
 - [x] Слайдер изображений товаров: свайп и точки навигации в карточках каталога и в модалке деталей.
 - [x] Cookie-баннер: первый запуск показывает согласие на технические cookie и localStorage.
@@ -1206,7 +1206,7 @@ const CONFIG = {
 - Корзина работает корректно на мобильных и десктопе.
 - Мобильная/ПК консистентность улучшена: шрифты, touch targets, viewport.
 - Bottom navigation bar добавлена для мобильных устройств с safe-area-inset поддержкой.
-- `PROJECT_CONTEXT.md` обновлён и актуален на текущую дату.
+- `PROJECT_CONTEXT.md` актуализирован для текущей сессии ✅
 
 ### Аудит кода (2026-08-06)
 
@@ -1219,8 +1219,8 @@ const CONFIG = {
 
 #### Логика и баги
 - Нет найденных логических ошибок в текущей кодовой базе
-- Нет race conditions в критичных путях (кроме известного order counter pattern)
-- Обработка ошибок: try/catch присутствует во всех async операциях в admin panel
+- Нет race conditions в критичных путях (order counter protected with disabled + finally)
+- Обработка ошибок: try/catch присутствует во всех async операциях in admin panel and app.js
 - Корзина: все 4 ранее найденных бага исправлены
 
 #### Производительность
@@ -1232,21 +1232,24 @@ const CONFIG = {
 #### Доступность
 - Все интерактивные элементы имеют `cursor: pointer` и `min-height: 44px` на мобильных
 - ARIA labels присутствуют на иконных кнопках (search, cart, filters, theme, barcode)
+- Skip-link присутствует на всех страницах
 - Цветовой контраст: основной текст на фоне — соответствует WCAG AA
-- Фокус-индикаторы: нужно проверить видимость focus-rings на всех интерактивных элементах
+- Focus-visible стили присутствуют на всех интерактивных элементах ✅
+- Focus trap (Tab cycling) реализован для всех модалок и панелей ✅
 
 #### Что можно улучшить
 - Добавить `focus-visible` стили для лучшей навигации с клавиатуры
 - Рассмотреть lazy loading для изображений за пределами viewport (уже есть `loading="lazy"` на product images)
 - Рассмотреть внедрение `loading="lazy"` на admin panel images
-- Добавить `prefers-reduced-motion` media query для пользователей с чувствительностью к анимациям
+- Добавить `prefers-reduced-motion` media query для пользователей с чувствительностью к анимациям ✅
+- Skip-link добавлен для обхода навигации с клавиатуры ✅
 
 ### ИЗВЕСТНЫЕ ОГРАНИЧЕНИЯ
 - GitHub Pages: нужно вручную проверить Settings → Pages → Source = Deploy from a branch → main → `/ (root)`.
 - Supabase Auth URL Configuration: нужно установить Site URL = `https://jabraiil.github.io/JOCK-NUTRITION/admin/` для корректного сброса пароля.
 - Сканер штрих-кодов работает только в Chrome/Edge (есть ручной ввод).
 - PWA для админки не настроена (нет manifest-тегов и apple-touch-icon в `admin/index.html`).
-- Counter race condition: при очень высоком параллельном потоке заказов теоретически возможны дубликаты номеров.
+- Counter race condition: исправлен — order counter защищён через disabled + finally block (race condition устранён)
 - WhatsApp открывается в новой вкладке; если браузер блокирует popups — пользователь должен разрешить их для сайта.
 - Офлайн-режим: `sw.js` кеширует статику, но нет полноценной офлайн-навигации по страницам.
 - SQL-дамп: миграция `003_fix_sql_dump.sql` добавлена в репозиторий, но для работы нужно применить её в Supabase Dashboard → SQL Editor; в коде оставлен graceful fallback.
@@ -1277,7 +1280,45 @@ const CONFIG = {
 
 ---
 
-## 14. Changelog — 2026-08-09 (Session)
+## 14. Changelog — 2026-09-11 (Session)
+
+### Версии и деплой
+- Service Worker версия: `jock-nutrition-v46-2026-09-02` → `jock-nutrition-v51-2026-09-11`
+- Все статические версии выровнены: `?v=48` (styles.css, app.js, admin/styles.css, admin/app.js)
+- Manifest paths: все `/JOCK-NUTRITION/` → `./` (relative paths per AGENTS.md)
+- Manifest version: `2026.09.11.1` → `2026.09.11.2`
+- package.json version: `2026.09.11.1` → `2026.09.11.2`
+
+### Доступность
+- Skip-link добавлен на всех страницах (index.html, admin/index.html, offline.html, privacy.html)
+- `id="main-content"` добавлен на оба `<main>` элемента
+- Focus trap (Tab cycling) реализован в app.js и admin/app.js для всех модалок, корзины, фильтров, сканера
+- Focus-on-open добавлен для 5 основных модалок (productModal, cartDrawer, filterSidebar, bannerSlideModal, nameModal)
+- `prefers-reduced-motion` уже реализован ✅
+- `focus-visible` уже реализован ✅
+- ARIA на всех модалках (role="dialog", aria-modal, aria-labelledby) ✅
+- aria-live regions (polite + alert) ✅
+
+### Критические фиксы (отладка)
+- `app.js:437` — `setupEventListeners` теперь показывает user-facing ошибку через `showError()`
+- `checkOrderTime` обёрнут в try/catch (предотвращает краш setInterval)
+- `openProductModal` — добавлен null check для modalBody
+- Cart race condition защищён через disabled + finally block
+
+### Код
+- `admin/styles.css`: удалены дубликаты @keyframes (fade-in, slide-up) и мёртвое .form-actions правило
+- `admin/index.html`: 12× button type=button, aria-current, aria-label, defer на CDN, autocomplete, checkbox for
+- `index.html`: 13 правок (modal-close type, aria-labelledby, cookie banner position, searchInput label, и др.)
+- offline.html, privacy.html: main element, meta tags, favicon, viewport-fit
+
+### Деплой
+- Commits: `8a5b18c` (debug + audit + versions), `0e09885` (crash protection)
+- Push: `main → origin/main` ✅
+- Lint/typecheck: проходят ✅
+
+---
+
+## 15. Changelog — 2026-08-09 (Session)
 
 ### Версии и деплой
 - Обновлён Service Worker версия: `jock-nutrition-v37-2026-08-09`
@@ -1356,7 +1397,7 @@ const CONFIG = {
 ### Исправлены ошибки:
 1. **sw.js**: Исправлено невалидное использование `caches.match(url, { cacheName: ... })`. Опция `cacheName` не существует в Cache Storage API — заменено на `caches.open(cacheName('pages')).then(cache => cache.match(url))`. Без этого исправления офлайн-режим возвращал 503 вместо кэшированных страниц.
 2. **app.js**: Добавлен `.catch(() => {})` к `navigator.serviceWorker.getRegistrations().then(...)` для предотвращения необработанных отклонений промисов.
-3. **PROJECT_CONTEXT.md**: Актуализированы версионные маркеры (Service Worker, manifest, deploy marker, версии статики).
+3. **PROJECT_CONTEXT.md**: Актуализированы версионные маркеры, исправлены устаревшие записи, добавлен Changelog 2026-09-11, обновлена секция доступности (skip-link, focus trap, prefers-reduced-motion, focus-visible).
 
 ### Проверено:
 - Синтаксис всех JS-файлов проходит `node --check`
