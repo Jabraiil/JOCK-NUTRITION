@@ -956,6 +956,7 @@ function openProductModal(productId) {
     if (currentImageIndex < 0) currentImageIndex = 0
 
     const modalBody = document.getElementById('modalBody')
+    if (!modalBody) return
     const favorited = isFavorited(productId)
     const discountPercent = product.old_price && product.price < product.old_price
         ? Math.round((1 - product.price / product.old_price) * 100)
@@ -1626,6 +1627,7 @@ function resetCartCheckoutState() {
 }
 
 async function checkOrderTime() {
+    try {
     const timeMessage = document.getElementById('orderTimeMessage')
     const sendSpecBtn = document.getElementById('sendSpecBtn')
 
@@ -1659,6 +1661,9 @@ async function checkOrderTime() {
     } else {
         sendSpecBtn.disabled = cart.length === 0
         timeMessage.classList.add('hidden')
+    }
+    } catch (e) {
+        console.error('checkOrderTime error:', e)
     }
 }
 
