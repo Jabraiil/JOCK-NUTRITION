@@ -1,4 +1,14 @@
 {
-  "$schema": "https://app.kilo.ai/config.json",
-  "snapshot": false
+  "model": "anthropic/claude-sonnet-4-5",
+  "instructions": [
+    "Vanilla JS, ES2020+, no modules, no build step",
+    "Mobile-first, iOS-style on <768px, 44pt touch targets",
+    "Use clamp() for responsive typography",
+    "CSS variables for themes, data-theme attribute",
+    "Relative paths (./) for GitHub Pages",
+    "Always escapeHtml() for DB output",
+    "Never commit secrets/keys",
+    "No cookies, no visitor logging",
+    "Don't modify RLS policies without explicit request"
+  ]
 }
