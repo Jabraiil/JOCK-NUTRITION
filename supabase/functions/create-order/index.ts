@@ -30,6 +30,20 @@ interface CreateOrderSettings {
 
 const ADMIN_ROUTE_PREFIX = "/create-order"
 
+// Simple in-memory rate limiting (per-isolate; resets on cold start)
+const requestCounts = new Map<string, number>()
+const RATE_LIMIT_MS = 60000
+const MAX_REQUESTS = 10
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now()
+  const count = requestCounts.get(ip) || 0
+  if (count > MAX_REQUESTS) return false
+  requestCounts.set(ip, count + 1)
+  setTimeout(() => requestCounts.delete(ip), RATE_LIMIT_MS)
+  return true
+}
+
 serve(async (req) => {
   const corsHeaders = getCorsHeaders(req.headers.get("origin"))
 
@@ -48,6 +62,17 @@ serve(async (req) => {
     return jsonResponse(
       { error: "Method Not Allowed" },
       405,
+      corsHeaders,
+    )
+  }
+
+  // Rate limiting
+  const clientIp = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown"
+  if (!checkRateLimit(clientIp)) {
+    structuredLog("warn", "Rate limit exceeded", { ip: clientIp })
+    return jsonResponse(
+      { error: "Слишком много запросов. Попробуйте позже." },
+      429,
       corsHeaders,
     )
   }
@@ -154,6 +179,16 @@ serve(async (req) => {
     let hasError = false
     let errorCode = ""
 
+    function escapeHtml(str: unknown): string {
+      if (str == null) return ''
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;')
+    }
+
     for (const cartItem of cart) {
       const product = productMap[String(cartItem.id)]
       if (!product || !product.is_visible) {
@@ -161,13 +196,24 @@ serve(async (req) => {
         errorCode = settingsMap.order_error_code || "[!CHECK!]"
         continue
       }
-      const quantity = Math.min(cartItem.quantity, product.stock)
-      const itemTotal = product.price * quantity
+      // Validate quantity: must be a non-negative finite number, capped at stock
+      const rawQty = Number(cartItem.quantity)
+      const quantity = Number.isFinite(rawQty) && rawQty > 0
+        ? Math.min(Math.floor(rawQty), product.stock)
+        : 0
+      if (quantity <= 0) continue
+      // Validate price: must be a non-negative finite number
+      const price = Number(product.price)
+      if (!Number.isFinite(price) || price < 0) {
+        hasError = true
+        continue
+      }
+      const itemTotal = price * quantity
       const brandName = product.brands?.name || ""
       const nameLine = brandName
         ? `${brandName} ${product.name}${product.dosage ? ` ${product.dosage}` : ""}${product.volume ? ` ${product.volume}` : ""}`
         : `${product.name}${product.dosage ? ` ${product.dosage}` : ""}${product.volume ? ` ${product.volume}` : ""}`
-      orderItems.push({ name: nameLine, quantity, price: product.price, total: itemTotal })
+      orderItems.push({ name: escapeHtml(nameLine), quantity, price, total: itemTotal })
       total += itemTotal
     }
 
@@ -179,48 +225,28 @@ serve(async (req) => {
       )
     }
 
-    const { data: counter, error: counterError } = await supabase
-      .from("order_counter")
-      .select("counter")
-      .eq("id", 1)
-      .single()
+// Atomic counter increment via RPC to prevent race conditions under parallel requests
+    const { data: newCounterValue, error: rpcError } = await supabase
+      .rpc("increment_order_counter")
 
-    if (counterError || !counter) {
-      structuredLog("error", "Counter error", { error: counterError?.message })
-      return jsonResponse(
-        { error: "Ошибка генерации номера" },
-        500,
-        corsHeaders,
-      )
-    }
-
-    const newCounter = counter.counter + 1
-    const now = new Date()
-    const timezone = settingsMap.timezone || "Europe/Moscow"
-    const dateOpts = { timeZone: timezone, day: "2-digit", month: "2-digit", year: "2-digit" }
-    const dateFormatter = new Intl.DateTimeFormat("ru-RU", dateOpts)
-    const dateParts = dateFormatter.formatToParts(now)
-    const day = dateParts.find(p => p.type === "day")?.value || String(now.getDate()).padStart(2, "0")
-    const month = dateParts.find(p => p.type === "month")?.value || String(now.getMonth() + 1).padStart(2, "0")
-    const year = dateParts.find(p => p.type === "year")?.value || String(now.getFullYear()).slice(-2)
-    const orderNumber = `${day}${month}${year}/${String(newCounter).padStart(3, "0")}`
-
-    const { data: updatedCounter, error: updateCounterError } = await supabase
-      .from("order_counter")
-      .update({ counter: newCounter })
-      .eq("id", 1)
-      .eq("counter", counter.counter)
-      .select("counter")
-      .single()
-
-    if (updateCounterError || !updatedCounter) {
-      structuredLog("error", "Counter update error", { error: updateCounterError?.message })
+    if (rpcError || newCounterValue == null) {
+      structuredLog("error", "Counter RPC error", { error: rpcError?.message })
       return jsonResponse(
         { error: "Ошибка генерации номера заказа" },
         500,
         corsHeaders,
       )
     }
+
+    const now = new Date()
+    const timezone = settingsMap.timezone || "Europe/Moscow"
+    const dateOpts = { timeZone: timezone, day: "2-digit", month: "2-digit", year: "2-digit" }
+    const DateFormatter = new Intl.DateTimeFormat("ru-RU", dateOpts)
+    const dateParts = DateFormatter.formatToParts(now)
+    const day = dateParts.find(p => p.type === "day")?.value || String(now.getDate()).padStart(2, "0")
+    const month = dateParts.find(p => p.type === "month")?.value || String(now.getMonth() + 1).padStart(2, "0")
+    const year = dateParts.find(p => p.type === "year")?.value || String(now.getFullYear()).slice(-2)
+    const orderNumber = `${day}${month}${year}/${String(newCounterValue).padStart(3, "0")}`
 
     const { error: analyticsError } = await supabase
       .from("orders_analytics").insert({ order_number: orderNumber, items: orderItems, total })
