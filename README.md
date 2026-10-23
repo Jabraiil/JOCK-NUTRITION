@@ -1,4 +1,4 @@
-# JOCK NUTRITION
+﻿# JOCK NUTRITION
 
 Статический интернет-магазин БАДов на vanilla JS + Supabase. Деплоится на GitHub Pages.
 
@@ -8,10 +8,10 @@
 
 ## Архитектура
 
-- **Фронтенд**: `index.html`, `styles.css`, `app.js` — публичная витрина
-- **Админка**: `admin/index.html`, `admin/styles.css`, `admin/app.js` — панель управления
-- **Бэкенд**: Supabase (PostgreSQL + Edge Functions + Storage)
-- **PWA**: Service Worker, манифест, иконки
+- Фронтенд: `index.html`, `styles.css`, `app.js` — публичная витрина
+- Админка: `admin/index.html`, `admin/styles.css`, `admin/app.js` — панель управления
+- Бэкенд: Supabase (PostgreSQL + Edge Functions + Storage)
+- PWA: Service Worker, манифест, иконки
 
 ## Технологии
 
@@ -29,16 +29,16 @@
 
 ## Ключевые паттерны
 
-- **Корзина**: localStorage 'jock-cart', только `{id, quantity}`
-- **Избранное**: localStorage 'jock-favorites`, массив UUID
-- **Настройки**: из admin-api/settings, кэш в `window.__storeSettings`
-- **Цены**: защита на сервере, все расчёты в Edge Function create-order
-- **Время заказа**: checkOrderTime() проверяет час в часовом поясе timezone
-- **Сканер штрих-кодов**: BarcodeDetector API + Web Worker (scanner-worker.js)
+- Корзина: localStorage 'jock-cart', только {id, quantity}
+- Избранное: localStorage 'jock-favorites', массив UUID
+- Настройки: из admin-api/settings, кэш в window.__storeSettings
+- Цена: защита на сервере, все расчёты в Edge Function create-order
+- Время заказа: checkOrderTime() проверяет час в часовом поясе timezone
+- Сканер штрих-кодов: BarcodeDetector API + Web Worker (scanner-worker.js)
 
 ## Безопасность
 
-- `escapeHtml()` для всего вывода из БД
+- escapeHtml() для всего вывода из БД
 - Нет cookie/логирования посетителей
 - service_role ключ только в Edge Functions
 - Анонимный ключ Supabase только в клиентском коде
@@ -49,10 +49,13 @@
 - Query params: styles.css?v=49, app.js?v=49
 - Deploy marker: 2026-10-23-v1
 
-## Юридические требования
+## Юридические требования (для физического лица)
 
-- [ ] Заполнить реквизиты ИП в privacy.html (ИИН, ОГРНИП, ФИО, адрес, банк)
+- [x] Политика конфиденциальности соответствует 152-ФЗ (privacy.html)
+- [x] Нет ИИН/ОГРНИП — не требуется для ФЛ
+- [x] Нет иностранных аналитики (Google Analytics и др.)
+- [x] Нет медицинских формулировок в описаниях товаров
 - [ ] Все БАДы должны быть зарегистрированы в реестре ЕАЭС
-- [ ] Отсутствуют иностранные аналитики (Google Analytics и др.)
-- [ ] Нет медицинских формулировок в описаниях товаров
-- [ ] Политика конфиденальности соответствует 152-ФЗ
+- [ ] При коммерческой деятельности: рассмотреть регистрацию НПД (4% налог)
+- [ ] Нет иностранных платёжных систем для российских клиентов
+- [ ] Если будете собирать персональные данные — отдельное согласие (с 09.2025)

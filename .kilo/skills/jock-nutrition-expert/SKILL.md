@@ -172,39 +172,39 @@ When two skills give different advice:
 
 ---
 
-# ИП (Individual Entrepreneur) Requirements
+# ФЛ (Physical Person) Requirements
 
-## Must Display on Website (for ИП)
-- INN (ИИН)
-- OGRNIP (ОГРНИП)
-- Full name (ФИО)
-- Registration address
-- Bank details (bank name, account, BIC, corr. account)
-- Contact phone and email
+## For This Site Owner (ФЛ, Not ИП)
 
-## Tax Regime Requirements
-- If УСН "Доходы" (6%): must issue KKT for all cash payments
-- If УСН "Доходы минус расходы" (15%): track and report expenses
-- If ПСН: fixed payment, limited by region/activity
-- KKT (54-ФЗ): online cash register mandatory, no offline devices
-- KKT fines: 10k-30k rubles first violation, 1/4 to 1/2 of transaction amount repeat
+### What's Required
+- Privacy Policy (152-ФЗ compliant) — already exists at privacy.html
+- No INN/OGRNIP display required (only for ИП)
+- No KKT required (only for ИП with cash payments)
+- No separate consent document needed (site doesn't collect PD — only localStorage)
 
-## 152-ФЗ for ИП
-- ИП IS an operator if processes personal data
-- Must have: Privacy Policy, separate consent document, order appointing responsible
+### Tax Considerations
+- If commercial activity: consider NPD registration (4% tax for ФЛ, limit 10M ₽)
+- НДФЛ (13%) applies to undeclared commercial income
+- Without registration: risk of being classified as undeclared entrepreneurship
+
+### 152-ФЗ for ФЛ
+- ФЛ is an operator if processes PD commercially
+- Must have: Privacy Policy, consent to process PD (separate document since 09.2025)
 - Cross-border transfer restrictions apply
 - Fines: up to 100k rubles
 
-## Forbidden for ИП
-- Foreign bank accounts for business (since 2021)
-- Foreign payment systems for Russian clients
-- Anonymous payments
-- Russian domain required for certain activities
+### Prohibited for ФЛ
+- Large-volume sales without tax registration (risk of ИП status)
+- Foreign bank accounts for business income (since 2021)
+- Anonymous commercial payments
+- Activities requiring ИП or legal entity (pharmacy, alcohol, etc.)
 
-## For This Site (JACK NUTRITION) — ИП Checklist
-- [ ] Display INN/OGRNIP somewhere on site (footer or privacy.html)
-- [ ] If accepting payments: KKT required (54-ФЗ)
-- [ ] Privacy Policy must identify ИП as operator
-- [ ] If collecting PD (phone for orders): separate consent document required
+## For This Site (JACK NUTRITION) — ФЛ Checklist
+- [x] Privacy Policy exists (152-ФЗ compliant)
+- [x] No INN/OGRNIP needed (ФЛ)
+- [ ] If commercial: consider NPD registration (4% tax)
 - [ ] No foreign payment systems for Russian clients
 - [ ] All BADs must be state-registered in ЕАЭС
+- [ ] No medical claims in product descriptions
+- [ ] No patient testimonials
+- [ ] Consent document if collecting PD (separate since 09.2025)
