@@ -225,12 +225,54 @@ serve(async (req) => {
       )
     }
 
-// Atomic counter increment via RPC to prevent race conditions under parallel requests
-    const { data: newCounterValue, error: rpcError } = await supabase
-      .rpc("increment_order_counter")
+// Atomic counter increment via RPC; fallback to optimistic update if RPC not available
+    let newCounterValue: number | null = null
+    const { data: rpcData, error: rpcError } = await supabase.rpc("increment_order_counter")
 
-    if (rpcError || newCounterValue == null) {
-      structuredLog("error", "Counter RPC error", { error: rpcError?.message })
+    if (!rpcError && rpcData != null) {
+      newCounterValue = rpcData
+    } else {
+      // Fallback: read-modify-write with optimistic locking
+      structuredLog("warn", "RPC increment_order_counter unavailable, using fallback", { error: rpcError?.message })
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const { data: counter, error: counterError } = await supabase
+          .from("order_counter")
+          .select("counter")
+          .eq("id", 1)
+          .single()
+
+        if (counterError || !counter) {
+          structuredLog("error", "Fallback counter read error", { error: counterError?.message, attempt })
+          if (attempt < 2) {
+            await new Promise(r => setTimeout(r, 500 * (attempt + 1)))
+            continue
+          }
+          return jsonResponse(
+            { error: "Ошибка генерации номера" },
+            500,
+            corsHeaders,
+          )
+        }
+
+        const nextValue = counter.counter + 1
+        const { data: updated, error: updateError } = await supabase
+          .from("order_counter")
+          .update({ counter: nextValue })
+          .eq("id", 1)
+          .eq("counter", counter.counter)
+          .select("counter")
+          .single()
+
+        if (!updateError && updated) {
+          newCounterValue = updated.counter
+          break
+        }
+        structuredLog("warn", "Fallback counter update conflict, retrying", { attempt })
+        await new Promise(r => setTimeout(r, 500 * (attempt + 1)))
+      }
+    }
+
+    if (newCounterValue == null) {
       return jsonResponse(
         { error: "Ошибка генерации номера заказа" },
         500,
