@@ -2018,7 +2018,6 @@ async function loadSettings() {
         if (orderErrorCodeEl) orderErrorCodeEl.value = settings.order_error_code || '[!CHECK!]'
         if (currencyEl) currencyEl.value = settings.currency || '₽'
         if (orderTemplateEl) orderTemplateEl.value = settings.order_template || ''
-        if (geminiApiKeyEl) geminiApiKeyEl.value = settings.gemini_api_key || ''
         if (bannerEnabledEl) bannerEnabledEl.checked = settings.promo_banner_enabled !== 'false'
     } catch (error) {
         console.error('Error loading settings:', error)
@@ -2044,7 +2043,6 @@ async function handleSettingsSave(e) {
         order_error_code: document.getElementById('orderErrorCode')?.value || '[!CHECK!]',
         currency: document.getElementById('currency')?.value || '₽',
         order_template: document.getElementById('orderTemplate')?.value || '',
-        gemini_api_key: document.getElementById('geminiApiKey')?.value || '',
         promo_banner_enabled: document.getElementById('bannerEnabled')?.checked ? 'true' : 'false'
     }
     
@@ -2058,7 +2056,8 @@ async function handleSettingsSave(e) {
     })
     
     if (response.ok) {
-        localStorage.setItem('gemini-api-key', settings.gemini_api_key)
+        const geminiKey = document.getElementById('geminiApiKey')?.value || ''
+        try { localStorage.setItem('gemini-api-key', geminiKey) } catch {}
         showError('Настройки сохранены')
     } else {
         const result = await response.json().catch(() => ({}))
